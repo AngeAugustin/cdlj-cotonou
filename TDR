@@ -1,0 +1,129 @@
+TDR CDLJ WEB APP
+CDLJ WEBAPP est une plateforme de gestion des activités de la Communauté Diocésaine des Lecteurs Juniors de Cotonou. 
+Voici le lien pour accéder au logo de la communauté : https://i.postimg.cc/N0F45Zwn/CDLJ.png 
+Les couleurs à mettre en avant seront le marron, le blanc, le belge et d’autres couleurs pour un design professionnel et séduisant. 
+Le site devra présenter un design hautement responsif. C’est le Navbar qui contiendra les redirections.
+La page initiale de la plateforme sera la page d’Accueil qui devra être designé de manière professionnelle. Elle contiendra le NAVBAR, un body et un footer suivant un design moderne. Le footer ne s’appliqueront que pour les pages qui ne nécessitent pas de connexion pour accès. 
+Par ailleurs, il y a aura également une page pour afficher les Actualités. 
+Il y aura également une page qui affichera les redirections vers les différents Forums de la communauté. 
+L’identifiant unique d’un lecteur sera présenté sous la forme suivante : 
+Abréviation du vicariat + 3 lettres random du nom de la paroisse + un random de 6 chiffres. 
+Pour tous les lecteurs de la même paroisse, les 3 lettres random du nom de la paroisse doivent être les mêmes. 
+Les pages Accueil, Actualités et Forums seront communes. 
+Le site aura plusieurs utilisateurs (rôles) : SuperAdmin, Diocesain, Vicarial, Paroissial. Et en fonction du rôle, les actions et les activités seront différentes. 
+Le SuperAdmin pourra créer les utilisateurs de tous les autres rôles et aura tous les droits sur le système. 
+Le Diocésain pourra créer des utilisateurs avec les rôles Vicarial et Paroissial. 
+INTERFACES SUIVANT LE ROLE
+I – INTERFACE ROLE PAROISSIAL
+Cette interface est réservée aux utilisateurs ayant un rôle Paroissial. Il faut comprendre que cet utilisateur agit sur le système au nom de sa paroisse donnée, membre d’un vicariat donné. 
+Il n’y a pas d’inscription à faire. L’utilisateur se connectera avec les informations de connexion email et mot de passe qui lui sont fournis par le SuperAdmin. 
+A son niveau, les redirections vers les différentes pages seront : Dashboard, Lecteurs, Activités.
+Dashboard 
+Ce tableau de bord présentera des chiffres et des statistiques globales de cette paroisse. 
+Lecteurs 
+Pour enregistrer un lecteur, il faut renseigner : Noms, prénoms, Date de naissance, sexe, grade (A sélectionner parmi la liste déroulante), année d’adhésion au groupe, niveau scolaire ou professionnel, autres détails scolaire ou professionnel (facultatif), contact, contact d’urgence, adresse, maux particuliers, Photo d’identité (3Mo au plus), le vicariat, la paroisse. Le vicariat et la paroisse seront ceux de l’utilisateur qui est entrain de l’enregistrer donc afficher automatiquement. A l’enregistrement un numéro unique sera associé au lecteur. 
+Ici il y aura la liste des lecteurs enregistrés et chaque ligne se présente de la manière suivante : 
+Petite image en avatar + Nom prénoms (en gras) + Grade actuel + Age 
+Ensuite une icone pour modifier toutes les informations, une icone pour supprimer et une icone pour voir les détails. Les détails c’est a dire les informations de ce lecteur et l’historique de participation aux activités. 
+Il pourra télécharger la liste de ses lecteurs. 
+
+Activités
+Dans cet espace, l’utilisateur verra un flag avec deux possibilités : Activités en cours et Activités passées. Le flag Activité en cours est ouvert par défaut, il y la liste des activités en cours. Chaque activité sera présentée dans un rectangle contenant l’image de l’activité et ensuite un bouton détails et un bouton participer. Quand il clique sur le bouton détails il verra tous les détails liés à l’activité. Quand il clique sur le bouton participer, il verra un flag avec deux possibilités : Non participants et Participants. Après le flag il verra une liste. S’il est dans l’option ‘Non Participants’, il verra la liste de tous ses lecteurs avec à chaque ligne un checkbox. Il sélectionne les participants et appuie sur le bouton Payer. Dès lors, le paiement change le statut de ceux la et les envoie dans le flag ‘Participants’. Le flag Activité passées contient la liste des activités passées et en consultant les détails de l’activité, il verra tous les détails liés à l’activité et la liste de tous ses lecteurs qui y ont participé. 
+Il pourra télécharger la liste des lecteurs qui participent à une activité en cours et aussi ceux qui ont participé à une activité passée. 
+
+II – INTERFACE ROLE VICARIAL
+Cette interface est réservée aux utilisateurs ayant un rôle Vicarial. Il faut comprendre que cet utilisateur agit sur le système au nom de son vicariat.
+Il n’y a pas d’inscription à faire. L’utilisateur se connectera avec les informations de connexion email et mot de passe qui lui sont fournis par le SuperAdmin. 
+A son niveau, les redirections vers les différentes pages seront : Dashboard, Paroisses, Activités, Assemblées Générales, Cotisations.
+
+Dashboard 
+Ce tableau de bord présentera des chiffres et des statistiques globales de ce vicariat : Nombre de lecteurs, Nombre de paroisses, nombre de grades (suivant un grade spécifique), Nombre de paroisses participants aux activités en cours, Nombre d’activités en cours, etc...
+
+Paroisses 
+Ici l’utilisateur verra la liste de toutes les paroisses de son vicariat. Chaque ligne se présentera sous le format : Petite image avatar, Nom de la paroisse, Nombre de lecteurs, Nom du Coordonnateur. Ensuite un bouton pour voir tous les détails de cette paroisse. Au niveau des détails il verra tous les détails de la paroisse de manière bien détaillée et une liste des lecteurs de la paroisse avec les détails simple. 
+Il pourra faire des recherches sur le nom, le matricule, le grade.
+
+Activités
+Ici l’utilisateur verra un flag avec deux possibilités : Activités en cours et Activités passées. Le flag Activité en cours est ouvert par défaut, il y la liste des activités en cours. Chaque activité sera présentée dans un rectangle contenant l’image de l’activité et ensuite un bouton détails. Quand il clique sur le bouton détails il verra tous les détails liés à l’activité, le nombre global de participants par rapport au nombre de total de lecteurs de ce vicariat et le nombre de participations de chaque paroisse de ce vicariat. 
+Au niveau du flag des Activités passées il verra la même chose sauf qu’ici les activités sont déjà passées. 
+
+Assemblées Générales
+Ici l’utilisateur verra un flag avec deux possibilités : En cours et Passées. Le flag En cours est ouvert par défaut, il y la liste des assemblées générales en cours. Chaque assemblée sera présentée dans un rectangle contenant l’image de l’assemblée générale et ensuite un bouton détails et un bouton soumettre rapport. Quand il clique sur le bouton détails il verra tous les détails liés à l’activité. Quand il clique sur le bouton soumettre rapport, il lui sera demandé d’uploader le rapport et d’envoyer. Il peut télécharger le rapport qu’il a uploadé. 
+Au niveau de Passées il verra la même chose sauf qu’ici les activités sont déjà passées et il ne peut pas uploader un rapport mais il peut télécharger le rapport qu’il y avait uploadé. 
+
+Cotisations
+Ici l’utilisateur verra la liste des cotisations déjà payées. Chaque ligne sera présentée sous la forme : Cotisation 
+N°xxxxxxx pour Xmois – Xmois Année + Montant payé. Ensuite un bouton détails pour voir les détails de la cotisation payée. 
+Par ailleurs, il y aura un bouton Payer cotisation sur la page qui renverra vers un formulaire. Les champs seront : 
+Montant à payer, Intervalle concernée (De tel mois à tel mois). 
+
+
+II – INTERFACE ROLE DIOCESAIN
+Cette interface est réservée aux utilisateurs ayant un rôle Diocesain. 
+Il n’y a pas d’inscription à faire. L’utilisateur se connectera avec les informations de connexion email et mot de passe qui lui sont fournis par le SuperAdmin. 
+A son niveau, les redirections vers les différentes pages seront : Dashboard, Paroisses, Vicariats, Activités, Assemblées Générales, Cotisations, Grades, Evaluations. 
+
+
+Dashboard 
+Ce tableau de bord présentera des chiffres et des statistiques globales de tout le diocèse : Nombre de vicariats, Nombre de paroisses, Nombre de lecteurs dans tout le diocèse, Nombre d’activités en cours, etc... (Et plein d’autre choses que tu juges pertinent).
+
+Vicariats 
+Ici l’utilisateur se chargera de créer les vicariats en appuyant sur le bouton Ajouter un vicariat. Et verra ensuite la liste des vicariats créés. 
+Lorsqu’il appuie sur le bouton Ajouter un vicariat, il devra remplir un formulaire avec les champs suivants : Nom du vicariat, Abréviation du vicariat, Nom de l’Aumonier vicarial, et le logo du Vicariat (facultatif). 
+Au niveau de la liste, chaque ligne sera présentée de la forme : 
+Petit avatar du logo + Nom du vicariat. Ensuite un bouton Modifier et un bouton supprimer. 
+
+Paroisses 
+Ici l’utilisateur se chargera de créer les paroisses en appuyant sur le bouton Ajouter une paroisse. Et verra ensuite la liste des paroisses créées. 
+Lorsqu’il appuie sur le bouton Ajouter une paroisse, il devra remplir un formulaire avec les champs suivants : Nom de la paroisse, Nom du curé Vicariat forain (A sélectionner dans la liste des vicariats qui s’affichera), et le logo de la paroisse (facultatif). 
+Au niveau de la liste, chaque ligne sera présentée de la forme : 
+Petit avatar du logo + Nom de la paroisse + Nom du vicariat. Ensuite un bouton Modifier et un bouton supprimer. 
+
+Activités
+Ici, en premier lieu l’utilisateur sera chargé de créer une activité en appuyant sur le bouton créer une activité. Il faudra alors remplir le formulaire suivant : 
+Nom de l’activité, Date de début et de fin, Lieu, Montant, Délai de paiement, Image de l’activité. 
+En deuxième lieu, il verra un flag avec deux possibilités : En cours, Terminées. Au niveau du flag En cours, il verra la liste des activités qu’il a créé. 
+Chaque ligne sera présentée de la manière suivante : 
+Petit avatar de l’image de l’activité + Nom de l’activité + Montant + Date de début et de fin de l’activité. Ensuite un bouton détails, un bouton modifier, un bouton supprimer et un bouton marquer comme terminé.
+Le bouton détails pourra permettre de voir tous les détails de l’activité avec la possibilité de marquer l’activité comme terminé. Le bouton supprimer permettra de supprimer l’activité. Le bouton marquer comme terminé permettra de marquer l’activité comme terminé et il ira dans l’espace Terminées. 
+
+
+Assemblées générales
+Ici, en premier lieu, l’utilisateur pourra créer une assemblée générale en appuyant sur le bouton créer une assemblée générale. Il faudra remplir le formulaire suivant : 
+Nom de l’assemblée Générale, Date, Lieu. 
+En deuxième lieu, il verra un flag avec deux possibilités : En cours, Terminées. Au niveau du flag En cours, il verra la liste des assemblées générales qu’il a créé. 
+Chaque ligne sera présentée de la manière suivante : 
+Petit avatar de l’image de l’assemblée générale + Nom de l’assemblée générale + Montant + Date de l’activité. Ensuite un bouton détails, un bouton modifier, un bouton supprimer et un bouton marquer comme terminé.
+Le bouton détails pourra permettre de voir tous les détails de l’assemblée générale avec la possibilité de marquer l’assemblée générale comme terminé et de télécharger tous les rapports qui y ont été associés. Le bouton supprimer permettra de supprimer l’assemblée générale. Le bouton marquer comme terminé permettra de marquer l’assemblée générale comme terminé et il ira dans l’espace Terminées. 
+
+Cotisations
+Ici l’utilisateur verra la liste des cotisations payées par les vicariaux et aura la possibilité d’en consulter les détails. 
+
+Grades
+Ici, en premier lieu, l’utilisateur va créer un grade en appuyant sur le bouton Créer un grade. Il s’agira de remplir le formulaire suivant : 
+Nom du grade, Niveau associé, Abréviation du grade.
+En deuxième lieu, il verra la liste des grades créés. Chaque ligne sera présentée sous la forme suivante : 
+Nom du grade + Nombre de lecteurs à ce grade. 
+Ensuite un bouton détails, un bouton modifier et un bouton supprimer pour faire les opérations afférentes. 
+
+
+Évaluations
+Ici, en premier lieu, l’utilisateur va créer une évaluation en appuyant sur le bouton Créer une évaluation. Il s’agira de remplir le formulaire suivant :
+Nom de l’évaluation, Grade concernée (sélectionner dans la liste des grades), Activité concernée (sélectionner dans la liste des activités en cours). 
+En deuxième lieu, il verra la liste des évaluations créées. Chaque ligne sera présentée sous la forme suivante : 
+Nom de l’évaluation + Grade concernée + Activité concernée
+Ensuite un bouton détails, un bouton modifier et un bouton supprimer pour faire les opérations afférentes. 
+Quand je clique sur le bouton détails, j’accède à une page où je vois les détails de l’évaluation et la liste de tous les lecteurs concernés (Nom, Prénoms, Paroisse, Vicariat) par cette évaluation. Je peux filtrer cette liste par vicariat et par paroisse. Au niveau de chaque lecteur de la liste, je vois un petit champ où j’entre la note de validation de l’évaluation et un bouton valider pour valider la note. Si la note est validée le bouton valider devient modifier pour modifier la note et la valider à nouveau. 
+
+
+
+
+
+IV – INTERFACE ROLE SUPERADMIN
+Il est le maitre suprême du système. Il peut tout faire et en plus surtout il est chargé de créer les utilisateurs et leur donner les rôles qu’il veut. 
+Un utilisateur est créé en entrant : Noms, Prénoms, Numéro, Téléphone, adresse mail. A la création d’un utilisateur on peut lui donner jusqu’a trois rôles. 
+Une fois créé on peut modifier, supprimer, révoquer un ou plusieurs rôles d’un utilisateur. 
+
+V – AUTRES 
+Associer une notification à toutes les actions qui ont lieu dans le système. 
+Payer revient juste à faire les enregistrements et les mises à jour afférents. Je me chargerai d’intégrer un agrégateur au choix après. 
