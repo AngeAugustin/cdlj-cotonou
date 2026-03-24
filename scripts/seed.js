@@ -1,7 +1,11 @@
 const mongoose = require("mongoose");
 const bcryptjs = require("bcryptjs");
 
-//const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://gesmut-admin:Gesmut2025@cluster0.hifbhv0.mongodb.net/cdlj-db?retryWrites=true&w=majority";
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+  console.error("❌ MONGODB_URI is not set. Create a .env.local file with your connection string.");
+  process.exit(1);
+}
 
 const userSchema = new mongoose.Schema({
   firstName: String,
