@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const bcryptjs = require("bcryptjs");
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://gesmut-admin:Gesmut2025@cluster0.hifbhv0.mongodb.net/cdlj-db?retryWrites=true&w=majority";
+//const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://gesmut-admin:Gesmut2025@cluster0.hifbhv0.mongodb.net/cdlj-db?retryWrites=true&w=majority";
 
 const userSchema = new mongoose.Schema({
   firstName: String,
@@ -26,7 +26,7 @@ async function seed() {
 
     console.log("Creating SuperAdmin user...");
     const hashedPassword = await bcryptjs.hash("Admin2026", 10);
-    
+
     await User.create({
       firstName: "Super",
       lastName: "Admin",
