@@ -21,7 +21,7 @@ A son niveau, les redirections vers les différentes pages seront : Dashboard, L
 Dashboard 
 Ce tableau de bord présentera des chiffres et des statistiques globales de cette paroisse. 
 Lecteurs 
-Pour enregistrer un lecteur, il faut renseigner : Noms, prénoms, Date de naissance, sexe, grade (A sélectionner parmi la liste déroulante), année d’adhésion au groupe, niveau scolaire ou professionnel, autres détails scolaire ou professionnel (facultatif), contact, contact d’urgence, adresse, maux particuliers, Photo d’identité (3Mo au plus), le vicariat, la paroisse. Le vicariat et la paroisse seront ceux de l’utilisateur qui est entrain de l’enregistrer donc afficher automatiquement. A l’enregistrement un numéro unique sera associé au lecteur. 
+Pour enregistrer un lecteur, il faut renseigner : Noms, prénoms, photo, Date de naissance, sexe, grade (A sélectionner parmi la liste déroulante), année d’adhésion au groupe, niveau scolaire ou professionnel, autres détails scolaire ou professionnel (facultatif), contact, contact d’urgence, adresse, maux particuliers, Photo d’identité (3Mo au plus), le vicariat, la paroisse. Le vicariat et la paroisse seront ceux de l’utilisateur qui est entrain de l’enregistrer donc afficher automatiquement. A l’enregistrement un numéro unique sera associé au lecteur. 
 Ici il y aura la liste des lecteurs enregistrés et chaque ligne se présente de la manière suivante : 
 Petite image en avatar + Nom prénoms (en gras) + Grade actuel + Age 
 Ensuite une icone pour modifier toutes les informations, une icone pour supprimer et une icone pour voir les détails. Les détails c’est a dire les informations de ce lecteur et l’historique de participation aux activités. 

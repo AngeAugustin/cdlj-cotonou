@@ -1,0 +1,76 @@
+﻿
+> app-temp@0.1.0 build
+> next build
+
+Ôû▓ Next.js 16.2.1 (Turbopack)
+
+  Creating an optimized production build ...
+Ô£ô Compiled successfully in 6.5s
+  Running TypeScript ...
+  Finished TypeScript in 7.1s ...
+  Collecting page data using 7 workers ...
+node.exe : Error: Please define the 
+MONGODB_URI environment variable 
+inside .env.local
+Au caractère Ligne:1 : 1
++ & "C:\Program 
+Files\nodejs/node.exe" "C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSp 
+   ecified: (Error: Please d...sid  
+  e .env.local:String) [], Remote   
+ Exception
+    + FullyQualifiedErrorId : Nativ 
+   eCommandError
+ 
+    at module evaluation (C:\Users\A
+ugustin\Documents\GitHub\CDLJ-WEBAPP
+\.next\server\chunks\_09~t--n._.js:3
+4:46293)
+    at instantiateModule (C:\Users\A
+ugustin\Documents\GitHub\CDLJ-WEBAPP
+\.next\server\chunks\[turbopack]_run
+time.js:853:9)
+    at 
+getOrInstantiateModuleFromParent (C:
+\Users\Augustin\Documents\GitHub\CDL
+J-WEBAPP\.next\server\chunks\[turbop
+ack]_runtime.js:877:12)
+    at Context.esmImport [as i] (C:\
+Users\Augustin\Documents\GitHub\CDLJ
+-WEBAPP\.next\server\chunks\[turbopa
+ck]_runtime.js:281:20)
+    at module evaluation (C:\Users\A
+ugustin\Documents\GitHub\CDLJ-WEBAPP
+\.next\server\chunks\[root-of-the-se
+rver]__02h6iu2._.js:1:3253)
+    at instantiateModule (C:\Users\A
+ugustin\Documents\GitHub\CDLJ-WEBAPP
+\.next\server\chunks\[turbopack]_run
+time.js:853:9)
+    at instantiateRuntimeModule (C:\
+Users\Augustin\Documents\GitHub\CDLJ
+-WEBAPP\.next\server\chunks\[turbopa
+ck]_runtime.js:882:12)
+    at 
+getOrInstantiateRuntimeModule (C:\Us
+ers\Augustin\Documents\GitHub\CDLJ-W
+EBAPP\.next\server\chunks\[turbopack
+]_runtime.js:895:12)
+    at Object.m (C:\Users\Augustin\D
+ocuments\GitHub\CDLJ-WEBAPP\.next\se
+rver\chunks\[turbopack]_runtime.js:8
+98:18)
+    at Object.<anonymous> (C:\Users\
+Augustin\Documents\GitHub\CDLJ-WEBAP
+P\.next\server\app\api\auth\[...next
+auth]\route.js:6:3)
+
+> Build error occurred
+Error: Failed to collect page data 
+for /api/auth/[...nextauth]
+    at ignore-listed frames {
+  type: 'Error'
+}

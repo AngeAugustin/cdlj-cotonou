@@ -1,0 +1,80 @@
+﻿
+> app-temp@0.1.0 build
+> next build
+
+Ôû▓ Next.js 16.2.1 (Turbopack)
+
+  Creating an optimized production build ...
+node.exe : 
+Au caractère Ligne:1 : 1
++ & "C:\Program 
+Files\nodejs/node.exe" "C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSp 
+   ecified: (:String) [], RemoteEx  
+  ception
+    + FullyQualifiedErrorId : Nativ 
+   eCommandError
+ 
+> Build error occurred
+Error: Turbopack build failed with 
+1 errors:
+./src/modules/lecteurs/components/Le
+cteurForm.tsx:8:1
+Module not found: Can't resolve 
+'@/components/ui/form'
+  [90m 6 |[0m ... [36mas[0m z 
+[36mfrom[0m [32m"zod"[0m;
+  [90m 7 |[0m ... 
+createLecteurSchema } [36mfrom[0m 
+[32m"../schema"[0m;
+[31m[1m>[0m [90m 8 |[0m ... 
+[33mForm[0m, 
+[33mFormControl[0m, 
+[33mFormField[0m, 
+[33mFormItem[0m, 
+[33mFormLabel[0m, 
+[33mFormMessage[0m } 
+[36mfrom[0m 
+[32m"@/components/ui...[0m
+  [90m   |[0m    [31m[1m^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^[0m
+  [90m 9 |[0m ... [33mInput[0m 
+} [36mfrom[0m 
+[32m"@/components/ui/input"[0m;
+  [90m10 |[0m ... [33mButton[0m 
+} [36mfrom[0m 
+[32m"@/components/ui/button"[0m;
+  [90m11 |[0m ... 
+[33mSelect[0m, 
+[33mSelectContent[0m, 
+[33mSelectItem[0m, 
+[33mSelectTrigger[0m, 
+[33mSelectValue[0m } 
+[36mfrom[0m 
+[32m"@/components/ui/...[0m
+
+Import map: aliased to relative 
+'./src/components/ui/form' inside 
+of [project]/
+
+
+Import trace:
+  Server Component:
+    ./src/modules/lecteurs/component
+s/LecteurForm.tsx
+    ./src/app/(dashboard)/lecteurs/n
+ew/page.tsx
+
+https://nextjs.org/docs/messages/mod
+ule-not-found
+
+
+    at <unknown> (./src/modules/lect
+eurs/components/LecteurForm.tsx:8:1)
+    at <unknown> (https://nextjs.org
+/docs/messages/module-not-found)
