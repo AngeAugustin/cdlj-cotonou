@@ -30,8 +30,9 @@ export class LecteurService {
     const paroisse = await this.paroisseRepo.findById(paroisseId);
     if (!paroisse) throw new Error("Paroisse not found");
 
-    const vicAbbr = vicariat.abbreviation.toUpperCase();
-    
+    const vicNameMatch = vicariat.abbreviation.replace(/[^a-zA-Z]/g, "").toUpperCase();
+    const vicAbbr = vicNameMatch.substring(0, 3).padEnd(3, "X");
+
     // Get first 3 letters of parish name, remove spaces/special chars, upper case
     const parNameMatch = paroisse.name.replace(/[^a-zA-Z]/g, "").toUpperCase();
     const parAbbr = parNameMatch.substring(0, 3).padEnd(3, 'X'); 
@@ -41,8 +42,26 @@ export class LecteurService {
   }
 
   async createLecteur(data: CreateLecteurInput) {
-    const uniqueId = await this.generateUniqueId(data.vicariatId, data.paroisseId);
-    return this.repository.create({ ...data, uniqueId });
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      try {
+        const uniqueId = await this.generateUniqueId(data.vicariatId, data.paroisseId);
+        return await this.repository.create({ ...data, uniqueId });
+      } catch (e: unknown) {
+        lastErr = e;
+        const code = (e as { code?: number })?.code;
+        if (code === 11000) continue;
+        throw e;
+      }
+    }
+    throw lastErr instanceof Error ? lastErr : new Error("Impossible d’attribuer un numéro unique");
+  }
+
+  async getLecteurWithHistory(id: string) {
+    const lecteur = await this.repository.findById(id);
+    if (!lecteur) return null;
+    const history = await this.repository.findParticipationHistory(id);
+    return { lecteur, history };
   }
 
   async getLecteurs() {

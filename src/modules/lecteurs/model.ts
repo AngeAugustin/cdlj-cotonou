@@ -13,7 +13,10 @@ export interface ILecteur extends Document {
   contactUrgence: string;
   adresse: string;
   maux?: string;
+  /** Photo de profil (avatar) */
   photo?: string;
+  /** Photo d’identité (TDR, max 3 Mo côté client) */
+  photoIdentite?: string;
   vicariatId: mongoose.Types.ObjectId;
   paroisseId: mongoose.Types.ObjectId;
   uniqueId: string;
@@ -36,6 +39,7 @@ const lecteurSchema = new Schema<ILecteur>(
     adresse: { type: String, required: true },
     maux: { type: String },
     photo: { type: String },
+    photoIdentite: { type: String },
     vicariatId: { type: Schema.Types.ObjectId, ref: "Vicariat", required: true },
     paroisseId: { type: Schema.Types.ObjectId, ref: "Paroisse", required: true },
     uniqueId: { type: String, required: true, unique: true },

@@ -14,10 +14,11 @@ export default async function DashboardLayout({
     redirect("/auth/login");
   }
 
-  const user = session.user as any;
+  const user = session.user as { name?: string | null; roles?: string[] };
+  const roles = Array.isArray(user.roles) && user.roles.length > 0 ? user.roles : ["PAROISSIAL"];
 
   return (
-    <SidebarShell user={{ name: user.name, roles: user.roles || ["PAROISSIAL"] }}>
+    <SidebarShell user={{ name: user.name, roles }}>
       {children}
     </SidebarShell>
   );

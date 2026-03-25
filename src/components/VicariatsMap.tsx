@@ -6,7 +6,7 @@ import Link from "next/link";
 import { VICARIATS, type Vicariat } from "@/lib/vicariats-data";
 
 // Label offset par node (évite chevauchement texte/cercle)
-const LABEL_OFFSET: Record<string, { dx: number; dy: number; anchor: string }> = {
+const LABEL_OFFSET: Record<string, { dx: number; dy: number; anchor: "start" | "middle" | "end" }> = {
   I:    { dx: 0,   dy: -42, anchor: "middle" },  // hub → au-dessus
   II:   { dx: 50,  dy: 4,   anchor: "start"  },  // droite
   III:  { dx: -50, dy: 4,   anchor: "end"    },  // gauche

@@ -13,7 +13,7 @@ Les pages Accueil, Actualités et Forums seront communes.
 Le site aura plusieurs utilisateurs (rôles) : SuperAdmin, Diocesain, Vicarial, Paroissial. Et en fonction du rôle, les actions et les activités seront différentes. 
 Le SuperAdmin pourra créer les utilisateurs de tous les autres rôles et aura tous les droits sur le système. 
 Le Diocésain pourra créer des utilisateurs avec les rôles Vicarial et Paroissial. 
-INTERFACES SUIVANT LE ROLE
+INTERFACES SUIVANT LE ROLE 
 I – INTERFACE ROLE PAROISSIAL
 Cette interface est réservée aux utilisateurs ayant un rôle Paroissial. Il faut comprendre que cet utilisateur agit sur le système au nom de sa paroisse donnée, membre d’un vicariat donné. 
 Il n’y a pas d’inscription à faire. L’utilisateur se connectera avec les informations de connexion email et mot de passe qui lui sont fournis par le SuperAdmin. 
@@ -107,13 +107,23 @@ Nom du grade + Nombre de lecteurs à ce grade.
 Ensuite un bouton détails, un bouton modifier et un bouton supprimer pour faire les opérations afférentes. 
 
 
-Évaluations
+Evaluations
+Ce sont des évaluations Annuelles
 Ici, en premier lieu, l’utilisateur va créer une évaluation en appuyant sur le bouton Créer une évaluation. Il s’agira de remplir le formulaire suivant :
-Nom de l’évaluation, Grade concernée (sélectionner dans la liste des grades), Activité concernée (sélectionner dans la liste des activités en cours). 
+Nom de l’évaluation,l'année de l'évaluation, Grade concernée (sélectionner dans la liste des grades), Activité concernée (sélectionner dans la liste des activités en cours). 
 En deuxième lieu, il verra la liste des évaluations créées. Chaque ligne sera présentée sous la forme suivante : 
-Nom de l’évaluation + Grade concernée + Activité concernée
+Nom de l’évaluation + Année de l'évaluation + Grade concernée + Activité concernée
 Ensuite un bouton détails, un bouton modifier et un bouton supprimer pour faire les opérations afférentes. 
 Quand je clique sur le bouton détails, j’accède à une page où je vois les détails de l’évaluation et la liste de tous les lecteurs concernés (Nom, Prénoms, Paroisse, Vicariat) par cette évaluation. Je peux filtrer cette liste par vicariat et par paroisse. Au niveau de chaque lecteur de la liste, je vois un petit champ où j’entre la note de validation de l’évaluation et un bouton valider pour valider la note. Si la note est validée le bouton valider devient modifier pour modifier la note et la valider à nouveau. 
+N'oublions par que quand une évaluation est créée, elle est automatiquement associée à tout les lecteurs concernés.
+Une évaluation peut avoir une ou plusieurs notes. Le nombre de notes est défini par l’utilisateur.
+Une évaluation est liée à une année, une activité et un grade. 
+Quand l'utilisateur marque l'évaluation comme terminée, le système calcule la moyenne des notes de l'évaluation pour chaque lecteur concerné.
+Si la moyenne est supérieure à 10, le lecteur est promu au grade suivant (en regardant le garde correspondant au niveau N+1 du niveau de son garde actuel) et le système met à jour le grade du lecteur selon le nouveau grade.
+Si la moyenne est inférieure à 10, le lecteur est maintenu au grade actuel.
+Si la moyenne est égale à 10, le lecteur est maintenu au grade actuel.
+Dès que l'utilisateur marque l'évaluation annuelle comme publier, dans les détails du lecteur on verra dans un onglet Evaluations la liste des évaluations annuelles à laquelles il a participé, les notes obtenues, la moyenne annuelle et la decision du système par évaluation annuelle. 
+
 
 
 

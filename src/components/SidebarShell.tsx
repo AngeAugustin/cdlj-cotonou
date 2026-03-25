@@ -5,14 +5,24 @@ import Link from "next/link";
 import {
   BarChart3, Users, Building2, Map, Shield,
   Activity, FileText, Wallet, Award, GraduationCap,
-  PanelLeftClose, PanelLeftOpen, Bell, Search, Settings,
+  PanelLeftClose, PanelLeftOpen, Bell, Search, Settings, Newspaper,
 } from "lucide-react";
 import SidebarUserMenu from "@/components/SidebarUserMenu";
 import LiveClock from "@/components/LiveClock";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+function initialsFromDisplayName(name: string | null | undefined): string {
+  const n = (name ?? "U").trim();
+  const parts = n.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return (parts[0]?.[0] ?? "U").toUpperCase();
+}
 
 const ALL_NAV = [
   { name: "Tableau de Bord", href: "/dashboard",   icon: BarChart3,      roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
-  { name: "Lecteurs",        href: "/lecteurs",     icon: Users,          roles: ["PAROISSIAL"] },
+  { name: "Lecteurs",        href: "/lecteurs",     icon: Users,          roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
   { name: "Paroisses",       href: "/paroisses",    icon: Building2,      roles: ["VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
   { name: "Vicariats",       href: "/vicariats",    icon: Map,            roles: ["DIOCESAIN", "SUPERADMIN"] },
   { name: "Activités",       href: "/activites",    icon: Activity,       roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
@@ -20,6 +30,7 @@ const ALL_NAV = [
   { name: "Cotisations",     href: "/cotisations",  icon: Wallet,         roles: ["VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
   { name: "Grades",          href: "/grades",       icon: Award,          roles: ["DIOCESAIN", "SUPERADMIN"] },
   { name: "Évaluations",     href: "/evaluations",  icon: GraduationCap,  roles: ["DIOCESAIN", "SUPERADMIN"] },
+  { name: "Actualités",      href: "/actualites",   icon: Newspaper,      roles: ["DIOCESAIN", "SUPERADMIN"] },
   { name: "Utilisateurs",    href: "/utilisateurs", icon: Shield,         roles: ["SUPERADMIN"] },
 ];
 
@@ -30,10 +41,16 @@ interface SidebarShellProps {
 
 export default function SidebarShell({ user, children }: SidebarShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const normalizedUserRoles = (user.roles ?? []).map((role) => role.trim().toUpperCase());
+  const hasVicarialRole = normalizedUserRoles.includes("VICARIAL");
 
-  const navigation = ALL_NAV.filter((item) =>
-    item.roles.some((role) => user.roles.includes(role))
-  );
+  const navigation = ALL_NAV.filter((item) => {
+    // Règle métier: un profil VICARIAL ne doit jamais voir l'entrée "Vicariats".
+    if (hasVicarialRole && item.href === "/vicariats") {
+      return false;
+    }
+    return item.roles.some((role) => normalizedUserRoles.includes(role));
+  });
 
   return (
     <div className="flex min-h-screen bg-slate-50/50">
@@ -129,7 +146,7 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
           <div className="p-2 mt-auto">
             <SidebarUserMenu
               name={user.name || "Utilisateur"}
-              initial={user.name?.charAt(0) || "U"}
+              initial={initialsFromDisplayName(user.name)}
               collapsed={collapsed}
             />
           </div>
@@ -156,7 +173,23 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-3 sm:gap-5">
+            <Link
+              href="/profil"
+              className="flex items-center gap-2 rounded-full p-0.5 pr-2 sm:pr-3
+                         hover:bg-amber-50 transition-colors border border-transparent
+                         hover:border-amber-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-900/30"
+              aria-label="Mon profil"
+            >
+              <Avatar className="h-9 w-9 border-2 border-slate-200 shadow-sm shrink-0">
+                <AvatarFallback className="bg-gradient-to-br from-amber-400 to-amber-700 text-white text-sm font-bold">
+                  {initialsFromDisplayName(user.name)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="hidden sm:inline text-sm font-semibold text-slate-700 max-w-[140px] truncate">
+                {user.name || "Profil"}
+              </span>
+            </Link>
             <button className="relative p-2 text-slate-500 hover:bg-amber-50 hover:text-amber-900 rounded-full transition-colors group">
               <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />

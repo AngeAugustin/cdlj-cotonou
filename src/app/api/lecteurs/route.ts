@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { LecteurService } from "@/modules/lecteurs/service";
 import { createLecteurSchema } from "@/modules/lecteurs/schema";
+import { serializeLecteur } from "@/modules/lecteurs/serializeApi";
 
 export async function GET(request: Request) {
   try {
@@ -24,14 +25,17 @@ export async function GET(request: Request) {
       else if (vicariatId) result = await service.getLecteursByVicariat(vicariatId);
       else result = await service.getLecteurs();
     } else if (session.user.roles.includes("VICARIAL")) {
-       result = await service.getLecteursByVicariat(session.user.vicariatId);
+      // VICARIAL can filter by paroisseId (within their vicariat scope)
+      if (paroisseId) result = await service.getLecteursByParish(paroisseId);
+      else result = await service.getLecteursByVicariat(session.user.vicariatId);
     } else if (session.user.roles.includes("PAROISSIAL")) {
        result = await service.getLecteursByParish(session.user.parishId);
     } else {
        return NextResponse.json({ error: "Forbidden access" }, { status: 403 });
     }
 
-    return NextResponse.json(result);
+    const payload = Array.isArray(result) ? result.map((row) => serializeLecteur(row)) : serializeLecteur(result);
+    return NextResponse.json(payload);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -65,7 +69,7 @@ export async function POST(request: Request) {
     const service = new LecteurService();
     const result = await service.createLecteur(validatedData);
 
-    return NextResponse.json(result, { status: 201 });
+    return NextResponse.json(serializeLecteur(result), { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }

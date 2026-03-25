@@ -3,14 +3,18 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IParoisse extends Document {
   name: string;
   vicariatId: mongoose.Types.ObjectId;
+  cureName?: string;
+  coordonnateur?: string;
   logo?: string;
 }
 
 const paroisseSchema = new Schema<IParoisse>(
   {
-    name: { type: String, required: true },
-    vicariatId: { type: Schema.Types.ObjectId, ref: "Vicariat", required: true },
-    logo: { type: String },
+    name:          { type: String, required: true },
+    vicariatId:    { type: Schema.Types.ObjectId, ref: "Vicariat", required: true },
+    cureName:      { type: String },
+    coordonnateur: { type: String },
+    logo:          { type: String },
   },
   { timestamps: true }
 );

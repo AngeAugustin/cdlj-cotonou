@@ -8,7 +8,20 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Loader2, Lock, Mail, ShieldCheck, Users, Activity, Eye, EyeOff } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  Lock,
+  Mail,
+  ShieldCheck,
+  Users,
+  Activity,
+  Eye,
+  EyeOff,
+  KeyRound,
+} from "lucide-react";
+
+type RecoveryStep = "login" | "email" | "code" | "newPassword";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,6 +30,17 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const [recoveryStep, setRecoveryStep] = useState<RecoveryStep>("login");
+  const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoveryInfo, setRecoveryInfo] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Force la déconnexion dès qu'on atterrit sur la page de login par mégarde
   useEffect(() => {
@@ -41,6 +65,105 @@ export default function LoginPage() {
     } else {
       router.push("/dashboard");
       router.refresh();
+    }
+  };
+
+  const openForgotFlow = () => {
+    setError("");
+    setRecoveryInfo("");
+    setRecoveryEmail(email.trim());
+    setRecoveryStep("email");
+    setRecoveryCode("");
+    setResetToken("");
+    setNewPassword("");
+    setConfirmNewPassword("");
+  };
+
+  const backToLogin = () => {
+    setRecoveryStep("login");
+    setRecoveryInfo("");
+    setError("");
+    setRecoveryCode("");
+    setResetToken("");
+    setNewPassword("");
+    setConfirmNewPassword("");
+  };
+
+  const sendRecoveryCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoveryLoading(true);
+    setError("");
+    setRecoveryInfo("");
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: recoveryEmail }),
+      });
+      const data = (await res.json()) as { error?: string; message?: string };
+      if (!res.ok) {
+        setError(data.error ?? "Erreur lors de l’envoi");
+        return;
+      }
+      setRecoveryInfo(data.message ?? "");
+      setRecoveryStep("code");
+    } catch {
+      setError("Impossible de contacter le serveur.");
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
+  const verifyRecoveryCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoveryLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/verify-reset-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: recoveryEmail, code: recoveryCode }),
+      });
+      const data = (await res.json()) as { error?: string; resetToken?: string };
+      if (!res.ok) {
+        setError(data.error ?? "Code invalide");
+        return;
+      }
+      if (data.resetToken) setResetToken(data.resetToken);
+      setRecoveryStep("newPassword");
+    } catch {
+      setError("Impossible de contacter le serveur.");
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
+  const submitNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resetToken,
+          newPassword,
+          confirmPassword: confirmNewPassword,
+        }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(data.error ?? "Échec de la réinitialisation");
+        return;
+      }
+      setRecoveryInfo("Votre mot de passe a été mis à jour. Vous pouvez vous connecter.");
+      setRecoveryStep("login");
+      setPassword("");
+    } catch {
+      setError("Impossible de contacter le serveur.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -81,7 +204,7 @@ export default function LoginPage() {
 
               <div className="flex flex-col justify-center border-l-2 border-slate-200 pl-4">
                 <span className="text-sm font-medium text-slate-600 leading-snug">
-                  Aumônerie de l'Enfance Missionnaire de Cotonou
+                  Aumônerie de l’Enfance Missionnaire de Cotonou
                 </span>
                 <span className="text-base font-bold text-amber-900 leading-snug">
                   Communauté Diocésaine des Lecteurs Juniors (CDLJ)
@@ -160,88 +283,307 @@ export default function LoginPage() {
 
         <div className="w-full max-w-md space-y-10 relative z-10">
           <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-extrabold text-white tracking-tight mb-2">Bon retour !</h2>
+            <h2 className="text-3xl font-extrabold text-white tracking-tight mb-2">
+              {recoveryStep === "login" ? "Bon retour !" : "Mot de passe oublié"}
+            </h2>
             <p className="text-amber-100/80">
-              Veuillez saisir vos identifiants pour accéder à votre espace de gestion.
+              {recoveryStep === "login"
+                ? "Veuillez saisir vos identifiants pour accéder à votre espace de gestion."
+                : recoveryStep === "email"
+                  ? "Indiquez l’adresse e-mail de votre compte pour recevoir un code de réinitialisation."
+                  : recoveryStep === "code"
+                    ? "Saisissez le code à 6 chiffres reçu par e-mail."
+                    : "Choisissez un nouveau mot de passe sécurisé."}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl text-sm font-medium flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300 backdrop-blur-sm">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                {error}
-              </div>
-            )}
+          {recoveryStep === "login" && (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl text-sm font-medium flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300 backdrop-blur-sm">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                  {error}
+                </div>
+              )}
+              {recoveryInfo && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-100 p-4 rounded-xl text-sm font-medium backdrop-blur-sm">
+                  {recoveryInfo}
+                </div>
+              )}
 
-            <div className="space-y-5">
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-amber-50 font-semibold px-1">Email professionnel</Label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-amber-200/50 group-focus-within:text-white transition-colors">
+                      <Mail className="h-5 w-5" />
+                    </div>
+                    <Input
+                      id="email"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-11 h-14 bg-white/10 border-white/20 text-white placeholder:text-amber-100/50 focus-visible:ring-white/20 focus-visible:border-white transition-all shadow-sm rounded-2xl"
+                      placeholder="admin@cdlj.com"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <Label htmlFor="password" className="text-amber-50 font-semibold">Mot de passe</Label>
+                    <button
+                      type="button"
+                      onClick={openForgotFlow}
+                      className="font-medium text-sm text-amber-200 hover:text-white transition-colors"
+                    >
+                      Oublié ?
+                    </button>
+                  </div>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-amber-200/50 group-focus-within:text-white transition-colors">
+                      <Lock className="h-5 w-5" />
+                    </div>
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-11 pr-12 h-14 bg-white/10 border-white/20 text-white placeholder:text-amber-100/50 focus-visible:ring-white/20 focus-visible:border-white transition-all shadow-sm rounded-2xl"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-amber-200/50 hover:text-white transition-colors cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-14 bg-white hover:bg-amber-50 text-amber-900 font-extrabold text-lg rounded-2xl shadow-xl shadow-black/10 hover:shadow-white/20 transition-all duration-300 group"
+              >
+                {loading ? (
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Authentification...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center gap-2">
+                    <span>Accéder à l’interface</span>
+                    <ArrowLeft className="h-5 w-5 rotate-180 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                  </div>
+                )}
+              </Button>
+            </form>
+          )}
+
+          {recoveryStep === "email" && (
+            <form onSubmit={sendRecoveryCode} className="space-y-6">
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl text-sm font-medium flex items-center gap-3 backdrop-blur-sm">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                  {error}
+                </div>
+              )}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-amber-50 font-semibold px-1">Email professionnel</Label>
+                <Label htmlFor="recovery-email" className="text-amber-50 font-semibold px-1">Entrez votre email</Label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-amber-200/50 group-focus-within:text-white transition-colors">
                     <Mail className="h-5 w-5" />
                   </div>
                   <Input
-                    id="email"
+                    id="recovery-email"
                     type="email"
                     required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    value={recoveryEmail}
+                    onChange={(e) => setRecoveryEmail(e.target.value)}
                     className="pl-11 h-14 bg-white/10 border-white/20 text-white placeholder:text-amber-100/50 focus-visible:ring-white/20 focus-visible:border-white transition-all shadow-sm rounded-2xl"
-                    placeholder="admin@cdlj.com"
+                    placeholder="vous@exemple.com"
                   />
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between px-1">
-                  <Label htmlFor="password" className="text-amber-50 font-semibold">Mot de passe</Label>
-                  <Link href="#" className="font-medium text-sm text-amber-200 hover:text-white transition-colors">
-                    Oublié ?
-                  </Link>
-                </div>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-amber-200/50 group-focus-within:text-white transition-colors">
-                    <Lock className="h-5 w-5" />
-                  </div>
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-11 pr-12 h-14 bg-white/10 border-white/20 text-white placeholder:text-amber-100/50 focus-visible:ring-white/20 focus-visible:border-white transition-all shadow-sm rounded-2xl"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-amber-200/50 hover:text-white transition-colors cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
+              <div className="flex flex-col gap-3">
+                <Button
+                  type="submit"
+                  disabled={recoveryLoading}
+                  className="w-full h-14 bg-white hover:bg-amber-50 text-amber-900 font-extrabold text-lg rounded-2xl shadow-xl shadow-black/10"
+                >
+                  {recoveryLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Envoi en cours…
+                    </span>
+                  ) : (
+                    "Envoyer le code"
+                  )}
+                </Button>
+                <button
+                  type="button"
+                  onClick={backToLogin}
+                  className="text-sm text-amber-200/90 hover:text-white transition-colors"
+                >
+                  Retour à la connexion
+                </button>
               </div>
-            </div>
+            </form>
+          )}
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full h-14 bg-white hover:bg-amber-50 text-amber-900 font-extrabold text-lg rounded-2xl shadow-xl shadow-black/10 hover:shadow-white/20 transition-all duration-300 group"
-            >
-              {loading ? (
-                <div className="flex items-center gap-3">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Authentification...</span>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center gap-2">
-                  <span>Accéder à l'interface</span>
-                  <ArrowLeft className="h-5 w-5 rotate-180 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+          {recoveryStep === "code" && (
+            <form onSubmit={verifyRecoveryCode} className="space-y-6">
+              {recoveryInfo && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-100 p-4 rounded-xl text-sm backdrop-blur-sm">
+                  {recoveryInfo}
                 </div>
               )}
-            </Button>
-          </form>
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl text-sm font-medium flex items-center gap-3 backdrop-blur-sm">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                  {error}
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="recovery-code" className="text-amber-50 font-semibold px-1">Code de réinitialisation</Label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-amber-200/50 group-focus-within:text-white transition-colors">
+                    <KeyRound className="h-5 w-5" />
+                  </div>
+                  <Input
+                    id="recovery-code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    required
+                    value={recoveryCode}
+                    onChange={(e) => setRecoveryCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    className="pl-11 h-14 bg-white/10 border-white/20 text-white placeholder:text-amber-100/50 focus-visible:ring-white/20 focus-visible:border-white transition-all shadow-sm rounded-2xl tracking-[0.4em] font-mono text-lg"
+                    placeholder="000000"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-3">
+                <Button
+                  type="submit"
+                  disabled={recoveryLoading || recoveryCode.length !== 6}
+                  className="w-full h-14 bg-white hover:bg-amber-50 text-amber-900 font-extrabold text-lg rounded-2xl shadow-xl shadow-black/10"
+                >
+                  {recoveryLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Vérification…
+                    </span>
+                  ) : (
+                    "Valider le code"
+                  )}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecoveryStep("email");
+                    setRecoveryCode("");
+                    setError("");
+                  }}
+                  className="text-sm text-amber-200/90 hover:text-white transition-colors"
+                >
+                  Modifier l’e-mail
+                </button>
+              </div>
+            </form>
+          )}
+
+          {recoveryStep === "newPassword" && (
+            <form onSubmit={submitNewPassword} className="space-y-6">
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl text-sm font-medium flex items-center gap-3 backdrop-blur-sm">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                  {error}
+                </div>
+              )}
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="new-pwd" className="text-amber-50 font-semibold px-1">Nouveau mot de passe</Label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-amber-200/50 group-focus-within:text-white transition-colors">
+                      <Lock className="h-5 w-5" />
+                    </div>
+                    <Input
+                      id="new-pwd"
+                      type={showNewPassword ? "text" : "password"}
+                      required
+                      minLength={8}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="pl-11 pr-12 h-14 bg-white/10 border-white/20 text-white placeholder:text-amber-100/50 focus-visible:ring-white/20 focus-visible:border-white transition-all shadow-sm rounded-2xl"
+                      placeholder="Au moins 8 caractères"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-amber-200/50 hover:text-white transition-colors cursor-pointer"
+                    >
+                      {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-pwd" className="text-amber-50 font-semibold px-1">Confirmer mot de passe</Label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-amber-200/50 group-focus-within:text-white transition-colors">
+                      <Lock className="h-5 w-5" />
+                    </div>
+                    <Input
+                      id="confirm-pwd"
+                      type={showConfirmPassword ? "text" : "password"}
+                      required
+                      minLength={8}
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      className="pl-11 pr-12 h-14 bg-white/10 border-white/20 text-white placeholder:text-amber-100/50 focus-visible:ring-white/20 focus-visible:border-white transition-all shadow-sm rounded-2xl"
+                      placeholder="Répétez le mot de passe"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-amber-200/50 hover:text-white transition-colors cursor-pointer"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3">
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-14 bg-white hover:bg-amber-50 text-amber-900 font-extrabold text-lg rounded-2xl shadow-xl shadow-black/10"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Enregistrement…
+                    </span>
+                  ) : (
+                    "Enregistrer le mot de passe"
+                  )}
+                </Button>
+                <button
+                  type="button"
+                  onClick={backToLogin}
+                  className="text-sm text-amber-200/90 hover:text-white transition-colors"
+                >
+                  Annuler
+                </button>
+              </div>
+            </form>
+          )}
 
           {/* Mobile Back Link removed */}
         </div>
