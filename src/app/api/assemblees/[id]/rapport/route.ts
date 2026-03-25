@@ -33,6 +33,7 @@ export async function GET(
     const session = (await getServerSession(authOptions)) as {
       user?: {
         roles?: string[];
+        vicariatId?: string | null;
       };
     } | null;
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

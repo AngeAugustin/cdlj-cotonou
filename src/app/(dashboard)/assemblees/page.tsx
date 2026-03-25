@@ -236,16 +236,14 @@ export default function AssembleesPage() {
   };
 
   // La page de détails existe maintenant en route dédiée.
-  // Le modal "Détails" n'est plus utilisé : on laisse le JSX ci-dessous
-  // sans logique active pour éviter un refactor trop lourd.
-  const detailsOpen = false;
-  const setDetailsOpen = () => {};
-  const detailTarget: Assemblee | null = null;
+  // Le modal "Détails" n'est plus ouvert depuis l'UI ; le state évite le typage `never` sur le JSX conservé.
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailTarget] = useState<Assemblee | null>(null);
   const reportsLoading = false;
   const reports: Rapport[] = [];
   const myReportLoading = false;
-  const myReport: Rapport | null = null;
-  const globalReport: Rapport | null = null;
+  const [myReport] = useState<Rapport | null>(null);
+  const [globalReport] = useState<Rapport | null>(null);
 
   // ─────────────────────────────────────────────
   // Upload report (vicarial)
