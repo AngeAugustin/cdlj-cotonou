@@ -13,7 +13,6 @@ import {
   Pencil,
   Trash2,
   CheckCircle,
-  Download,
   UserPlus,
   AlertCircle,
   CheckCircle2,
@@ -48,27 +47,6 @@ type Activite = {
   terminee: boolean;
 };
 
-type LecteurRow = {
-  _id: string;
-  nom: string;
-  prenoms: string;
-  uniqueId: string;
-  dateNaissance?: string;
-  gradeId?: { name?: string; abbreviation?: string } | null;
-};
-
-type ParticipantRow = {
-  paidAt: string;
-  lecteur: {
-    _id: string;
-    nom: string;
-    prenoms: string;
-    uniqueId: string;
-    dateNaissance?: string;
-  };
-  grade?: { name?: string; abbreviation?: string } | null;
-};
-
 type Toast = { message: string; type: "success" | "error" };
 
 function isoToDateInput(iso: string) {
@@ -85,32 +63,8 @@ function isoToDatetimeLocal(iso: string) {
   return format(d, "yyyy-MM-dd'T'HH:mm");
 }
 
-function ageFromBirth(iso?: string) {
-  if (!iso) return "—";
-  const b = new Date(iso);
-  if (Number.isNaN(b.getTime())) return "—";
-  const t = new Date();
-  let a = t.getFullYear() - b.getFullYear();
-  const m = t.getMonth() - b.getMonth();
-  if (m < 0 || (m === 0 && t.getDate() < b.getDate())) a--;
-  return `${a} ans`;
-}
-
 function formatMoney(n: number) {
   return new Intl.NumberFormat("fr-FR", { style: "decimal", maximumFractionDigits: 0 }).format(n) + " FCFA";
-}
-
-function downloadCsv(filename: string, header: string[], rows: (string | number)[][]) {
-  const esc = (c: string) => `"${String(c).replace(/"/g, '""')}"`;
-  const line = (r: (string | number)[]) => r.map((x) => esc(String(x))).join(";");
-  const content = [line(header), ...rows.map(line)].join("\n");
-  const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 // ── Page ──────────────────────────────────────────────────
@@ -151,16 +105,6 @@ export default function ActivitesPage() {
   const [deleting, setDeleting] = useState(false);
   const [termineeTarget, setTermineeTarget] = useState<Activite | null>(null);
   const [markingDone, setMarkingDone] = useState(false);
-
-  // ── Paroissial : participer ──
-  const [partAct, setPartAct] = useState<Activite | null>(null);
-  const [partSubTab, setPartSubTab] = useState<"non" | "oui">("non");
-  const [lecteurs, setLecteurs] = useState<LecteurRow[]>([]);
-  const [partIds, setPartIds] = useState<string[]>([]);
-  const [selectedPay, setSelectedPay] = useState<Record<string, boolean>>({});
-  const [partLoading, setPartLoading] = useState(false);
-  const [paying, setPaying] = useState(false);
-  const [participantsRows, setParticipantsRows] = useState<ParticipantRow[]>([]);
 
   const fetchActivites = useCallback(async () => {
     setLoading(true);
@@ -308,89 +252,6 @@ export default function ActivitesPage() {
     }
   };
 
-  const openParticiper = async (a: Activite) => {
-    setPartAct(a);
-    setPartSubTab("non");
-    setSelectedPay({});
-    setPartLoading(true);
-    try {
-      const [lr, pr] = await Promise.all([
-        fetch("/api/lecteurs"),
-        fetch(`/api/activites/${a._id}/participations`),
-      ]);
-      const L: LecteurRow[] = lr.ok ? await lr.json() : [];
-      const P: ParticipantRow[] = pr.ok ? await pr.json() : [];
-      setLecteurs(L);
-      setParticipantsRows(P);
-      setPartIds(P.map((x) => x.lecteur._id));
-    } catch {
-      setLecteurs([]);
-      setPartIds([]);
-      setParticipantsRows([]);
-    } finally {
-      setPartLoading(false);
-    }
-  };
-
-  const nonParticipants = useMemo(() => {
-    const setP = new Set(partIds);
-    return lecteurs.filter((l) => !setP.has(l._id));
-  }, [lecteurs, partIds]);
-
-  const togglePay = (id: string) => {
-    setSelectedPay((s) => ({ ...s, [id]: !s[id] }));
-  };
-
-  const submitPayer = async () => {
-    if (!partAct) return;
-    const ids = Object.entries(selectedPay)
-      .filter(([, v]) => v)
-      .map(([k]) => k);
-    if (!ids.length) {
-      showToast("Cochez au moins un lecteur", "error");
-      return;
-    }
-    setPaying(true);
-    try {
-      const res = await fetch(`/api/activites/${partAct._id}/participations`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lecteurIds: ids }),
-      });
-      if (res.ok) {
-        showToast("Participation enregistrée (paiement à intégrer ultérieurement)");
-        setSelectedPay({});
-        const pr = await fetch(`/api/activites/${partAct._id}/participations`);
-        if (pr.ok) {
-          const P: ParticipantRow[] = await pr.json();
-          setParticipantsRows(P);
-          setPartIds(P.map((x) => x.lecteur._id));
-        }
-        if (partSubTab === "oui") setPartSubTab("oui");
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showToast(err.error ?? "Erreur", "error");
-      }
-    } catch {
-      showToast("Erreur inattendue", "error");
-    } finally {
-      setPaying(false);
-    }
-  };
-
-  const downloadCurrentParticipants = () => {
-    if (!partAct) return;
-    const header = ["Matricule", "Nom", "Prénoms", "Grade", "Âge"];
-    const rows = participantsRows.map((p) => [
-      p.lecteur.uniqueId,
-      p.lecteur.nom,
-      p.lecteur.prenoms,
-      p.grade?.name || p.grade?.abbreviation || "—",
-      ageFromBirth(p.lecteur.dateNaissance),
-    ]);
-    downloadCsv(`participants-encours-${partAct.nom.slice(0, 30)}.csv`, header, rows);
-  };
-
   const TabBtn = ({
     active,
     onClick,
@@ -521,16 +382,14 @@ export default function ActivitesPage() {
             </>
           )}
           {isParoissial && !a.terminee && (
-            <Button
-              type="button"
-              size="icon-sm"
-              className="rounded-xl bg-amber-900 hover:bg-amber-800 text-white"
+            <Link
+              href={`/activites/${a._id}/participer`}
+              className={cn(buttonVariants({ size: "icon-sm" }), "rounded-xl bg-amber-900 hover:bg-amber-800 text-white border-0")}
               title="Participer"
               aria-label="Participer"
-              onClick={() => openParticiper(a)}
             >
               <UserPlus className="size-3.5" />
-            </Button>
+            </Link>
           )}
         </div>
       </div>
@@ -721,104 +580,6 @@ export default function ActivitesPage() {
               {markingDone ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmer"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Paroissial : participer ── */}
-      <Dialog open={!!partAct} onOpenChange={(o) => !o && setPartAct(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl">
-          {partAct && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Participer — {partAct.nom}</DialogTitle>
-                <DialogDescription>
-                  Enregistrez les lecteurs participants (le paiement effectif sera branché plus tard).
-                </DialogDescription>
-              </DialogHeader>
-              {(partAct.numeroPaiement?.trim() || partAct.montant != null) && (
-                <div className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-slate-800 space-y-1">
-                  <p>
-                    <span className="font-semibold text-slate-900">Montant : </span>
-                    {formatMoney(partAct.montant)}
-                  </p>
-                  {partAct.numeroPaiement?.trim() ? (
-                    <p>
-                      <span className="font-semibold text-slate-900">Numéro de paiement : </span>
-                      <span className="font-mono">{partAct.numeroPaiement}</span>
-                    </p>
-                  ) : null}
-                </div>
-              )}
-              <div className="flex gap-2">
-                <TabBtn active={partSubTab === "non"} onClick={() => setPartSubTab("non")}>
-                  Non participants
-                </TabBtn>
-                <TabBtn active={partSubTab === "oui"} onClick={() => setPartSubTab("oui")}>
-                  Participants
-                </TabBtn>
-              </div>
-              {partLoading ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-amber-900" />
-                </div>
-              ) : partSubTab === "non" ? (
-                <div className="space-y-3">
-                  {nonParticipants.length === 0 ? (
-                    <p className="text-sm text-slate-500 py-6 text-center">Tous vos lecteurs sont déjà inscrits.</p>
-                  ) : (
-                    <ul className="max-h-64 overflow-y-auto space-y-1 border border-slate-100 rounded-2xl p-2">
-                      {nonParticipants.map((l) => (
-                        <li key={l._id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50">
-                          <input
-                            type="checkbox"
-                            checked={!!selectedPay[l._id]}
-                            onChange={() => togglePay(l._id)}
-                            className="w-4 h-4 rounded border-slate-300 text-amber-900 focus:ring-amber-900"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="font-bold text-slate-900 truncate">
-                              {l.nom} {l.prenoms}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {(l.gradeId as any)?.name || (l.gradeId as any)?.abbreviation || "—"} · {ageFromBirth(l.dateNaissance)}
-                            </p>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <Button type="button" className="w-full rounded-xl bg-amber-900 hover:bg-amber-800 text-white font-bold" disabled={paying} onClick={submitPayer}>
-                    {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : "Payer"}
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex justify-end">
-                    <Button type="button" size="sm" variant="outline" className="rounded-xl" onClick={downloadCurrentParticipants} disabled={!participantsRows.length}>
-                      <Download className="w-4 h-4 mr-1" /> Télécharger la liste
-                    </Button>
-                  </div>
-                  {participantsRows.length === 0 ? (
-                    <p className="text-sm text-slate-500 py-6 text-center">Aucun participant pour le moment.</p>
-                  ) : (
-                    <ul className="max-h-72 overflow-y-auto space-y-1 border border-slate-100 rounded-2xl p-2">
-                      {participantsRows.map((p) => (
-                        <li key={p.lecteur._id} className="flex items-center justify-between gap-2 p-3 rounded-xl bg-emerald-50/50 border border-emerald-100/80">
-                          <div className="min-w-0">
-                            <p className="font-bold text-slate-900 truncate">
-                              {p.lecteur.nom} {p.lecteur.prenoms}
-                            </p>
-                            <p className="text-xs text-slate-600">{p.lecteur.uniqueId}</p>
-                          </div>
-                          <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </>
-          )}
         </DialogContent>
       </Dialog>
     </div>
