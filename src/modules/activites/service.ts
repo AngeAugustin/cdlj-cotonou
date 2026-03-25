@@ -32,8 +32,30 @@ export class ActiviteService {
     return this.repo.listParticipationLecteurIds(activiteId, paroisseId);
   }
 
-  enregistrerPaiement(activiteId: string, lecteurIds: string[], paroisseId: string) {
-    return this.repo.addParticipations(activiteId, lecteurIds, paroisseId);
+  enregistrerPaiement(activiteId: string, lecteurIds: string[], paroisseId: string, paiementId?: string) {
+    return this.repo.addParticipations(activiteId, lecteurIds, paroisseId, paiementId);
+  }
+
+  createPaiementDoc(
+    data: Parameters<ActiviteRepository["createPaiementDoc"]>[0]
+  ) {
+    return this.repo.createPaiementDoc(data);
+  }
+
+  updatePaiementById(id: string, patch: Parameters<ActiviteRepository["updatePaiementById"]>[1]) {
+    return this.repo.updatePaiementById(id, patch);
+  }
+
+  findPaiementById(id: string) {
+    return this.repo.findPaiementById(id);
+  }
+
+  findPaiementByFedapayTransactionId(txId: number) {
+    return this.repo.findPaiementByFedapayTransactionId(txId);
+  }
+
+  listPaiementsForActivite(activiteId: string, opts?: Parameters<ActiviteRepository["listPaiementsForActivite"]>[1]) {
+    return this.repo.listPaiementsForActivite(activiteId, opts);
   }
 
   listParticipantsDetail(activiteId: string, paroisseId?: string) {

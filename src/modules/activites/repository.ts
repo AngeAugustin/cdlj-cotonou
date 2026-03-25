@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
+import mongoose, { Types } from "mongoose";
 import connectToDatabase from "@/lib/mongoose";
-import { Activite, ActiviteParticipation } from "./model";
+import { Activite, ActiviteParticipation, ActivitePaiement } from "./model";
 import { Lecteur } from "@/modules/lecteurs/model";
 import { CreateActiviteInput, UpdateActiviteInput } from "./schema";
 
@@ -73,7 +73,8 @@ export class ActiviteRepository {
   async addParticipations(
     activiteId: string,
     lecteurIds: string[],
-    allowedParoisseId: string
+    allowedParoisseId: string,
+    paiementId?: string
   ) {
     await connectToDatabase();
     const uniqueIds = [...new Set(lecteurIds)];
@@ -89,24 +90,119 @@ export class ActiviteRepository {
       throw new Error("Certains lecteurs ne sont pas rattachés à votre paroisse");
     }
 
-    const ops = lecteurs.map((l) => ({
-      updateOne: {
-        filter: { activiteId: aid, lecteurId: l._id },
-        update: {
-          $setOnInsert: {
-            activiteId: aid,
-            lecteurId: l._id,
-            paroisseId: l.paroisseId,
-            vicariatId: l.vicariatId,
-            paidAt: new Date(),
-          },
+    const pid = paiementId ? new mongoose.Types.ObjectId(paiementId) : undefined;
+
+    const ops = lecteurs.map((l) => {
+      const insert: Record<string, unknown> = {
+        activiteId: aid,
+        lecteurId: l._id,
+        paroisseId: l.paroisseId,
+        vicariatId: l.vicariatId,
+        paidAt: new Date(),
+      };
+      if (pid) insert.paiementId = pid;
+      return {
+        updateOne: {
+          filter: { activiteId: aid, lecteurId: l._id },
+          update: { $setOnInsert: insert },
+          upsert: true,
         },
-        upsert: true,
-      },
-    }));
+      };
+    });
 
     if (ops.length) await ActiviteParticipation.bulkWrite(ops);
     return lecteurs.length;
+  }
+
+  async createPaiementDoc(data: {
+    activiteId: Types.ObjectId;
+    paroisseId: Types.ObjectId;
+    userId: string;
+    userEmail: string;
+    lecteurIds: Types.ObjectId[];
+    montantUnitaire: number;
+    nombreLecteurs: number;
+    montantTotal: number;
+    status: "pending" | "approved" | "declined" | "canceled" | "failed";
+    callbackUrl: string;
+    metadata: Record<string, unknown>;
+  }) {
+    await connectToDatabase();
+    const doc = await ActivitePaiement.create(data);
+    return doc.toObject();
+  }
+
+  async updatePaiementById(
+    id: string,
+    patch: Partial<{
+      status: "pending" | "approved" | "declined" | "canceled" | "failed";
+      fedapayTransactionId: number | null;
+      fedapayReference: string | null;
+      fedapayCustomerId: number | null;
+      metadata: Record<string, unknown>;
+      emailSentAt: Date | null;
+      processedAt: Date | null;
+      lastWebhookEvent: string | null;
+    }>
+  ) {
+    await connectToDatabase();
+    return ActivitePaiement.findByIdAndUpdate(id, { $set: patch }, { new: true }).lean();
+  }
+
+  async findPaiementById(id: string) {
+    await connectToDatabase();
+    return ActivitePaiement.findById(id).lean();
+  }
+
+  async findPaiementByFedapayTransactionId(txId: number) {
+    await connectToDatabase();
+    return ActivitePaiement.findOne({ fedapayTransactionId: txId }).lean();
+  }
+
+  async listPaiementsForActivite(
+    activiteId: string,
+    opts?: { paroisseId?: string | null; paroisseIds?: string[] | null }
+  ) {
+    await connectToDatabase();
+    const match: Record<string, unknown> = { activiteId: new mongoose.Types.ObjectId(activiteId) };
+    if (opts?.paroisseId) match.paroisseId = new mongoose.Types.ObjectId(opts.paroisseId);
+    else if (opts?.paroisseIds?.length) {
+      match.paroisseId = { $in: opts.paroisseIds.map((id) => new mongoose.Types.ObjectId(id)) };
+    }
+
+    const rows = await ActivitePaiement.aggregate([
+      { $match: match },
+      { $sort: { createdAt: -1 } },
+      {
+        $lookup: {
+          from: "paroisses",
+          localField: "paroisseId",
+          foreignField: "_id",
+          as: "paroisse",
+        },
+      },
+      { $unwind: { path: "$paroisse", preserveNullAndEmptyArrays: true } },
+    ]);
+
+    const withLecteurs = await Promise.all(
+      rows.map(async (r) => {
+        const ids = (r.lecteurIds as mongoose.Types.ObjectId[]) ?? [];
+        const lecteurs =
+          ids.length > 0
+            ? await Lecteur.find({ _id: { $in: ids } })
+                .select("nom prenoms uniqueId")
+                .lean()
+            : [];
+        return {
+          ...r,
+          _id: r._id,
+          paroisseName: r.paroisse?.name ?? "—",
+          lecteurs,
+        };
+      })
+    );
+
+    return withLecteurs;
   }
 
   async listParticipantsWithLecteur(activiteId: string, paroisseId?: string) {

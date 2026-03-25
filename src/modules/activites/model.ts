@@ -44,6 +44,8 @@ export interface IActiviteParticipation extends Document {
   paroisseId: mongoose.Types.ObjectId;
   vicariatId: mongoose.Types.ObjectId;
   paidAt: Date;
+  /** Lot FedaPay ayant validé l’inscription (si applicable) */
+  paiementId?: mongoose.Types.ObjectId;
 }
 
 const participationSchema = new Schema<IActiviteParticipation>(
@@ -53,6 +55,7 @@ const participationSchema = new Schema<IActiviteParticipation>(
     paroisseId: { type: Schema.Types.ObjectId, ref: "Paroisse", required: true },
     vicariatId: { type: Schema.Types.ObjectId, ref: "Vicariat", required: true },
     paidAt: { type: Date, default: Date.now },
+    paiementId: { type: Schema.Types.ObjectId, ref: "ActivitePaiement" },
   },
   { timestamps: false }
 );
@@ -62,3 +65,64 @@ participationSchema.index({ activiteId: 1, lecteurId: 1 }, { unique: true });
 export const ActiviteParticipation: Model<IActiviteParticipation> =
   mongoose.models.ActiviteParticipation ||
   mongoose.model<IActiviteParticipation>("ActiviteParticipation", participationSchema);
+
+export type ActivitePaiementStatus = "pending" | "approved" | "declined" | "canceled" | "failed";
+
+export interface IActivitePaiement extends Document {
+  activiteId: mongoose.Types.ObjectId;
+  paroisseId: mongoose.Types.ObjectId;
+  userId: string;
+  userEmail: string;
+  lecteurIds: mongoose.Types.ObjectId[];
+  montantUnitaire: number;
+  nombreLecteurs: number;
+  montantTotal: number;
+  status: ActivitePaiementStatus;
+  fedapayTransactionId: number | null;
+  fedapayReference: string | null;
+  fedapayCustomerId: number | null;
+  callbackUrl: string;
+  metadata: Record<string, unknown>;
+  emailSentAt: Date | null;
+  processedAt: Date | null;
+  lastWebhookEvent: string | null;
+}
+
+const activitePaiementSchema = new Schema<IActivitePaiement>(
+  {
+    activiteId: { type: Schema.Types.ObjectId, ref: "Activite", required: true },
+    paroisseId: { type: Schema.Types.ObjectId, ref: "Paroisse", required: true },
+    userId: { type: String, required: true },
+    userEmail: { type: String, required: true },
+    lecteurIds: [{ type: Schema.Types.ObjectId, ref: "Lecteur" }],
+    montantUnitaire: { type: Number, required: true, min: 0 },
+    nombreLecteurs: { type: Number, required: true, min: 1 },
+    montantTotal: { type: Number, required: true, min: 0 },
+    status: {
+      type: String,
+      enum: ["pending", "approved", "declined", "canceled", "failed"],
+      default: "pending",
+    },
+    fedapayTransactionId: { type: Number, default: null },
+    fedapayReference: { type: String, default: null },
+    fedapayCustomerId: { type: Number, default: null },
+    callbackUrl: { type: String, required: true },
+    metadata: { type: Schema.Types.Mixed, default: {} },
+    emailSentAt: { type: Date, default: null },
+    processedAt: { type: Date, default: null },
+    lastWebhookEvent: { type: String, default: null },
+  },
+  { timestamps: true }
+);
+
+activitePaiementSchema.index({ activiteId: 1, createdAt: -1 });
+activitePaiementSchema.index({ fedapayTransactionId: 1 }, { sparse: true });
+
+if (mongoose.models.ActivitePaiement) {
+  delete mongoose.models.ActivitePaiement;
+}
+
+export const ActivitePaiement: Model<IActivitePaiement> = mongoose.model<IActivitePaiement>(
+  "ActivitePaiement",
+  activitePaiementSchema
+);

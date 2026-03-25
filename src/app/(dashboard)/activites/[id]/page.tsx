@@ -14,6 +14,7 @@ import {
   Activity,
   Users,
   Download,
+  Banknote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -52,6 +53,19 @@ type ParticipantRow = {
     dateNaissance?: string;
   };
   grade?: { name?: string; abbreviation?: string } | null;
+};
+
+type PaiementRow = {
+  _id: string;
+  createdAt?: string;
+  status: string;
+  montantTotal: number;
+  montantUnitaire: number;
+  nombreLecteurs: number;
+  fedapayReference?: string | null;
+  paroisseName?: string;
+  userEmail?: string;
+  lecteurs?: { _id: string; nom: string; prenoms: string; uniqueId: string }[];
 };
 
 function formatMoney(n: number) {
@@ -105,7 +119,9 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const [confirmTermineeOpen, setConfirmTermineeOpen] = useState(false);
   const [terminating, setTerminating] = useState(false);
 
-  const [tab, setTab] = useState<"infos" | "participation">("infos");
+  const [tab, setTab] = useState<"infos" | "participation" | "paiements">("infos");
+  const [paiements, setPaiements] = useState<PaiementRow[]>([]);
+  const [paiementsLoading, setPaiementsLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
@@ -149,6 +165,17 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       .catch(() => setParticipants([]))
       .finally(() => setParticipantsLoading(false));
   }, [activite, isParoissial]);
+
+  useEffect(() => {
+    if (!activite || tab !== "paiements") return;
+    if (!isManager && !isVicarial && !isParoissial) return;
+    setPaiementsLoading(true);
+    void fetch(`/api/activites/${encodeURIComponent(activite._id)}/paiements`)
+      .then((r) => r.json().catch(() => ([])))
+      .then((data) => setPaiements(Array.isArray(data) ? (data as PaiementRow[]) : []))
+      .catch(() => setPaiements([]))
+      .finally(() => setPaiementsLoading(false));
+  }, [activite, tab, isManager, isVicarial, isParoissial]);
 
   const participationRate = useMemo(() => {
     if (!stats || !stats.totalLecteurs) return 0;
@@ -298,8 +325,9 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
           <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
         </div>
 
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl w-fit mb-8">
+        <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-2xl w-fit max-w-full mb-8">
           <button
+            type="button"
             onClick={() => setTab("infos")}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
               tab === "infos" ? "bg-white text-amber-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
@@ -309,6 +337,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
             Informations
           </button>
           <button
+            type="button"
             onClick={() => setTab("participation")}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
               tab === "participation" ? "bg-white text-amber-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
@@ -317,9 +346,110 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
             <Users className="w-4 h-4" />
             Participation
           </button>
+          {(isManager || isVicarial || isParoissial) && (
+            <button
+              type="button"
+              onClick={() => setTab("paiements")}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                tab === "paiements" ? "bg-white text-amber-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Banknote className="w-4 h-4" />
+              Paiements
+            </button>
+          )}
         </div>
 
-        {tab === "infos" ? (
+        {tab === "paiements" ? (
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-6">
+            <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+              <Banknote className="w-5 h-5 text-amber-900" />
+              Paiements enregistrés pour cette activité
+            </h2>
+            {paiementsLoading ? (
+              <div className="flex items-center gap-3 text-slate-600 py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-amber-900" />
+                Chargement…
+              </div>
+            ) : paiements.length === 0 ? (
+              <p className="text-sm text-slate-500">Aucun paiement enregistré pour le moment.</p>
+            ) : (
+              <ul className="space-y-6">
+                {paiements.map((p) => (
+                  <li
+                    key={p._id}
+                    className="rounded-2xl border border-slate-100 bg-slate-50/40 p-4 space-y-3"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                          {p.createdAt ? format(new Date(p.createdAt), "PPPp", { locale: fr }) : "—"}
+                        </p>
+                        <p className="text-sm text-slate-700 mt-1">
+                          {(isManager || isVicarial) && p.paroisseName ? (
+                            <span className="font-semibold text-slate-900">Paroisse : {p.paroisseName}</span>
+                          ) : null}
+                          {p.userEmail ? (
+                            <span className="block text-slate-600">
+                              Compte : <span className="font-mono text-xs">{p.userEmail}</span>
+                            </span>
+                          ) : null}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                          p.status === "approved"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : p.status === "pending"
+                              ? "bg-amber-100 text-amber-900"
+                              : "bg-slate-200 text-slate-700"
+                        }`}
+                      >
+                        {p.status}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+                      <div>
+                        <span className="text-slate-500">Montant unitaire</span>
+                        <p className="font-semibold text-slate-900">{formatMoney(p.montantUnitaire)}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Lecteurs</span>
+                        <p className="font-semibold text-slate-900">{p.nombreLecteurs}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Total</span>
+                        <p className="font-semibold text-amber-900">{formatMoney(p.montantTotal)}</p>
+                      </div>
+                    </div>
+                    {p.fedapayReference ? (
+                      <p className="text-xs text-slate-600">
+                        Réf. FedaPay : <span className="font-mono">{p.fedapayReference}</span>
+                      </p>
+                    ) : null}
+                    {p.lecteurs && p.lecteurs.length > 0 ? (
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
+                          Lecteurs concernés
+                        </p>
+                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm">
+                          {p.lecteurs.map((l) => (
+                            <li key={l._id} className="flex justify-between gap-2 text-slate-800">
+                              <span>
+                                {l.nom} {l.prenoms}
+                              </span>
+                              <span className="text-slate-500 shrink-0 font-mono text-xs">{l.uniqueId}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : tab === "infos" ? (
           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
             <h2 className="text-base font-extrabold text-slate-900 tracking-tight mb-5">Résumé de l’activité</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

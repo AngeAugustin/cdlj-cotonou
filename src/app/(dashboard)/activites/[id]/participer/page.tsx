@@ -1,6 +1,6 @@
 "use client";
 
-import { use as usePromise, useCallback, useEffect, useMemo, useState } from "react";
+import { use as usePromise, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -113,6 +113,8 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
   const [paying, setPaying] = useState(false);
   const [participantsRows, setParticipantsRows] = useState<ParticipantRow[]>([]);
 
+  const fedapayReturnHandled = useRef(false);
+
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -168,6 +170,19 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
     void loadLecteursEtParticipations();
   }, [activite, loadLecteursEtParticipations]);
 
+  useEffect(() => {
+    if (!activite || typeof window === "undefined" || fedapayReturnHandled.current) return;
+    const q = new URLSearchParams(window.location.search).get("payment");
+    if (q !== "return") return;
+    fedapayReturnHandled.current = true;
+    showToast(
+      "Retour depuis FedaPay. La validation du paiement peut prendre quelques secondes ; les participants apparaîtront ensuite dans l’onglet Participants.",
+      "success"
+    );
+    void loadLecteursEtParticipations();
+    router.replace(`/activites/${encodeURIComponent(activiteId)}/participer`, { scroll: false });
+  }, [activite, activiteId, loadLecteursEtParticipations, router]);
+
   const nonParticipants = useMemo(() => {
     const setP = new Set(partIds);
     return lecteurs.filter((l) => !setP.has(l._id));
@@ -193,13 +208,18 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
     }
     setPaying(true);
     try {
-      const res = await fetch(`/api/activites/${activite._id}/participations`, {
+      const res = await fetch(`/api/activites/${activite._id}/pay/init`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lecteurIds: ids }),
       });
-      if (res.ok) {
-        showToast("Participation enregistrée (paiement à intégrer ultérieurement)");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(typeof data.error === "string" ? data.error : "Erreur", "error");
+        return;
+      }
+      if (data.free) {
+        showToast("Participation enregistrée (activité gratuite).");
         setSelectedPay({});
         const pr = await fetch(`/api/activites/${activite._id}/participations`);
         if (pr.ok) {
@@ -207,11 +227,13 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
           setParticipantsRows(P);
           setPartIds(P.map((x) => x.lecteur._id));
         }
-        if (partSubTab === "oui") setPartSubTab("oui");
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showToast(err.error ?? "Erreur", "error");
+        return;
       }
+      if (typeof data.paymentUrl === "string" && data.paymentUrl.startsWith("http")) {
+        window.location.href = data.paymentUrl;
+        return;
+      }
+      showToast("Réponse de paiement inattendue", "error");
     } catch {
       showToast("Erreur inattendue", "error");
     } finally {
