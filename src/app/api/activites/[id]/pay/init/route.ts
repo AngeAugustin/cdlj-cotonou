@@ -7,6 +7,7 @@ import { getAppBaseUrl } from "@/lib/appBaseUrl";
 import { fedapayCreateCustomer, fedapayCreateTransactionAndPaymentUrl } from "@/lib/fedapay";
 import { sendActivitePaymentConfirmationEmail } from "@/lib/resendMail";
 import mongoose from "mongoose";
+import { ZodError } from "zod";
 
 function splitName(displayName: string | null | undefined): { first: string; last: string } {
   const n = (displayName ?? "Utilisateur").trim() || "Utilisateur";
@@ -173,7 +174,39 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       fedapayTransactionId: txId,
     });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Erreur";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    if (error instanceof ZodError) {
+      const msg = error.issues.map((i) => i.message).join("; ") || "Données invalides";
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+
+    const msg = error instanceof Error ? error.message : "Erreur serveur";
+    console.error("[pay/init]", activiteIdFromRequest(request.url), error);
+
+    const lower = msg.toLowerCase();
+    if (
+      lower.includes("nextauth_url") ||
+      lower.includes("fedapay_secret_key") ||
+      lower.includes("n'est pas configuré")
+    ) {
+      return NextResponse.json(
+        { error: "Configuration serveur incomplète (URL publique ou clés FedaPay). Vérifiez les variables sur Vercel." },
+        { status: 500 }
+      );
+    }
+
+    if (lower.includes("fedapay") || lower.includes("request failed") || lower.includes("network")) {
+      return NextResponse.json({ error: msg }, { status: 502 });
+    }
+
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+function activiteIdFromRequest(url: string): string {
+  try {
+    const m = url.match(/\/api\/activites\/([^/]+)\/pay\/init/);
+    return m?.[1] ?? "?";
+  } catch {
+    return "?";
   }
 }
