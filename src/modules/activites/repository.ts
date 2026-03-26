@@ -4,6 +4,8 @@ import { Activite, ActiviteParticipation, ActivitePaiement } from "./model";
 import { Lecteur } from "@/modules/lecteurs/model";
 import { CreateActiviteInput, UpdateActiviteInput } from "./schema";
 
+const ACTIVE_PARTICIPATION_MATCH = { $ne: "refunded" } as const;
+
 function parseDate(s: string): Date {
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) throw new Error("Date invalide");
@@ -64,7 +66,7 @@ export class ActiviteRepository {
 
   async listParticipationLecteurIds(activiteId: string, paroisseId?: string) {
     await connectToDatabase();
-    const q: Record<string, unknown> = { activiteId };
+    const q: Record<string, unknown> = { activiteId, status: ACTIVE_PARTICIPATION_MATCH };
     if (paroisseId) q.paroisseId = paroisseId;
     const rows = await ActiviteParticipation.find(q).select("lecteurId").lean();
     return rows.map((r) => r.lecteurId.toString());
@@ -92,19 +94,27 @@ export class ActiviteRepository {
 
     const pid = paiementId ? new mongoose.Types.ObjectId(paiementId) : undefined;
 
+    const now = new Date();
     const ops = lecteurs.map((l) => {
-      const insert: Record<string, unknown> = {
-        activiteId: aid,
-        lecteurId: l._id,
+      const patch: Record<string, unknown> = {
         paroisseId: l.paroisseId,
         vicariatId: l.vicariatId,
-        paidAt: new Date(),
+        paidAt: now,
+        status: "active",
+        cancelledAt: null,
+        cancellationReason: null,
       };
-      if (pid) insert.paiementId = pid;
+      if (pid) patch.paiementId = pid;
       return {
         updateOne: {
           filter: { activiteId: aid, lecteurId: l._id },
-          update: { $setOnInsert: insert },
+          update: {
+            $set: patch,
+            $setOnInsert: {
+              activiteId: aid,
+              lecteurId: l._id,
+            },
+          },
           upsert: true,
         },
       };
@@ -123,7 +133,7 @@ export class ActiviteRepository {
     montantUnitaire: number;
     nombreLecteurs: number;
     montantTotal: number;
-    status: "pending" | "approved" | "declined" | "canceled" | "failed" | "non_finalized" | "approved_pending_registration";
+    status: "pending" | "approved" | "refunded" | "declined" | "canceled" | "failed" | "non_finalized" | "approved_pending_registration";
     requestFingerprint: string;
     paymentUrl: string | null;
     callbackUrl: string;
@@ -139,7 +149,7 @@ export class ActiviteRepository {
   async updatePaiementById(
     id: string,
     patch: Partial<{
-      status: "pending" | "approved" | "declined" | "canceled" | "failed" | "non_finalized" | "approved_pending_registration";
+      status: "pending" | "approved" | "refunded" | "declined" | "canceled" | "failed" | "non_finalized" | "approved_pending_registration";
       paymentUrl: string | null;
       fedapayTransactionId: number | null;
       fedapayReference: string | null;
@@ -150,6 +160,7 @@ export class ActiviteRepository {
       metadata: Record<string, unknown>;
       emailSentAt: Date | null;
       processedAt: Date | null;
+      refundedAt: Date | null;
       timedOutAt: Date | null;
       lastWebhookEvent: string | null;
     }>
@@ -250,6 +261,7 @@ export class ActiviteRepository {
     await connectToDatabase();
     const match: Record<string, unknown> = {
       activiteId: new mongoose.Types.ObjectId(activiteId),
+      status: ACTIVE_PARTICIPATION_MATCH,
       paiementId: { $exists: true, $ne: null },
     };
     if (paroisseId) match.paroisseId = new mongoose.Types.ObjectId(paroisseId);
@@ -332,7 +344,7 @@ export class ActiviteRepository {
 
   async countParticipantsForActivite(activiteId: string, vicariatId?: string | null) {
     await connectToDatabase();
-    const match: Record<string, unknown> = { activiteId: new mongoose.Types.ObjectId(activiteId) };
+    const match: Record<string, unknown> = { activiteId: new mongoose.Types.ObjectId(activiteId), status: ACTIVE_PARTICIPATION_MATCH };
     if (vicariatId) match.vicariatId = new mongoose.Types.ObjectId(vicariatId);
     return ActiviteParticipation.countDocuments(match);
   }
@@ -343,12 +355,13 @@ export class ActiviteRepository {
     return ActiviteParticipation.countDocuments({
       activiteId: new mongoose.Types.ObjectId(activiteId),
       paroisseId: new mongoose.Types.ObjectId(paroisseId),
+      status: ACTIVE_PARTICIPATION_MATCH,
     });
   }
 
   async statsByParoisse(activiteId: string, vicariatId?: string | null) {
     await connectToDatabase();
-    const match: Record<string, unknown> = { activiteId: new mongoose.Types.ObjectId(activiteId) };
+    const match: Record<string, unknown> = { activiteId: new mongoose.Types.ObjectId(activiteId), status: ACTIVE_PARTICIPATION_MATCH };
     if (vicariatId) match.vicariatId = new mongoose.Types.ObjectId(vicariatId);
 
     return ActiviteParticipation.aggregate([
@@ -382,5 +395,24 @@ export class ActiviteRepository {
         },
       },
     ]);
+  }
+
+  async markParticipationsRefundedByPaymentId(paymentId: string, reason = "payment_refunded") {
+    await connectToDatabase();
+    if (!mongoose.Types.ObjectId.isValid(paymentId)) return 0;
+    const res = await ActiviteParticipation.updateMany(
+      {
+        paiementId: new mongoose.Types.ObjectId(paymentId),
+        status: "active",
+      },
+      {
+        $set: {
+          status: "refunded",
+          cancelledAt: new Date(),
+          cancellationReason: reason,
+        },
+      }
+    );
+    return res.modifiedCount ?? 0;
   }
 }

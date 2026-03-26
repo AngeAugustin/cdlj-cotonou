@@ -22,6 +22,8 @@ Les points suivants sont maintenant couverts :
 - prevention des paiements pour des lecteurs deja inscrits
 - gestion du cas "pending trop long" avec passage en `non_finalized`
 - traitement du cas "paiement confirme mais inscription metier non finalisee" avec statut `approved_pending_registration`
+- reprise manuelle `SUPERADMIN` d'un paiement `approved_pending_registration`
+- politique de remboursement total avec desinscription logique des lecteurs lies au paiement
 - fallback webhook via `internalPaymentId`
 - re-synchronisation des paiements ouverts lors de certaines lectures
 - meilleure tracabilite du statut passerelle et de la raison metier
@@ -34,6 +36,7 @@ Le modele de paiement d'activite supporte maintenant les statuts suivants :
 
 - `pending`
 - `approved`
+- `refunded`
 - `declined`
 - `canceled`
 - `failed`
@@ -44,6 +47,7 @@ Le modele de paiement d'activite supporte maintenant les statuts suivants :
 
 - `pending` : paiement cree, aucune resolution finale fiable disponible
 - `approved` : paiement confirme et inscription des lecteurs finalisee
+- `refunded` : paiement rembourse en totalite et participations liees marquees comme rembourrees
 - `declined` : paiement refuse par la passerelle
 - `canceled` : annulation explicitement confirmee par la passerelle
 - `failed` : erreur technique pendant l'initialisation ou la preparation du paiement
@@ -146,9 +150,37 @@ Le back-office affiche maintenant des libelles plus lisibles :
 - `En attente`
 - `Non finalise`
 - `A finaliser`
+- `Rembourse`
 - `Annule`
 - `Refuse`
 - `Echec`
+
+### 9. Reprise manuelle d'inscription
+
+Pour les paiements en `approved_pending_registration`, un `SUPERADMIN` peut maintenant relancer la finalisation locale depuis l'onglet Paiements.
+
+La reprise :
+
+- relance la synchronisation du paiement concerne
+- retente l'enregistrement des participations
+- confirme le succes si le paiement repasse en `approved`
+- laisse une anomalie visible si la finalisation echoue encore
+
+### 10. Politique metier de remboursement
+
+La regle metier est maintenant la suivante :
+
+- seuls les remboursements totaux sont supportes
+- un remboursement total annule l'effet metier du paiement
+- les lecteurs lies au `paiementId` sont desinscrits logiquement
+- les remboursements partiels ne sont pas supportes par la politique metier
+
+Implementation V1 :
+
+- le paiement passe en `refunded`
+- les participations liees au paiement passent en statut `refunded`
+- les listes et comptes de participants ne prennent plus en compte que les participations `active`
+- si FedaPay remonte un remboursement partiel, une trace technique est conservee via `statusReason`
 
 ## Ce Qui A Ete Corrige Par Rapport Aux Findings Initiaux
 
@@ -215,15 +247,13 @@ Autrement dit :
 
 ### 2. Politique metier de remboursement
 
-Le sujet des remboursements n'a pas encore ete formalise.
+La politique est maintenant tranchee :
 
-Questions encore ouvertes :
+- un remboursement est obligatoirement total
+- un remboursement total desinscrit les lecteurs lies au paiement
+- les remboursements partiels ne sont pas supportes
 
-- un lecteur rembourse reste-t-il inscrit ?
-- faut-il le desinscrire automatiquement ?
-- faut-il creer un statut metier specifique ?
-
-Tant que cette regle n'est pas tranchee, le comportement ne doit pas etre automatise a l'aveugle.
+Le systeme applique cette regle en marquant le paiement `refunded` et les participations liees `refunded`, sans suppression physique de l'historique.
 
 ### 3. Supervision operateur
 
@@ -231,7 +261,6 @@ Il manque encore un veritable dispositif d'exploitation :
 
 - liste des paiements en `approved_pending_registration`
 - filtres d'anomalie
-- eventuelle reprise manuelle
 - traces d'investigation plus visibles
 
 ### 4. Source de verite explicite
@@ -269,10 +298,10 @@ Ce point est fonctionnel, mais pas idealement robuste si FedaPay change :
 Ordre recommande pour la suite :
 
 1. Ajouter une vue back-office d'anomalies de paiement
-2. Definir la politique metier de remboursement
-3. Tracer explicitement l'origine de resolution du paiement
-4. Eventuellement ajouter une reprise manuelle d'inscription pour `approved_pending_registration`
-5. Ajouter des alertes operateur sur les paiements en `approved_pending_registration`
+2. Tracer explicitement l'origine de resolution du paiement
+3. Ajouter des alertes operateur sur les paiements en `approved_pending_registration`
+4. Durcir encore le traitement du cas `partial_refund_not_supported`
+5. Renforcer la gestion du duplicate customer FedaPay
 
 ## Conclusion
 

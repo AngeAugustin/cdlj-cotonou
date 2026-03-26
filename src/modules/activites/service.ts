@@ -36,6 +36,10 @@ export class ActiviteService {
     return this.repo.addParticipations(activiteId, lecteurIds, paroisseId, paiementId);
   }
 
+  annulerParticipationsPourRemboursement(paiementId: string, reason?: string) {
+    return this.repo.markParticipationsRefundedByPaymentId(paiementId, reason);
+  }
+
   createPaiementDoc(
     data: Parameters<ActiviteRepository["createPaiementDoc"]>[0]
   ) {

@@ -44,6 +44,9 @@ export interface IActiviteParticipation extends Document {
   paroisseId: mongoose.Types.ObjectId;
   vicariatId: mongoose.Types.ObjectId;
   paidAt: Date;
+  status: "active" | "refunded";
+  cancelledAt: Date | null;
+  cancellationReason: string | null;
   /** Lot FedaPay ayant validé l’inscription (si applicable) */
   paiementId?: mongoose.Types.ObjectId;
 }
@@ -55,6 +58,9 @@ const participationSchema = new Schema<IActiviteParticipation>(
     paroisseId: { type: Schema.Types.ObjectId, ref: "Paroisse", required: true },
     vicariatId: { type: Schema.Types.ObjectId, ref: "Vicariat", required: true },
     paidAt: { type: Date, default: Date.now },
+    status: { type: String, enum: ["active", "refunded"], default: "active" },
+    cancelledAt: { type: Date, default: null },
+    cancellationReason: { type: String, default: null },
     paiementId: { type: Schema.Types.ObjectId, ref: "ActivitePaiement" },
   },
   { timestamps: false }
@@ -62,13 +68,19 @@ const participationSchema = new Schema<IActiviteParticipation>(
 
 participationSchema.index({ activiteId: 1, lecteurId: 1 }, { unique: true });
 
+// Meme protection que pour les autres modeles: en hot reload, on force la reconstruction
+// du schema pour que Mongoose ne continue pas a ignorer les nouveaux champs.
+if (mongoose.models.ActiviteParticipation) {
+  delete mongoose.models.ActiviteParticipation;
+}
+
 export const ActiviteParticipation: Model<IActiviteParticipation> =
-  mongoose.models.ActiviteParticipation ||
   mongoose.model<IActiviteParticipation>("ActiviteParticipation", participationSchema);
 
 export type ActivitePaiementStatus =
   | "pending"
   | "approved"
+  | "refunded"
   | "declined"
   | "canceled"
   | "failed"
@@ -96,6 +108,7 @@ export interface IActivitePaiement extends Document {
   metadata: Record<string, unknown>;
   emailSentAt: Date | null;
   processedAt: Date | null;
+  refundedAt: Date | null;
   timedOutAt: Date | null;
   lastWebhookEvent: string | null;
   createdAt: Date;
@@ -114,7 +127,7 @@ const activitePaiementSchema = new Schema<IActivitePaiement>(
     montantTotal: { type: Number, required: true, min: 0 },
     status: {
       type: String,
-      enum: ["pending", "approved", "declined", "canceled", "failed", "non_finalized", "approved_pending_registration"],
+      enum: ["pending", "approved", "refunded", "declined", "canceled", "failed", "non_finalized", "approved_pending_registration"],
       default: "pending",
     },
     requestFingerprint: { type: String, required: true },
@@ -128,6 +141,7 @@ const activitePaiementSchema = new Schema<IActivitePaiement>(
     metadata: { type: Schema.Types.Mixed, default: {} },
     emailSentAt: { type: Date, default: null },
     processedAt: { type: Date, default: null },
+    refundedAt: { type: Date, default: null },
     timedOutAt: { type: Date, default: null },
     lastWebhookEvent: { type: String, default: null },
   },

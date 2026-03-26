@@ -68,9 +68,12 @@ type PaiementRow = {
 
 type PaiementViewFilter = "all" | "approved" | "open";
 
-function isPaymentAnomaly(p: Pick<PaiementRow, "status">) {
+function isPaymentAnomaly(p: Pick<PaiementRow, "status" | "statusReason">) {
   return (
-    p.status === "non_finalized" || p.status === "approved_pending_registration" || p.status === "failed"
+    p.status === "non_finalized" ||
+    p.status === "approved_pending_registration" ||
+    p.status === "failed" ||
+    p.statusReason === "partial_refund_not_supported"
   );
 }
 
@@ -115,6 +118,9 @@ function humanizePaymentAnomalyCause(p: Pick<PaiementRow, "status" | "gatewaySta
   }
   if (reason === "customer_create_invalid") {
     return "La création ou la récupération du client FedaPay a échoué.";
+  }
+  if (reason === "partial_refund_not_supported") {
+    return "FedaPay a signalé un remboursement partiel, mais ce cas n’est pas pris en charge par la politique métier actuelle.";
   }
   if (reason) {
     return reason;
@@ -978,7 +984,10 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                 {listedPaiements.map((p) => {
                   const isSelectable = p.status === "approved";
                   const anomalyCause =
-                    p.status === "approved_pending_registration" || p.status === "non_finalized" || p.status === "failed"
+                    p.status === "approved_pending_registration" ||
+                    p.status === "non_finalized" ||
+                    p.status === "failed" ||
+                    p.statusReason === "partial_refund_not_supported"
                       ? humanizePaymentAnomalyCause(p)
                       : null;
                   const s =
@@ -988,6 +997,8 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                         ? { bar: "bg-amber-400", badge: "bg-amber-50 text-amber-900 border-amber-200", dot: "bg-amber-400 animate-pulse", label: "En attente" }
                         : p.status === "approved_pending_registration"
                           ? { bar: "bg-blue-300", badge: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-400", label: "À finaliser" }
+                        : p.status === "refunded"
+                          ? { bar: "bg-violet-300", badge: "bg-violet-50 text-violet-700 border-violet-200", dot: "bg-violet-400", label: "Remboursé" }
                         : p.status === "non_finalized"
                           ? { bar: "bg-red-300", badge: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-400", label: "Non finalisé" }
                         : p.status === "canceled"

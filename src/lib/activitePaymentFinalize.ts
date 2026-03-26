@@ -3,11 +3,17 @@ import { isPaymentPastPendingTimeout } from "@/lib/activitePayments";
 import { fedapayRetrieveTransaction } from "@/lib/fedapay";
 import { sendActivitePaymentConfirmationEmail } from "@/lib/resendMail";
 
-/** Statuts FedaPay considérés comme payés (aligné sur le SDK) */
+/** Statuts FedaPay considérés comme payés (hors remboursement) */
 const PAID = new Set([
   "approved",
   "transferred",
+]);
+
+const FULLY_REFUNDED = new Set([
   "refunded",
+]);
+
+const PARTIALLY_REFUNDED = new Set([
   "approved_partially_refunded",
   "transferred_partially_refunded",
 ]);
@@ -20,6 +26,10 @@ function normalizeGatewayStatus(raw: string | undefined) {
 
 function isCanceledGatewayStatus(rawStatus: string) {
   return rawStatus.includes("canceled") || rawStatus.includes("cancelled");
+}
+
+function matchesGatewayStatus(rawStatus: string, tokens: string[], allowed: Set<string>) {
+  return tokens.some((t) => allowed.has(t)) || allowed.has(rawStatus);
 }
 
 async function syncKnownPayment(
@@ -49,10 +59,14 @@ async function syncKnownPayment(
 
   const rawStatus = normalizeGatewayStatus(tx.status);
   const statusTokens = rawStatus.split(/[,\s]+/).filter(Boolean);
+  const isFullyRefunded = matchesGatewayStatus(rawStatus, statusTokens, FULLY_REFUNDED);
+  const isPartiallyRefunded = matchesGatewayStatus(rawStatus, statusTokens, PARTIALLY_REFUNDED);
   const isPaid =
-    typeof tx.wasPaid === "function"
+    !isFullyRefunded &&
+    !isPartiallyRefunded &&
+    (typeof tx.wasPaid === "function"
       ? tx.wasPaid()
-      : statusTokens.some((t) => PAID.has(t)) || PAID.has(rawStatus);
+      : matchesGatewayStatus(rawStatus, statusTokens, PAID));
   const ref = typeof tx.reference === "string" ? tx.reference : payment.fedapayReference;
 
   const basePatch = {
@@ -81,6 +95,49 @@ async function syncKnownPayment(
     return { ok: true };
   }
 
+  if (isFullyRefunded) {
+    await service.annulerParticipationsPourRemboursement(paymentId, "payment_refunded");
+    await service.updatePaiementById(paymentId, {
+      ...basePatch,
+      status: "refunded",
+      statusReason: null,
+      refundedAt: payment.refundedAt ?? new Date(),
+      timedOutAt: null,
+    });
+    return { ok: true };
+  }
+
+  if (isPartiallyRefunded) {
+    const partialRefundReason = "partial_refund_not_supported";
+
+    if (payment.status !== "approved" && payment.status !== "refunded") {
+      const lecteurIds = (payment.lecteurIds as { toString: () => string }[]).map((x) => x.toString());
+      const paroisseId = payment.paroisseId.toString();
+      const activiteId = payment.activiteId.toString();
+
+      try {
+        await service.enregistrerPaiement(activiteId, lecteurIds, paroisseId, paymentId);
+      } catch (e) {
+        const reason = e instanceof Error ? e.message.slice(0, 500) : "Participation failed";
+        await service.updatePaiementById(paymentId, {
+          ...basePatch,
+          status: "approved_pending_registration",
+          statusReason: reason,
+        });
+        return { ok: false, error: reason };
+      }
+    }
+
+    await service.updatePaiementById(paymentId, {
+      ...basePatch,
+      status: payment.status === "refunded" ? "refunded" : "approved",
+      processedAt: payment.processedAt ?? new Date(),
+      statusReason: partialRefundReason,
+      timedOutAt: null,
+    });
+    return { ok: true };
+  }
+
   if (!isPaid) {
     if (payment.status === "pending" && isPaymentPastPendingTimeout(payment.createdAt)) {
       await service.updatePaiementById(paymentId, {
@@ -102,6 +159,7 @@ async function syncKnownPayment(
     await service.updatePaiementById(paymentId, {
       ...basePatch,
       statusReason: null,
+      refundedAt: null,
       timedOutAt: null,
     });
     return { ok: true };
@@ -128,6 +186,7 @@ async function syncKnownPayment(
     status: "approved",
     processedAt: payment.processedAt ?? new Date(),
     statusReason: null,
+    refundedAt: null,
     timedOutAt: null,
   });
 
