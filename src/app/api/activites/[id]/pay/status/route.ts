@@ -69,7 +69,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const scoped = await getScopedPayment(request, params);
     if ("error" in scoped) return scoped.error;
 
-    if ((scoped.payment.status === "pending" || scoped.payment.status === "non_finalized") && scoped.payment.fedapayTransactionId != null) {
+    if (
+      (scoped.payment.status === "pending" ||
+        scoped.payment.status === "non_finalized" ||
+        scoped.payment.status === "approved_pending_registration") &&
+      scoped.payment.fedapayTransactionId != null
+    ) {
       const sync = await syncPaymentFromFedapayTransactionId(
         scoped.payment.fedapayTransactionId,
         "client_poll"
@@ -102,7 +107,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const scoped = await getScopedPayment(request, params);
     if ("error" in scoped) return scoped.error;
 
-    if ((scoped.payment.status === "pending" || scoped.payment.status === "non_finalized") && scoped.payment.fedapayTransactionId != null) {
+    if (
+      (scoped.payment.status === "pending" ||
+        scoped.payment.status === "non_finalized" ||
+        scoped.payment.status === "approved_pending_registration") &&
+      scoped.payment.fedapayTransactionId != null
+    ) {
       const sync = await syncPaymentFromFedapayTransactionId(
         scoped.payment.fedapayTransactionId,
         "client_timeout_non_finalized"
@@ -124,6 +134,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       await scoped.service.updatePaiementById(scoped.paymentId, {
         status: "non_finalized",
         lastWebhookEvent: "client_timeout_non_finalized",
+        statusReason: "gateway_pending_timeout",
+        timedOutAt: new Date(),
       });
       fresh = await scoped.service.findPaiementById(scoped.paymentId);
     }

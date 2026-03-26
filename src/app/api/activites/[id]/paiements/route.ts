@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { ActiviteService } from "@/modules/activites/service";
+import { syncPaymentFromFedapayTransactionId } from "@/lib/activitePaymentFinalize";
 import connectToDatabase from "@/lib/mongoose";
 import { Paroisse } from "@/modules/paroisses/model";
 
@@ -40,6 +41,33 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       rows = await service.listPaiementsForActivite(activiteId);
     } else {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const openRows = (rows as Array<{ status?: string; fedapayTransactionId?: number | null }>)
+      .filter((p) =>
+        (p.status === "pending" || p.status === "non_finalized" || p.status === "approved_pending_registration") &&
+        p.fedapayTransactionId != null
+      );
+
+    if (openRows.length > 0) {
+      await Promise.all(
+        openRows.map((p) =>
+          syncPaymentFromFedapayTransactionId(Number(p.fedapayTransactionId), "paiements_list_refresh").catch(() => ({ ok: false }))
+        )
+      );
+
+      if (roles.includes("PAROISSIAL")) {
+        const pid = session.user.parishId;
+        rows = await service.listPaiementsForActivite(activiteId, { paroisseId: pid });
+      } else if (roles.includes("VICARIAL")) {
+        const vid = session.user.vicariatId;
+        await connectToDatabase();
+        const plist = await Paroisse.find({ vicariatId: vid }).select("_id").lean();
+        const paroisseIds = plist.map((p) => p._id.toString());
+        rows = await service.listPaiementsForActivite(activiteId, { paroisseIds });
+      } else {
+        rows = await service.listPaiementsForActivite(activiteId);
+      }
     }
 
     return NextResponse.json(rows);

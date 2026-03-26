@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle, Download, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { PAYMENT_PENDING_TIMEOUT_MS } from "@/lib/activitePayments";
 import { cn } from "@/lib/utils";
 
 type Activite = {
@@ -214,7 +215,7 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
 
     let cancelled = false;
     const POLL_MS = 2000;
-    const MAX_POLL_DURATION_MS = 120_000;
+    const MAX_POLL_DURATION_MS = PAYMENT_PENDING_TIMEOUT_MS;
 
     const stopPolling = (message: string, type: "success" | "error" = "error") => {
       if (cancelled) return;
@@ -263,7 +264,7 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
             return;
           }
 
-          if (st === "declined" || st === "canceled" || st === "failed" || st === "non_finalized") {
+          if (st === "declined" || st === "canceled" || st === "failed" || st === "non_finalized" || st === "approved_pending_registration") {
             const msg =
               st === "declined"
                 ? "Paiement refusé."
@@ -271,7 +272,9 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
                   ? "Paiement annulé."
                   : st === "failed"
                     ? "Paiement en échec."
-                    : "Paiement annulé ou non finalisé.";
+                    : st === "approved_pending_registration"
+                      ? "Paiement confirmé, mais l’inscription des lecteurs est encore en cours de finalisation."
+                      : "Paiement annulé ou non finalisé.";
             stopPolling(msg, "error");
             return;
           }
@@ -299,7 +302,7 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
           stopPolling("Paiement confirmé par FedaPay. Les participants sont inscrits.", "success");
           return;
         }
-        if (st === "declined" || st === "canceled" || st === "failed" || st === "non_finalized") {
+        if (st === "declined" || st === "canceled" || st === "failed" || st === "non_finalized" || st === "approved_pending_registration") {
           const msg =
             st === "declined"
               ? "Paiement refusé."
@@ -307,7 +310,9 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
                 ? "Paiement annulé."
                 : st === "failed"
                   ? "Paiement en échec."
-                  : "Paiement annulé ou non finalisé.";
+                  : st === "approved_pending_registration"
+                    ? "Paiement confirmé, mais l’inscription des lecteurs est encore en cours de finalisation."
+                    : "Paiement annulé ou non finalisé.";
           stopPolling(msg, "error");
           return;
         }
@@ -370,6 +375,17 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
       }
       if (data.free) {
         showToast("Participation enregistrée (activité gratuite).");
+        setSelectedPay({});
+        const pr = await fetch(`/api/activites/${activite._id}/participations`);
+        if (pr.ok) {
+          const P: ParticipantRow[] = await pr.json();
+          setParticipantsRows(P);
+          setPartIds(P.map((x) => x.lecteur._id));
+        }
+        return;
+      }
+      if (data.alreadyApproved) {
+        showToast("Ce paiement a déjà été confirmé. Les participants sont inscrits.");
         setSelectedPay({});
         const pr = await fetch(`/api/activites/${activite._id}/participations`);
         if (pr.ok) {

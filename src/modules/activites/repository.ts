@@ -123,8 +123,12 @@ export class ActiviteRepository {
     montantUnitaire: number;
     nombreLecteurs: number;
     montantTotal: number;
-    status: "pending" | "approved" | "declined" | "canceled" | "failed" | "non_finalized";
+    status: "pending" | "approved" | "declined" | "canceled" | "failed" | "non_finalized" | "approved_pending_registration";
+    requestFingerprint: string;
+    paymentUrl: string | null;
     callbackUrl: string;
+    gatewayStatus: string | null;
+    statusReason: string | null;
     metadata: Record<string, unknown>;
   }) {
     await connectToDatabase();
@@ -135,14 +139,18 @@ export class ActiviteRepository {
   async updatePaiementById(
     id: string,
     patch: Partial<{
-      status: "pending" | "approved" | "declined" | "canceled" | "failed" | "non_finalized";
+      status: "pending" | "approved" | "declined" | "canceled" | "failed" | "non_finalized" | "approved_pending_registration";
+      paymentUrl: string | null;
       fedapayTransactionId: number | null;
       fedapayReference: string | null;
       fedapayCustomerId: number | null;
+      gatewayStatus: string | null;
+      statusReason: string | null;
       callbackUrl: string;
       metadata: Record<string, unknown>;
       emailSentAt: Date | null;
       processedAt: Date | null;
+      timedOutAt: Date | null;
       lastWebhookEvent: string | null;
     }>
   ) {
@@ -158,6 +166,34 @@ export class ActiviteRepository {
   async findPaiementByFedapayTransactionId(txId: number) {
     await connectToDatabase();
     return ActivitePaiement.findOne({ fedapayTransactionId: txId }).lean();
+  }
+
+  async findReusableOpenPaiement(opts: {
+    activiteId: string;
+    paroisseId: string;
+    userId: string;
+    requestFingerprint: string;
+  }) {
+    await connectToDatabase();
+    return ActivitePaiement.findOne({
+      activiteId: new mongoose.Types.ObjectId(opts.activiteId),
+      paroisseId: new mongoose.Types.ObjectId(opts.paroisseId),
+      userId: opts.userId,
+      requestFingerprint: opts.requestFingerprint,
+      status: { $in: ["pending", "non_finalized", "approved_pending_registration", "approved"] },
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+  }
+
+  async listPaiementsForReconciliation(limit = 200) {
+    await connectToDatabase();
+    return ActivitePaiement.find({
+      status: { $in: ["pending", "non_finalized", "approved_pending_registration"] },
+    })
+      .sort({ createdAt: 1 })
+      .limit(limit)
+      .lean();
   }
 
   async listPaiementsForActivite(

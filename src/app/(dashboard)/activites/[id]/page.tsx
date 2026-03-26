@@ -1,6 +1,6 @@
 "use client";
 
-import { use as usePromise, useEffect, useMemo, useState } from "react";
+import { use as usePromise, useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
@@ -16,6 +16,7 @@ import {
   FileSpreadsheet,
   FileText,
   Banknote,
+  AlertTriangle,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,9 @@ type PaiementRow = {
   _id: string;
   createdAt?: string;
   status: string;
+  gatewayStatus?: string | null;
+  statusReason?: string | null;
+  lastWebhookEvent?: string | null;
   montantTotal: number;
   montantUnitaire: number;
   nombreLecteurs: number;
@@ -61,6 +65,14 @@ type PaiementRow = {
   userEmail?: string;
   lecteurs?: { _id: string; nom: string; prenoms: string; uniqueId: string }[];
 };
+
+type PaiementViewFilter = "all" | "approved" | "open";
+
+function isPaymentAnomaly(p: Pick<PaiementRow, "status">) {
+  return (
+    p.status === "non_finalized" || p.status === "approved_pending_registration" || p.status === "failed"
+  );
+}
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("fr-FR", { style: "decimal", maximumFractionDigits: 0 }).format(n) + " FCFA";
@@ -85,6 +97,50 @@ function formatPaidAt(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return format(d, "dd/MM/yyyy HH:mm", { locale: fr });
+}
+
+function humanizePaymentAnomalyCause(p: Pick<PaiementRow, "status" | "gatewayStatus" | "statusReason" | "lastWebhookEvent">) {
+  const reason = (p.statusReason ?? "").trim();
+  const gatewayStatus = (p.gatewayStatus ?? "").trim();
+  const lastEvent = (p.lastWebhookEvent ?? "").trim();
+
+  if (reason === "gateway_pending_timeout") {
+    return "Le paiement est resté en attente trop longtemps sans statut final exploitable côté FedaPay.";
+  }
+  if (reason === "missing_fedapay_transaction_id") {
+    return "Le paiement local a été créé, mais aucune transaction FedaPay exploitable n’a été liée à ce dossier.";
+  }
+  if (reason === "fedapay_transaction_id_invalid") {
+    return "FedaPay a renvoyé une transaction invalide ou incomplète lors de l’initialisation.";
+  }
+  if (reason === "customer_create_invalid") {
+    return "La création ou la récupération du client FedaPay a échoué.";
+  }
+  if (reason) {
+    return reason;
+  }
+  if (p.status === "approved_pending_registration") {
+    return gatewayStatus
+      ? `FedaPay a confirmé le paiement (${gatewayStatus}), mais la finalisation locale des inscriptions n’a pas abouti.`
+      : "Le paiement a été confirmé, mais la finalisation locale des inscriptions n’a pas abouti.";
+  }
+  if (p.status === "non_finalized") {
+    return gatewayStatus
+      ? `Le statut FedaPay est resté "${gatewayStatus}" sans résolution finale exploitable dans les délais.`
+      : "Aucun statut final exploitable n’a été confirmé dans les délais.";
+  }
+  if (p.status === "failed") {
+    return lastEvent
+      ? `Une erreur technique est survenue pendant le traitement (${lastEvent}).`
+      : "Une erreur technique est survenue pendant la préparation ou l’initialisation du paiement.";
+  }
+  if (gatewayStatus) {
+    return `Dernier statut remonté par FedaPay : ${gatewayStatus}.`;
+  }
+  if (lastEvent) {
+    return `Dernier événement traité : ${lastEvent}.`;
+  }
+  return "Cause non déterminée avec certitude. Vérifier la passerelle et les traces techniques.";
 }
 
 function buildParticipantExportTable(participants: ParticipantRow[]) {
@@ -135,6 +191,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const { data: session, status } = useSession();
   const roles: string[] = ((session?.user as any)?.roles ?? []) as string[];
   const isManager = roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
+  const isSuperAdmin = roles.includes("SUPERADMIN");
   const isVicarial = roles.includes("VICARIAL");
   const isParoissial = roles.includes("PAROISSIAL");
   const router = useRouter();
@@ -149,10 +206,12 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const [confirmTermineeOpen, setConfirmTermineeOpen] = useState(false);
   const [terminating, setTerminating] = useState(false);
 
-  const [tab, setTab] = useState<"infos" | "participation" | "paiements">("infos");
+  const [tab, setTab] = useState<"infos" | "participation" | "paiements" | "anomalies">("infos");
   const [paiements, setPaiements] = useState<PaiementRow[]>([]);
   const [paiementsLoading, setPaiementsLoading] = useState(false);
   const [selectedPaiementId, setSelectedPaiementId] = useState<string | null>(null);
+  const [paiementViewFilter, setPaiementViewFilter] = useState<PaiementViewFilter>("all");
+  const [finalizingPaiementId, setFinalizingPaiementId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [meData, setMeData] = useState<{ paroisseName?: string; vicariatName?: string } | null>(null);
   const [selectedVicariat, setSelectedVicariat] = useState(PARTICIPANT_FILTER_ALL);
@@ -228,16 +287,40 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
     [participants, selectedVicariat, selectedParoisse]
   );
 
+  const refreshParticipants = useCallback(async () => {
+    if (!activiteId || !canSeeParticipants) return;
+    setParticipantsLoading(true);
+    try {
+      const r = await fetch(`/api/activites/${encodeURIComponent(activiteId)}/participations`);
+      const data = await r.json().catch(() => ([]));
+      setParticipants(Array.isArray(data) ? (data as ParticipantRow[]) : []);
+    } catch {
+      setParticipants([]);
+    } finally {
+      setParticipantsLoading(false);
+    }
+  }, [activiteId, canSeeParticipants]);
+
+  const refreshPaiements = useCallback(async () => {
+    if (!activite || (tab !== "paiements" && tab !== "anomalies")) return;
+    if (!isManager && !isVicarial && !isParoissial) return;
+    setPaiementsLoading(true);
+    try {
+      const r = await fetch(`/api/activites/${encodeURIComponent(activite._id)}/paiements`);
+      const data = await r.json().catch(() => ([]));
+      setPaiements(Array.isArray(data) ? (data as PaiementRow[]) : []);
+    } catch {
+      setPaiements([]);
+    } finally {
+      setPaiementsLoading(false);
+    }
+  }, [activite, tab, isManager, isVicarial, isParoissial]);
+
   /** Liste des participants payés : paroisse courante pour PAROISSIAL, activité entière pour manager. */
   useEffect(() => {
     if (!activite || !canSeeParticipants) return;
-    setParticipantsLoading(true);
-    void fetch(`/api/activites/${encodeURIComponent(activite._id)}/participations`)
-      .then((r) => r.json().catch(() => ([])))
-      .then((data) => setParticipants(Array.isArray(data) ? (data as ParticipantRow[]) : []))
-      .catch(() => setParticipants([]))
-      .finally(() => setParticipantsLoading(false));
-  }, [activite, canSeeParticipants]);
+    void refreshParticipants();
+  }, [activite, canSeeParticipants, refreshParticipants]);
 
   useEffect(() => {
     if (selectedVicariat === PARTICIPANT_FILTER_ALL) return;
@@ -254,15 +337,10 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   }, [selectedParoisse, paroisseOptions]);
 
   useEffect(() => {
-    if (!activite || tab !== "paiements") return;
+    if (!activite || (tab !== "paiements" && tab !== "anomalies")) return;
     if (!isManager && !isVicarial && !isParoissial) return;
-    setPaiementsLoading(true);
-    void fetch(`/api/activites/${encodeURIComponent(activite._id)}/paiements`)
-      .then((r) => r.json().catch(() => ([])))
-      .then((data) => setPaiements(Array.isArray(data) ? (data as PaiementRow[]) : []))
-      .catch(() => setPaiements([]))
-      .finally(() => setPaiementsLoading(false));
-  }, [activite, tab, isManager, isVicarial, isParoissial]);
+    void refreshPaiements();
+  }, [activite, tab, isManager, isVicarial, isParoissial, refreshPaiements]);
 
   useEffect(() => {
     if (!selectedPaiementId) return;
@@ -271,6 +349,50 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       setSelectedPaiementId(null);
     }
   }, [paiements, selectedPaiementId]);
+
+  const paiementCounts = useMemo(
+    () => ({
+      all: paiements.length,
+      anomalies: paiements.filter(isPaymentAnomaly).length,
+      approved: paiements.filter((p) => p.status === "approved").length,
+      open: paiements.filter((p) => p.status === "pending").length,
+      failed: paiements.filter((p) => p.status === "failed").length,
+      toFinalize: paiements.filter((p) => p.status === "approved_pending_registration").length,
+      nonFinalized: paiements.filter((p) => p.status === "non_finalized").length,
+    }),
+    [paiements]
+  );
+
+  const anomalyPaiements = useMemo(() => paiements.filter(isPaymentAnomaly), [paiements]);
+
+  const visiblePaiements = useMemo(() => {
+    if (paiementViewFilter === "approved") {
+      return paiements.filter((p) => p.status === "approved");
+    }
+    if (paiementViewFilter === "open") {
+      return paiements.filter((p) => p.status === "pending");
+    }
+    return paiements;
+  }, [paiements, paiementViewFilter]);
+
+  const listedPaiements = useMemo(
+    () => (tab === "anomalies" && isSuperAdmin ? anomalyPaiements : visiblePaiements),
+    [tab, isSuperAdmin, anomalyPaiements, visiblePaiements]
+  );
+
+  useEffect(() => {
+    if (!isSuperAdmin && tab === "anomalies") {
+      setTab("paiements");
+    }
+  }, [isSuperAdmin, tab]);
+
+  useEffect(() => {
+    if (!selectedPaiementId) return;
+    const stillVisible = listedPaiements.some((p) => p._id === selectedPaiementId && p.status === "approved");
+    if (!stillVisible) {
+      setSelectedPaiementId(null);
+    }
+  }, [listedPaiements, selectedPaiementId]);
 
   const terminerActivite = async () => {
     if (!activite) return;
@@ -288,6 +410,27 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       showToast(e instanceof Error ? e.message : "Erreur", "error");
     } finally {
       setTerminating(false);
+    }
+  };
+
+  const finalizePaiementManually = async (paymentId: string) => {
+    if (!activite || !isSuperAdmin) return;
+    setFinalizingPaiementId(paymentId);
+    try {
+      const res = await fetch(
+        `/api/activites/${encodeURIComponent(activite._id)}/paiements/${encodeURIComponent(paymentId)}/finalize`,
+        { method: "POST" }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(typeof data?.error === "string" ? data.error : "La reprise manuelle a échoué.");
+      }
+      showToast(typeof data?.message === "string" ? data.message : "Finalisation relancée avec succès.");
+      await Promise.all([refreshPaiements(), refreshParticipants()]);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "La reprise manuelle a échoué.", "error");
+    } finally {
+      setFinalizingPaiementId(null);
     }
   };
 
@@ -654,21 +797,162 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
               Paiements
             </button>
           )}
+          {isSuperAdmin && (isManager || isVicarial || isParoissial) ? (
+            <button
+              type="button"
+              onClick={() => setTab("anomalies")}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                tab === "anomalies" ? "bg-white text-red-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <AlertTriangle className="w-4 h-4 text-red-700" />
+              Anomalies détectées
+              {paiementCounts.anomalies > 0 ? (
+                <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-extrabold text-red-800">
+                  {paiementCounts.anomalies}
+                </span>
+              ) : null}
+            </button>
+          ) : null}
         </div>
 
-        {tab === "paiements" ? (
+        {tab === "paiements" || (tab === "anomalies" && isSuperAdmin) ? (
           <div className="space-y-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-                <Banknote className="w-5 h-5 text-amber-900" />
-                Paiements enregistrés
-              </h2>
-              {paiements.length > 0 && (
-                <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
-                  {paiements.length} transaction{paiements.length > 1 ? "s" : ""}
-                </span>
-              )}
-            </div>
+            {tab === "paiements" ? (
+              <>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                      <Banknote className="w-5 h-5 text-amber-900" />
+                      Paiements enregistrés
+                    </h2>
+                    {paiements.length > 0 && (
+                      <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                        {visiblePaiements.length} / {paiements.length} transaction{paiements.length > 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPaiementViewFilter("all")}
+                      className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                        paiementViewFilter === "all"
+                          ? "bg-slate-900 text-white"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      Tous ({paiementCounts.all})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaiementViewFilter("open")}
+                      className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                        paiementViewFilter === "open"
+                          ? "bg-amber-700 text-white"
+                          : "bg-amber-50 text-amber-800 hover:bg-amber-100"
+                      }`}
+                    >
+                      En attente ({paiementCounts.open})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaiementViewFilter("approved")}
+                      className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                        paiementViewFilter === "approved"
+                          ? "bg-emerald-700 text-white"
+                          : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                      }`}
+                    >
+                      Approuvés ({paiementCounts.approved})
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-red-700" />
+                      Anomalies détectées
+                    </h2>
+                    {anomalyPaiements.length > 0 && (
+                      <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                        {anomalyPaiements.length} transaction{anomalyPaiements.length > 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {paiementCounts.anomalies > 0 ? (
+                  <div className="rounded-2xl border border-red-200 bg-red-50/80 px-4 py-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-red-800">Anomalies de paiement détectées</p>
+                      <p className="text-xs text-red-700">
+                        {paiementCounts.toFinalize} à finaliser, {paiementCounts.nonFinalized} non finalisé(s),{" "}
+                        {paiementCounts.failed} échec(s)
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {paiementCounts.anomalies > 0 ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                    <div className="mb-3">
+                      <h3 className="text-sm font-extrabold text-slate-900">Actions recommandées</h3>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Aide de lecture rapide pour les statuts nécessitant une surveillance opérateur.
+                      </p>
+                    </div>
+                    <div className="grid gap-3 lg:grid-cols-3">
+                      <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4">
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <p className="text-sm font-bold text-blue-800">À finaliser</p>
+                          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-800">
+                            {paiementCounts.toFinalize}
+                          </span>
+                        </div>
+                        <p className="text-xs text-blue-900">
+                          Paiement confirmé côté FedaPay, mais finalisation locale incomplète.
+                        </p>
+                        <p className="text-xs text-blue-800 mt-2">
+                          Vérifier la cause applicative puis régulariser l’inscription des lecteurs.
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-red-200 bg-red-50/70 p-4">
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <p className="text-sm font-bold text-red-800">Non finalisé</p>
+                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-800">
+                            {paiementCounts.nonFinalized}
+                          </span>
+                        </div>
+                        <p className="text-xs text-red-900">
+                          Aucun statut final exploitable n’a été confirmé dans les délais.
+                        </p>
+                        <p className="text-xs text-red-800 mt-2">
+                          Contrôler l’évolution FedaPay, puis relancer un paiement si nécessaire.
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <p className="text-sm font-bold text-slate-800">Échec</p>
+                          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-800">
+                            {paiementCounts.failed}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-900">
+                          Erreur technique pendant la préparation ou l’initialisation du paiement.
+                        </p>
+                        <p className="text-xs text-slate-700 mt-2">
+                          Vérifier l’erreur enregistrée puis inviter l’utilisateur à relancer un nouveau paiement propre.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
 
             {paiementsLoading ? (
               <div className="bg-white rounded-3xl border border-slate-100 flex items-center justify-center gap-3 py-12 text-slate-500">
@@ -679,20 +963,40 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm py-12 text-center">
                 <p className="text-sm text-slate-500">Aucun paiement enregistré pour le moment.</p>
               </div>
+            ) : listedPaiements.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm py-12 text-center">
+                <p className="text-sm text-slate-500">
+                  {tab === "anomalies" && isSuperAdmin
+                    ? "Aucune anomalie détectée pour cette activité."
+                    : "Aucun paiement ne correspond au filtre sélectionné."}
+                </p>
+              </div>
             ) : (
               <div className="flex gap-6 items-start">
-                {/* ── Tickets list — 60% ─────────────────────────── */}
-                <ul className="space-y-5 flex-[6]">
-                {paiements.map((p) => {
+                {/* ── Tickets list — 60% (pleine largeur si pas de panneau lecteurs) ─────────────────────────── */}
+                <ul className={`space-y-5 ${tab === "anomalies" ? "w-full" : "flex-[6]"}`}>
+                {listedPaiements.map((p) => {
                   const isSelectable = p.status === "approved";
+                  const anomalyCause =
+                    p.status === "approved_pending_registration" || p.status === "non_finalized" || p.status === "failed"
+                      ? humanizePaymentAnomalyCause(p)
+                      : null;
                   const s =
                     p.status === "approved"
                       ? { bar: "bg-emerald-400", badge: "bg-emerald-50 text-emerald-800 border-emerald-200", dot: "bg-emerald-500", label: "Approuvé" }
                       : p.status === "pending"
                         ? { bar: "bg-amber-400", badge: "bg-amber-50 text-amber-900 border-amber-200", dot: "bg-amber-400 animate-pulse", label: "En attente" }
+                        : p.status === "approved_pending_registration"
+                          ? { bar: "bg-blue-300", badge: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-400", label: "À finaliser" }
                         : p.status === "non_finalized"
                           ? { bar: "bg-red-300", badge: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-400", label: "Non finalisé" }
-                        : { bar: "bg-slate-300", badge: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400", label: p.status };
+                        : p.status === "canceled"
+                          ? { bar: "bg-red-300", badge: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-400", label: "Annulé" }
+                          : p.status === "declined"
+                            ? { bar: "bg-red-300", badge: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-400", label: "Refusé" }
+                            : p.status === "failed"
+                              ? { bar: "bg-slate-300", badge: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400", label: "Échec" }
+                              : { bar: "bg-slate-300", badge: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400", label: p.status };
 
                   const isSelected = isSelectable && selectedPaiementId === p._id;
                   return (
@@ -727,6 +1031,37 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                                 {p.createdAt ? format(new Date(p.createdAt), "d MMM yyyy · HH:mm", { locale: fr }) : "—"}
                               </span>
                             </div>
+
+                            {isSuperAdmin && anomalyCause ? (
+                              <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Cause</p>
+                                <p className="text-[12px] text-slate-700 leading-relaxed">{anomalyCause}</p>
+                                {p.status === "approved_pending_registration" ? (
+                                  <div className="mt-3">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={finalizingPaiementId === p._id}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        void finalizePaiementManually(p._id);
+                                      }}
+                                      className="h-8 rounded-lg border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
+                                    >
+                                      {finalizingPaiementId === p._id ? (
+                                        <>
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                          Finalisation...
+                                        </>
+                                      ) : (
+                                        "Finaliser maintenant"
+                                      )}
+                                    </Button>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
 
                             {/* Row 2: paroisse / email (managers uniquement) */}
                             {(isManager || isVicarial) && (p.paroisseName || p.userEmail) && (
@@ -791,7 +1126,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                 </ul>
 
                 {/* ── Lecteurs panel — 40% ───────────────────────── */}
-                {(() => {
+                {tab !== "anomalies" ? (() => {
                   // Aggregate unique lecteurs across approved paiements only
                   const approvedPaiements = paiements.filter((p) => p.status === "approved");
                   const seen = new Set<string>();
@@ -874,7 +1209,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                       </ul>
                     </div>
                   );
-                })()}
+                })() : null}
               </div>
             )}
           </div>
@@ -917,10 +1252,10 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                     <Users className="w-4 h-4" /> Participants
                   </h2>
                   <div className="flex flex-wrap gap-2 shrink-0">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
                       className="rounded-xl"
                       onClick={downloadParticipantsExcel}
                       disabled={!filteredParticipants.length || participantsLoading}
@@ -936,8 +1271,8 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                       disabled={!filteredParticipants.length || participantsLoading}
                     >
                       <FileText className="w-4 h-4 mr-1" /> PDF
-                    </Button>
-                  </div>
+                  </Button>
+                </div>
                 </div>
                 {isManager && participants.length > 0 ? (
                   <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -997,7 +1332,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                       <li key={p.lecteur._id} className="flex items-start justify-between gap-3 py-2 border-b border-slate-50">
                         <div className="min-w-0">
                           <p className="font-medium text-slate-900">
-                            {p.lecteur.nom} {p.lecteur.prenoms}
+                          {p.lecteur.nom} {p.lecteur.prenoms}
                           </p>
                           {isManager && (p.paroisseName || p.vicariatName) ? (
                             <p className="text-xs text-slate-500">

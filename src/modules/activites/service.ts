@@ -54,6 +54,14 @@ export class ActiviteService {
     return this.repo.findPaiementByFedapayTransactionId(txId);
   }
 
+  findReusableOpenPaiement(opts: Parameters<ActiviteRepository["findReusableOpenPaiement"]>[0]) {
+    return this.repo.findReusableOpenPaiement(opts);
+  }
+
+  listPaiementsForReconciliation(limit?: number) {
+    return this.repo.listPaiementsForReconciliation(limit);
+  }
+
   listPaiementsForActivite(activiteId: string, opts?: Parameters<ActiviteRepository["listPaiementsForActivite"]>[1]) {
     return this.repo.listPaiementsForActivite(activiteId, opts);
   }

@@ -66,7 +66,14 @@ export const ActiviteParticipation: Model<IActiviteParticipation> =
   mongoose.models.ActiviteParticipation ||
   mongoose.model<IActiviteParticipation>("ActiviteParticipation", participationSchema);
 
-export type ActivitePaiementStatus = "pending" | "approved" | "declined" | "canceled" | "failed" | "non_finalized";
+export type ActivitePaiementStatus =
+  | "pending"
+  | "approved"
+  | "declined"
+  | "canceled"
+  | "failed"
+  | "non_finalized"
+  | "approved_pending_registration";
 
 export interface IActivitePaiement extends Document {
   activiteId: mongoose.Types.ObjectId;
@@ -78,14 +85,21 @@ export interface IActivitePaiement extends Document {
   nombreLecteurs: number;
   montantTotal: number;
   status: ActivitePaiementStatus;
+  requestFingerprint: string;
+  paymentUrl: string | null;
   fedapayTransactionId: number | null;
   fedapayReference: string | null;
   fedapayCustomerId: number | null;
+  gatewayStatus: string | null;
+  statusReason: string | null;
   callbackUrl: string;
   metadata: Record<string, unknown>;
   emailSentAt: Date | null;
   processedAt: Date | null;
+  timedOutAt: Date | null;
   lastWebhookEvent: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const activitePaiementSchema = new Schema<IActivitePaiement>(
@@ -100,16 +114,21 @@ const activitePaiementSchema = new Schema<IActivitePaiement>(
     montantTotal: { type: Number, required: true, min: 0 },
     status: {
       type: String,
-      enum: ["pending", "approved", "declined", "canceled", "failed", "non_finalized"],
+      enum: ["pending", "approved", "declined", "canceled", "failed", "non_finalized", "approved_pending_registration"],
       default: "pending",
     },
+    requestFingerprint: { type: String, required: true },
+    paymentUrl: { type: String, default: null },
     fedapayTransactionId: { type: Number, default: null },
     fedapayReference: { type: String, default: null },
     fedapayCustomerId: { type: Number, default: null },
+    gatewayStatus: { type: String, default: null },
+    statusReason: { type: String, default: null },
     callbackUrl: { type: String, required: true },
     metadata: { type: Schema.Types.Mixed, default: {} },
     emailSentAt: { type: Date, default: null },
     processedAt: { type: Date, default: null },
+    timedOutAt: { type: Date, default: null },
     lastWebhookEvent: { type: String, default: null },
   },
   { timestamps: true }
@@ -117,6 +136,7 @@ const activitePaiementSchema = new Schema<IActivitePaiement>(
 
 activitePaiementSchema.index({ activiteId: 1, createdAt: -1 });
 activitePaiementSchema.index({ fedapayTransactionId: 1 }, { sparse: true });
+activitePaiementSchema.index({ requestFingerprint: 1, createdAt: -1 });
 
 if (mongoose.models.ActivitePaiement) {
   delete mongoose.models.ActivitePaiement;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { fedapayVerifyWebhook } from "@/lib/fedapay";
-import { syncPaymentFromFedapayTransactionId } from "@/lib/activitePaymentFinalize";
+import { syncPaymentFromFedapayTransactionId, syncPaymentFromInternalPaymentId } from "@/lib/activitePaymentFinalize";
 
 export const runtime = "nodejs";
 
@@ -25,6 +25,17 @@ function eventName(event: Record<string, unknown>): string {
   return String(event.name ?? event.type ?? "");
 }
 
+function extractInternalPaymentId(event: Record<string, unknown>): string | null {
+  const entity = event.entity as Record<string, unknown> | undefined;
+  const customMetadata =
+    (entity?.custom_metadata as Record<string, unknown> | undefined) ??
+    (((event.data as Record<string, unknown> | undefined)?.entity as Record<string, unknown> | undefined)?.custom_metadata as
+      | Record<string, unknown>
+      | undefined);
+  const value = customMetadata?.internalPaymentId;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 export async function POST(request: Request) {
   const rawBody = await request.text();
   const sig =
@@ -41,8 +52,14 @@ export async function POST(request: Request) {
 
   const name = eventName(event);
   const txId = extractFedapayTxId(event);
+  const internalPaymentId = extractInternalPaymentId(event);
 
-  if (txId != null) {
+  if (internalPaymentId) {
+    const result = await syncPaymentFromInternalPaymentId(internalPaymentId, name, txId);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error ?? "Traitement refusé" }, { status: 500 });
+    }
+  } else if (txId != null) {
     const result = await syncPaymentFromFedapayTransactionId(txId, name);
     if (!result.ok) {
       return NextResponse.json({ error: result.error ?? "Traitement refusé" }, { status: 500 });
