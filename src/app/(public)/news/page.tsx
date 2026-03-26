@@ -3,7 +3,6 @@ import Link from "next/link";
 import { ArrowRight, Calendar, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ActualiteService } from "@/modules/actualites/service";
-import { NEWS_POSTS } from "./data";
 
 type NormalizedPost = {
   id: string;
@@ -31,29 +30,14 @@ function normalizeDb(p: any): NormalizedPost {
   };
 }
 
-function normalizeStatic(p: any): NormalizedPost {
-  return {
-    id:       String(p.id),
-    slug:     p.slug,
-    title:    p.title,
-    excerpt:  p.excerpt,
-    date:     p.date,
-    author:   p.author,
-    category: p.category,
-    image:    p.image,
-    featured: p.featured,
-  };
-}
-
 async function getPosts(): Promise<NormalizedPost[]> {
   try {
     const service  = new ActualiteService();
     const dbPosts  = await service.getActualites(true);
-    if (dbPosts.length > 0) return dbPosts.map(normalizeDb);
+    return dbPosts.map(normalizeDb);
   } catch {
-    // fallback to static data
+    return [];
   }
-  return NEWS_POSTS.map(normalizeStatic);
 }
 
 export default async function NewsPage() {

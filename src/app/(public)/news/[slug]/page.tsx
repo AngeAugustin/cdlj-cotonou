@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowLeft, Calendar, User, Clock, Tag, ArrowRight, Facebook } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ActualiteService } from "@/modules/actualites/service";
-import { NEWS_POSTS } from "../data";
 
 type NormalizedPost = {
   slug: string;
@@ -36,36 +35,15 @@ function normalizeDb(p: any): NormalizedPost {
   };
 }
 
-function normalizeStatic(p: any): NormalizedPost {
-  // Static data uses body: string[] — convert to HTML
-  const bodyHtml = Array.isArray(p.body)
-    ? p.body.map((t: string) => `<p>${t}</p>`).join("")
-    : (p.body ?? "");
-  return {
-    slug:       p.slug,
-    title:      p.title,
-    excerpt:    p.excerpt,
-    body:       bodyHtml,
-    date:       p.date,
-    author:     p.author,
-    authorRole: p.authorRole ?? "",
-    category:   p.category,
-    readTime:   p.readTime ?? "",
-    image:      p.image,
-    featured:   p.featured,
-  };
-}
-
 async function getPost(slug: string): Promise<NormalizedPost | null> {
   try {
     const service = new ActualiteService();
     const dbPost  = await service.getActualiteBySlug(slug);
     if (dbPost) return normalizeDb(dbPost);
   } catch {
-    // fallback
+    return null;
   }
-  const staticPost = NEWS_POSTS.find((p) => p.slug === slug);
-  return staticPost ? normalizeStatic(staticPost) : null;
+  return null;
 }
 
 async function getRelated(slug: string): Promise<NormalizedPost[]> {
@@ -74,7 +52,7 @@ async function getRelated(slug: string): Promise<NormalizedPost[]> {
     const all     = await service.getActualites(true);
     return all.filter((p: any) => p.slug !== slug).slice(0, 2).map(normalizeDb);
   } catch {
-    return NEWS_POSTS.filter((p) => p.slug !== slug).slice(0, 2).map(normalizeStatic);
+    return [];
   }
 }
 
