@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { AlertCircle, Camera, CheckCircle2, Loader2, QrCode, RefreshCw, UserCheck } from "lucide-react";
@@ -78,7 +78,10 @@ export default function VerifierPresencePage() {
   const [pendingParticipant, setPendingParticipant] = useState<PresenceParticipant | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [feedback, setFeedback] = useState<ScanFeedback | null>(null);
+  const [toast, setToast] = useState<ScanFeedback | null>(null);
   const [manualUniqueId, setManualUniqueId] = useState("");
+  const [scannerSessionKey, setScannerSessionKey] = useState(0);
+  const resumeTimerRef = useRef<number | null>(null);
 
   const selectedActivite = useMemo(
     () => activites.find((activite) => activite._id === selectedActiviteId) ?? null,
@@ -121,33 +124,84 @@ export default function VerifierPresencePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!toast) return;
+
+    const timer = window.setTimeout(() => {
+      setToast(null);
+    }, 3200);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [toast]);
+
+  useEffect(() => {
+    return () => {
+      if (resumeTimerRef.current !== null) {
+        window.clearTimeout(resumeTimerRef.current);
+      }
+    };
+  }, []);
+
+  function clearResumeTimer() {
+    if (resumeTimerRef.current !== null) {
+      window.clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
+    }
+  }
+
+  function restartScanner(options?: { clearFeedback?: boolean; delayMs?: number }) {
+    const { clearFeedback = false, delayMs = 0 } = options ?? {};
+
+    clearResumeTimer();
+
+    const resume = () => {
+      resumeTimerRef.current = null;
+      setPendingParticipant(null);
+      setConfirmOpen(false);
+      if (clearFeedback) setFeedback(null);
+      setProcessingScan(false);
+      setConfirmingPresence(false);
+      setScanError(null);
+      setManualUniqueId("");
+      setScannerSessionKey((current) => current + 1);
+      setScannerPaused(!selectedActiviteId);
+    };
+
+    if (delayMs > 0) {
+      resumeTimerRef.current = window.setTimeout(resume, delayMs);
+      return;
+    }
+
+    resume();
+  }
+
   function resetScannerSession() {
-    setPendingParticipant(null);
-    setConfirmOpen(false);
-    setFeedback(null);
-    setProcessingScan(false);
-    setConfirmingPresence(false);
-    setScanError(null);
-    setManualUniqueId("");
-    setScannerPaused(!selectedActiviteId);
+    setToast(null);
+    restartScanner({ clearFeedback: true });
   }
 
   function handleActivityChange(value: string | null) {
     const nextValue = value ?? "";
+    clearResumeTimer();
     setSelectedActiviteId(nextValue);
     setPendingParticipant(null);
     setConfirmOpen(false);
     setFeedback(null);
+    setToast(null);
     setScanError(null);
     setProcessingScan(false);
     setConfirmingPresence(false);
     setManualUniqueId("");
+    setScannerSessionKey((current) => current + 1);
     setScannerPaused(!nextValue);
   }
 
   async function handleDetectedUniqueId(rawValue: string) {
     if (!selectedActiviteId || processingScan || confirmingPresence || confirmOpen) return;
 
+    clearResumeTimer();
     const uniqueId = rawValue.trim();
     if (!uniqueId) return;
 
@@ -177,6 +231,7 @@ export default function VerifierPresencePage() {
                 ? data.error
                 : "Impossible de vérifier ce QR code pour cette activité.",
         });
+        restartScanner({ delayMs: 1200 });
         return;
       }
 
@@ -187,6 +242,7 @@ export default function VerifierPresencePage() {
           title: "Réponse invalide",
           message: "La vérification du lecteur a échoué.",
         });
+        restartScanner({ delayMs: 1200 });
         return;
       }
 
@@ -198,6 +254,7 @@ export default function VerifierPresencePage() {
           participant,
           validatedAt: participant.validatedAt ?? null,
         });
+        restartScanner({ delayMs: 1500 });
         return;
       }
 
@@ -209,6 +266,7 @@ export default function VerifierPresencePage() {
         title: "Erreur réseau",
         message: error instanceof Error ? error.message : "La vérification a échoué.",
       });
+      restartScanner({ delayMs: 1200 });
     } finally {
       setManualUniqueId("");
       setProcessingScan(false);
@@ -232,7 +290,7 @@ export default function VerifierPresencePage() {
       }
 
       const participant = (data?.participant as PresenceParticipant | undefined) ?? pendingParticipant;
-      setFeedback({
+      const nextFeedback = {
         type: data?.status === "already_present" ? "info" : "success",
         title: data?.status === "already_present" ? "Présence déjà validée" : "Présence enregistrée",
         message:
@@ -243,9 +301,20 @@ export default function VerifierPresencePage() {
               : "La présence de ce lecteur a été enregistrée avec succès.",
         participant,
         validatedAt: typeof data?.validatedAt === "string" ? data.validatedAt : participant.validatedAt ?? null,
-      });
+      } satisfies ScanFeedback;
+      setFeedback(nextFeedback);
+      setToast(
+        nextFeedback.type === "success"
+          ? {
+              ...nextFeedback,
+              title: "Lecteur validé",
+              message: `${participant.lecteur.nom} ${participant.lecteur.prenoms} a été validé.`,
+            }
+          : nextFeedback
+      );
       setPendingParticipant(null);
       setConfirmOpen(false);
+      restartScanner({ delayMs: 1200 });
     } catch (error: unknown) {
       setFeedback({
         type: "error",
@@ -253,6 +322,7 @@ export default function VerifierPresencePage() {
         message: error instanceof Error ? error.message : "La validation de présence a échoué.",
         participant: pendingParticipant,
       });
+      restartScanner({ delayMs: 1200 });
     } finally {
       setConfirmingPresence(false);
     }
@@ -260,6 +330,36 @@ export default function VerifierPresencePage() {
 
   return (
     <div className="relative overflow-hidden bg-slate-50">
+      {toast ? (
+        <div className="pointer-events-none fixed right-4 top-4 z-50 max-w-sm">
+          <div
+            className={`rounded-2xl border px-4 py-3 shadow-lg backdrop-blur ${
+              toast.type === "success"
+                ? "border-emerald-200 bg-emerald-50/95 text-emerald-950"
+                : toast.type === "info"
+                  ? "border-amber-200 bg-amber-50/95 text-amber-950"
+                  : "border-red-200 bg-red-50/95 text-red-950"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              {toast.type === "success" ? (
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+              ) : (
+                <AlertCircle
+                  className={`mt-0.5 h-5 w-5 shrink-0 ${
+                    toast.type === "info" ? "text-amber-700" : "text-red-600"
+                  }`}
+                />
+              )}
+              <div className="min-w-0">
+                <p className="font-bold">{toast.title}</p>
+                <p className="mt-1 text-sm">{toast.message}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="absolute left-0 right-0 top-0 h-[28rem] bg-gradient-to-br from-amber-950 via-amber-900 to-slate-950" />
       <div className="absolute -left-16 top-24 h-64 w-64 rounded-full bg-amber-400/15 blur-[90px]" />
       <div className="absolute -right-10 top-20 h-72 w-72 rounded-full bg-white/10 blur-[110px]" />
@@ -350,6 +450,7 @@ export default function VerifierPresencePage() {
                   </div>
                 ) : (
                   <Scanner
+                    key={scannerSessionKey}
                     paused={scannerPaused}
                     allowMultiple={false}
                     sound={false}
@@ -362,6 +463,7 @@ export default function VerifierPresencePage() {
                       }
                     }}
                     onError={(error) => {
+                      setScannerPaused(true);
                       setScanError(error instanceof Error ? error.message : "Impossible d’accéder à la caméra.");
                     }}
                   />
@@ -500,13 +602,15 @@ export default function VerifierPresencePage() {
         </div>
       </section>
 
-      <Dialog open={confirmOpen} onOpenChange={(open) => {
-        setConfirmOpen(open);
-        if (!open && !confirmingPresence) {
-          setPendingParticipant(null);
-          setScannerPaused(!selectedActiviteId);
-        }
-      }}>
+      <Dialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          setConfirmOpen(open);
+          if (!open && !confirmingPresence) {
+            restartScanner();
+          }
+        }}
+      >
         <DialogContent className="rounded-[1.75rem] border-0 p-0 sm:max-w-lg" showCloseButton={!confirmingPresence}>
           <DialogHeader className="px-6 pt-6">
             <DialogTitle>Confirmer la présence</DialogTitle>
@@ -544,7 +648,7 @@ export default function VerifierPresencePage() {
               onClick={() => {
                 setConfirmOpen(false);
                 setPendingParticipant(null);
-                setScannerPaused(!selectedActiviteId);
+                restartScanner();
               }}
             >
               Annuler
