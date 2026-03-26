@@ -13,9 +13,11 @@ import {
   CheckCircle,
   Activity,
   Users,
-  Download,
+  FileSpreadsheet,
+  FileText,
   Banknote,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -83,17 +85,41 @@ function ageFromBirth(iso?: string) {
   return `${a} ans`;
 }
 
-function downloadCsv(filename: string, header: string[], rows: (string | number)[][]) {
-  const esc = (c: string) => `"${String(c).replace(/"/g, '""')}"`;
-  const line = (r: (string | number)[]) => r.map((x) => esc(String(x))).join(";");
-  const content = [line(header), ...rows.map(line)].join("\n");
-  const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8" });
+function safeExportFileName(name: string) {
+  return name.replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_").trim().slice(0, 48) || "activite";
+}
+
+function formatPaidAt(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return format(d, "dd/MM/yyyy HH:mm", { locale: fr });
+}
+
+function buildParticipantExportTable(participants: ParticipantRow[]) {
+  const header = ["Matricule", "Nom", "Prénoms", "Grade", "Âge", "Date de paiement"];
+  const rows = participants.map((p) => [
+    p.lecteur.uniqueId,
+    p.lecteur.nom,
+    p.lecteur.prenoms,
+    p.grade?.name || p.grade?.abbreviation || "—",
+    ageFromBirth(p.lecteur.dateNaissance),
+    formatPaidAt(p.paidAt),
+  ]);
+  return { header, rows };
+}
+
+/** Téléchargement direct dans le dossier Téléchargements (sans ouvrir un onglet ni « Enregistrer sous »). */
+function triggerBrowserDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.rel = "noopener";
+  a.style.display = "none";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  window.setTimeout(() => URL.revokeObjectURL(url), 500);
 }
 
 export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -123,6 +149,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const [paiements, setPaiements] = useState<PaiementRow[]>([]);
   const [paiementsLoading, setPaiementsLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [meData, setMeData] = useState<{ paroisseName?: string; vicariatName?: string } | null>(null);
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -156,8 +183,28 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       .finally(() => setStatsLoading(false));
   }, [activite, isManager, isVicarial]);
 
+  /** Données paroisse/vicariat de l’utilisateur paroissial (pour le PDF). */
   useEffect(() => {
-    if (!activite || !activite.terminee || !isParoissial) return;
+    if (!isParoissial) return;
+    void fetch("/api/me")
+      .then((r) => r.json().catch(() => ({})))
+      .then((data) => {
+        const paroisseName =
+          data?.parishId && typeof data.parishId === "object" ? data.parishId.name : undefined;
+        const vicariatName =
+          data?.vicariatId && typeof data.vicariatId === "object"
+            ? data.vicariatId.name
+            : data?.parishId?.vicariatId && typeof data.parishId.vicariatId === "object"
+              ? data.parishId.vicariatId.name
+              : undefined;
+        setMeData({ paroisseName, vicariatName });
+      })
+      .catch(() => {});
+  }, [isParoissial]);
+
+  /** Liste des participants paroisse : dès que l’activité est chargée (pas seulement si terminée). */
+  useEffect(() => {
+    if (!activite || !isParoissial) return;
     setParticipantsLoading(true);
     void fetch(`/api/activites/${encodeURIComponent(activite._id)}/participations`)
       .then((r) => r.json().catch(() => ([])))
@@ -201,17 +248,223 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  const downloadParticipants = () => {
+  const downloadParticipantsExcel = () => {
     if (!activite || !participants.length) return;
-    const header = ["Matricule", "Nom", "Prénoms", "Grade", "Âge"];
-    const rows = participants.map((p) => [
-      p.lecteur.uniqueId,
-      p.lecteur.nom,
-      p.lecteur.prenoms,
-      p.grade?.name || p.grade?.abbreviation || "—",
-      ageFromBirth(p.lecteur.dateNaissance),
+    const { header, rows } = buildParticipantExportTable(participants);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Participants");
+    const base = safeExportFileName(activite.nom);
+    const filename = `participants-${base}.xlsx`;
+    const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([buf], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    triggerBrowserDownload(blob, filename);
+  };
+
+  const downloadParticipantsPdf = async () => {
+    if (!activite || !participants.length) return;
+
+    const { jsPDF } = await import("jspdf");
+    const autoTable = (await import("jspdf-autotable")).default;
+
+    // ── Load logos as base64 ─────────────────────────────────
+    async function toDataUrl(url: string): Promise<string | null> {
+      try {
+        const res = await fetch(url, { mode: "cors" });
+        const blob = await res.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        });
+      } catch {
+        return null;
+      }
+    }
+    const [logoEM, logoCDLJ] = await Promise.all([
+      toDataUrl("https://i.postimg.cc/zGGW7CSV/EM.png"),
+      toDataUrl("https://i.postimg.cc/BnnDpTc2/CDLJ.png"),
     ]);
-    downloadCsv(`participants-${activite.nom.slice(0, 30)}.csv`, header, rows);
+
+    // ── Colour palette ───────────────────────────────────────
+    const C = {
+      amber900: [120, 53, 15] as [number, number, number],
+      amber400: [245, 158, 11] as [number, number, number],
+      amber50:  [255, 251, 235] as [number, number, number],
+      slate200: [226, 232, 240] as [number, number, number],
+      slate400: [148, 163, 184] as [number, number, number],
+      slate500: [100, 116, 139] as [number, number, number],
+      slate900: [15,  23,  42 ] as [number, number, number],
+      white:    [255, 255, 255] as [number, number, number],
+    };
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const W = doc.internal.pageSize.getWidth();   // 297
+    const H = doc.internal.pageSize.getHeight();  // 210
+
+    // ── Reusable header renderer ─────────────────────────────
+    // Height: ~26mm
+    function drawPageHeader() {
+      // Amber top accent
+      doc.setFillColor(...C.amber900);
+      doc.rect(0, 0, W, 1.5, "F");
+
+      // White header band (22mm — reduced from 26)
+      doc.setFillColor(...C.white);
+      doc.rect(0, 1.5, W, 22, "F");
+
+      // Logos — EM enlarged (22), CDLJ unchanged (18)
+      const lEM = 22;
+      const lCDLJ = 18;
+      if (logoEM)   doc.addImage(logoEM,   "PNG",  8,            1.5, lEM,   lEM);
+      if (logoCDLJ) doc.addImage(logoCDLJ, "PNG", W - 8 - lCDLJ, 3,   lCDLJ, lCDLJ);
+
+      // Org name
+      doc.setFontSize(7.5);
+      doc.setTextColor(...C.slate500);
+      doc.setFont("helvetica", "normal");
+      doc.text("Aumônerie de l'Enfance Missionnaire de Cotonou", W / 2, 8.5, { align: "center" });
+
+      doc.setFontSize(10);
+      doc.setTextColor(...C.amber900);
+      doc.setFont("helvetica", "bold");
+      doc.text("Communauté Diocésaine des Lecteurs Juniors (CDLJ)", W / 2, 15.5, { align: "center" });
+
+      // Paroisse / vicariat (si utilisateur paroissial)
+      if (meData?.paroisseName || meData?.vicariatName) {
+        const parts = [
+          meData.vicariatName ? `Vicariat : ${meData.vicariatName}` : null,
+          meData.paroisseName ? `Paroisse : ${meData.paroisseName}` : null,
+        ].filter(Boolean).join("   |   ");
+        doc.setFontSize(7);
+        doc.setTextColor(...C.slate500);
+        doc.setFont("helvetica", "normal");
+        doc.text(parts, W / 2, 21.5, { align: "center" });
+      }
+
+      // Tricolor stripe
+      doc.setFillColor(...C.amber400);  doc.rect(0, 23.5, W, 0.8, "F");
+      doc.setFillColor(...C.slate200);  doc.rect(0, 24.3, W, 0.8, "F");
+      doc.setFillColor(...C.amber900);  doc.rect(0, 25.1, W, 0.8, "F");
+    }
+
+    // ── Page 1 ───────────────────────────────────────────────
+    drawPageHeader();
+
+    // Title block (amber-50 bg)
+    const TITLE_Y = 26;
+    doc.setFillColor(...C.amber50);
+    doc.rect(0, TITLE_Y, W, 15, "F");
+
+    doc.setFontSize(13);
+    doc.setTextColor(...C.slate900);
+    doc.setFont("helvetica", "bold");
+    doc.text(activite.nom, W / 2, TITLE_Y + 7, { align: "center", maxWidth: W - 50 });
+
+    doc.setFontSize(7);
+    doc.setTextColor(...C.slate500);
+    doc.setFont("helvetica", "normal");
+    doc.text("LISTE DES PARTICIPANTS", W / 2, TITLE_Y + 12.5, { align: "center" });
+
+    // Info band
+    const INFO_Y = 43;
+    doc.setDrawColor(...C.slate200);
+    doc.setLineWidth(0.25);
+    doc.line(10, INFO_Y, W - 10, INFO_Y);
+
+    const dateStr = `${format(new Date(activite.dateDebut), "d MMM", { locale: fr })} → ${format(new Date(activite.dateFin), "d MMM yyyy", { locale: fr })}`;
+    const infoItems = [
+      { label: "PÉRIODE",      value: dateStr },
+      { label: "LIEU",         value: activite.lieu },
+      { label: "MONTANT",      value: activite.montant === 0 ? "Gratuit" : formatMoney(activite.montant) },
+      { label: "PARTICIPANTS", value: `${participants.length} participant${participants.length !== 1 ? "s" : ""}` },
+    ];
+    const colW = (W - 20) / 4;
+    infoItems.forEach((item, i) => {
+      const x = 10 + i * colW + 3;
+      doc.setFontSize(6);
+      doc.setTextColor(...C.slate400);
+      doc.setFont("helvetica", "normal");
+      doc.text(item.label, x, INFO_Y + 5.5);
+
+      doc.setFontSize(8.5);
+      doc.setTextColor(...C.slate900);
+      doc.setFont("helvetica", "bold");
+      doc.text(item.value, x, INFO_Y + 11);
+    });
+    // Vertical dividers between info columns
+    for (let i = 1; i < 4; i++) {
+      doc.setDrawColor(...C.slate200);
+      doc.line(10 + i * colW, INFO_Y + 1, 10 + i * colW, INFO_Y + 13);
+    }
+    doc.line(10, INFO_Y + 14, W - 10, INFO_Y + 14);
+
+    // ── Table ────────────────────────────────────────────────
+    const { header, rows } = buildParticipantExportTable(participants);
+    const TABLE_START = INFO_Y + 16;
+    const HEADER_H = 28; // header height to reserve on continuation pages
+
+    autoTable(doc, {
+      startY: TABLE_START,
+      head: [header],
+      body: rows,
+      styles: {
+        fontSize: 8,
+        cellPadding: { top: 2.5, right: 3, bottom: 2.5, left: 3 },
+        lineColor: C.slate200,
+        lineWidth: 0.2,
+        textColor: C.slate900,
+        font: "helvetica",
+        overflow: "linebreak",
+      },
+      headStyles: {
+        fillColor: C.amber900,
+        textColor: C.white,
+        fontStyle: "bold",
+        fontSize: 8,
+        cellPadding: { top: 3, right: 3, bottom: 3, left: 3 },
+      },
+      alternateRowStyles: {
+        fillColor: C.amber50,
+      },
+      columnStyles: {
+        0: { cellWidth: 30 }, // Matricule
+        1: { cellWidth: 38 }, // Nom
+        2: { cellWidth: 46 }, // Prénoms
+        3: { cellWidth: 32 }, // Grade
+        4: { cellWidth: 20 }, // Âge
+        5: { cellWidth: 42 }, // Date paiement
+      },
+      margin: { left: 10, right: 10, top: HEADER_H, bottom: 12 },
+      didDrawPage: (data) => {
+        // Redraw header on continuation pages
+        if (data.pageNumber > 1) drawPageHeader();
+      },
+    });
+
+    // ── Footer on every page ─────────────────────────────────
+    const totalPages = doc.getNumberOfPages();
+    const genDate = format(new Date(), "dd/MM/yyyy à HH:mm", { locale: fr });
+
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setDrawColor(...C.slate200);
+      doc.setLineWidth(0.25);
+      doc.line(10, H - 8, W - 10, H - 8);
+
+      doc.setFontSize(6.5);
+      doc.setTextColor(...C.slate400);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Généré le ${genDate}`, 10, H - 4.5);
+      doc.text("CDLJ — Communauté Diocésaine des Lecteurs Juniors", W / 2, H - 4.5, { align: "center" });
+      doc.text(`Page ${i} / ${totalPages}`, W - 10, H - 4.5, { align: "right" });
+    }
+
+    const base = safeExportFileName(activite.nom);
+    triggerBrowserDownload(doc.output("blob"), `participants-${base}.pdf`);
   };
 
   if (status === "loading" || loading) {
@@ -432,16 +685,19 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                         <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
                           Lecteurs concernés
                         </p>
-                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm">
+                        <div className="flex flex-wrap gap-2">
                           {p.lecteurs.map((l) => (
-                            <li key={l._id} className="flex justify-between gap-2 text-slate-800">
-                              <span>
+                            <div
+                              key={l._id}
+                              className="inline-flex w-fit max-w-full min-w-0 items-center rounded-2xl border border-amber-200/90 bg-gradient-to-br from-amber-50/95 to-white px-2.5 py-2 shadow-sm"
+                              title={`${l.nom} ${l.prenoms}`}
+                            >
+                              <span className="text-xs font-bold leading-snug text-slate-900 break-words text-left">
                                 {l.nom} {l.prenoms}
                               </span>
-                              <span className="text-slate-500 shrink-0 font-mono text-xs">{l.uniqueId}</span>
-                            </li>
+                            </div>
                           ))}
-                        </ul>
+                        </div>
                       </div>
                     ) : null}
                   </li>
@@ -532,27 +788,41 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
               </div>
             ) : null}
 
-            {isParoissial && activite.terminee ? (
+            {isParoissial ? (
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
-                <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
                   <h2 className="font-bold text-slate-900 flex items-center gap-2">
-                    <Users className="w-4 h-4" /> Lecteurs ayant participé
+                    <Users className="w-4 h-4" /> Participants
                   </h2>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="rounded-xl shrink-0"
-                    onClick={downloadParticipants}
-                    disabled={!participants.length || participantsLoading}
-                  >
-                    <Download className="w-4 h-4 mr-1" /> Télécharger
-                  </Button>
+                  <div className="flex flex-wrap gap-2 shrink-0">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="rounded-xl"
+                      onClick={downloadParticipantsExcel}
+                      disabled={!participants.length || participantsLoading}
+                    >
+                      <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="rounded-xl"
+                      onClick={() => void downloadParticipantsPdf()}
+                      disabled={!participants.length || participantsLoading}
+                    >
+                      <FileText className="w-4 h-4 mr-1" /> PDF
+                    </Button>
+                  </div>
                 </div>
                 {participantsLoading ? (
                   <Loader2 className="w-6 h-6 animate-spin text-amber-900" />
                 ) : participants.length === 0 ? (
-                  <p className="text-sm text-slate-500">Aucun participant enregistré pour votre paroisse.</p>
+                  <p className="text-sm text-slate-500">
+                    Aucune participation payée pour votre paroisse sur cette activité pour le moment.
+                  </p>
                 ) : (
                   <ul className="max-h-80 overflow-y-auto space-y-2 text-sm">
                     {participants.map((p) => (

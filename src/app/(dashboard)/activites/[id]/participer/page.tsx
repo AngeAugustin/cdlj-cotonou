@@ -114,7 +114,10 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
   const [participantsRows, setParticipantsRows] = useState<ParticipantRow[]>([]);
 
   const fedapayReturnHandled = useRef(false);
+  /** Timers navigateur : identifiants numériques (pas `NodeJS.Timeout` des typings Node). */
+  const paymentPollTimeoutRef = useRef<number | null>(null);
 
+  const [paymentPolling, setPaymentPolling] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -172,15 +175,130 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
 
   useEffect(() => {
     if (!activite || typeof window === "undefined" || fedapayReturnHandled.current) return;
-    const q = new URLSearchParams(window.location.search).get("payment");
-    if (q !== "return") return;
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("payment") !== "return") return;
+
+    let pid = sp.get("pid") ?? sp.get("paymentId");
+    if (!pid) {
+      try {
+        pid = sessionStorage.getItem(`fedapay_pid_${activiteId}`) ?? null;
+      } catch {
+        pid = null;
+      }
+    }
+
     fedapayReturnHandled.current = true;
-    showToast(
-      "Retour depuis FedaPay. La validation du paiement peut prendre quelques secondes ; les participants apparaîtront ensuite dans l’onglet Participants.",
-      "success"
-    );
-    void loadLecteursEtParticipations();
-    router.replace(`/activites/${encodeURIComponent(activiteId)}/participer`, { scroll: false });
+
+    const cleanUrl = () => {
+      router.replace(`/activites/${encodeURIComponent(activiteId)}/participer`, { scroll: false });
+    };
+
+    if (!pid) {
+      showToast(
+        "Retour depuis FedaPay. Actualisez la page dans un instant pour voir si les participants sont inscrits.",
+        "success"
+      );
+      void loadLecteursEtParticipations();
+      cleanUrl();
+      return;
+    }
+
+    try {
+      sessionStorage.removeItem(`fedapay_pid_${activiteId}`);
+    } catch {
+      /* ignore */
+    }
+
+    setPaymentPolling(true);
+
+    let cancelled = false;
+    let polls = 0;
+    const MAX_POLLS = 45;
+    const POLL_MS = 2000;
+
+    const scheduleNext = () => {
+      if (paymentPollTimeoutRef.current != null) {
+        window.clearTimeout(paymentPollTimeoutRef.current);
+      }
+      paymentPollTimeoutRef.current = window.setTimeout(() => {
+        void poll();
+      }, POLL_MS);
+    };
+
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const res = await fetch(
+          `/api/activites/${encodeURIComponent(activiteId)}/pay/status?pid=${encodeURIComponent(pid!)}`
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (!cancelled) {
+            setPaymentPolling(false);
+            showToast(typeof data.error === "string" ? data.error : "Erreur de vérification du paiement", "error");
+            void loadLecteursEtParticipations();
+            cleanUrl();
+          }
+          return;
+        }
+        const st = data.status as string;
+        if (st === "approved") {
+          if (!cancelled) {
+            setPaymentPolling(false);
+            showToast("Paiement confirmé par FedaPay. Les participants sont inscrits.", "success");
+            void loadLecteursEtParticipations();
+            cleanUrl();
+          }
+          return;
+        }
+        if (st === "declined" || st === "canceled" || st === "failed") {
+          if (!cancelled) {
+            setPaymentPolling(false);
+            const msg =
+              st === "declined"
+                ? "Paiement refusé."
+                : st === "canceled"
+                  ? "Paiement annulé."
+                  : "Paiement en échec.";
+            showToast(msg, "error");
+            void loadLecteursEtParticipations();
+            cleanUrl();
+          }
+          return;
+        }
+        polls++;
+        if (polls >= MAX_POLLS) {
+          if (!cancelled) {
+            setPaymentPolling(false);
+            showToast(
+              "Le paiement est encore en cours de traitement. Rechargez la page dans quelques instants pour voir les participants.",
+              "success"
+            );
+            void loadLecteursEtParticipations();
+            cleanUrl();
+          }
+          return;
+        }
+        scheduleNext();
+      } catch {
+        if (!cancelled) {
+          setPaymentPolling(false);
+          showToast("Erreur réseau lors de la vérification du paiement.", "error");
+          void loadLecteursEtParticipations();
+          cleanUrl();
+        }
+      }
+    };
+
+    void poll();
+
+    return () => {
+      cancelled = true;
+      if (paymentPollTimeoutRef.current != null) {
+        window.clearTimeout(paymentPollTimeoutRef.current);
+        paymentPollTimeoutRef.current = null;
+      }
+    };
   }, [activite, activiteId, loadLecteursEtParticipations, router]);
 
   const nonParticipants = useMemo(() => {
@@ -230,6 +348,13 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
         return;
       }
       if (typeof data.paymentUrl === "string" && data.paymentUrl.startsWith("http")) {
+        if (typeof data.paymentId === "string" && data.paymentId) {
+          try {
+            sessionStorage.setItem(`fedapay_pid_${activite._id}`, data.paymentId);
+          } catch {
+            /* ignore */
+          }
+        }
         window.location.href = data.paymentUrl;
         return;
       }
@@ -286,6 +411,16 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
         >
           {toast.type === "success" ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
           {toast.message}
+        </div>
+      )}
+
+      {paymentPolling && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center gap-3 text-sm text-amber-950">
+          <Loader2 className="w-5 h-5 shrink-0 animate-spin text-amber-900" />
+          <span>
+            Vérification du paiement auprès de FedaPay… Un message de confirmation s’affichera lorsque le statut sera
+            connu.
+          </span>
         </div>
       )}
 

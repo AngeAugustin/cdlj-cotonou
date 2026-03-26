@@ -139,6 +139,7 @@ export class ActiviteRepository {
       fedapayTransactionId: number | null;
       fedapayReference: string | null;
       fedapayCustomerId: number | null;
+      callbackUrl: string;
       metadata: Record<string, unknown>;
       emailSentAt: Date | null;
       processedAt: Date | null;
@@ -205,13 +206,32 @@ export class ActiviteRepository {
     return withLecteurs;
   }
 
+  /**
+   * Participants dont la participation est liée à un paiement **approuvé** (ou gratuit enregistré comme tel) —
+   * même périmètre que l’onglet « Participants » sur la page Participer.
+   */
   async listParticipantsWithLecteur(activiteId: string, paroisseId?: string) {
     await connectToDatabase();
-    const match: Record<string, unknown> = { activiteId: new mongoose.Types.ObjectId(activiteId) };
+    const match: Record<string, unknown> = {
+      activiteId: new mongoose.Types.ObjectId(activiteId),
+      paiementId: { $exists: true, $ne: null },
+    };
     if (paroisseId) match.paroisseId = new mongoose.Types.ObjectId(paroisseId);
+
+    const paiementsColl = ActivitePaiement.collection.name;
 
     const rows = await ActiviteParticipation.aggregate([
       { $match: match },
+      {
+        $lookup: {
+          from: paiementsColl,
+          localField: "paiementId",
+          foreignField: "_id",
+          as: "_paiement",
+        },
+      },
+      { $unwind: { path: "$_paiement", preserveNullAndEmptyArrays: false } },
+      { $match: { "_paiement.status": "approved" } },
       {
         $lookup: {
           from: "lecteurs",

@@ -1,4 +1,4 @@
-import { FedaPay, Transaction, Customer, Webhook } from "fedapay";
+import { FedaPay, Transaction, Customer, Webhook, ApiConnectionError } from "fedapay";
 
 let configured = false;
 
@@ -9,22 +9,133 @@ function configure(): void {
   FedaPay.setApiKey(key.trim());
   const env = process.env.FEDAPAY_ENVIRONMENT?.toLowerCase() === "live" ? "live" : "sandbox";
   FedaPay.setEnvironment(env);
+  const accountId = process.env.FEDAPAY_ACCOUNT_ID?.trim();
+  if (accountId) FedaPay.setAccountId(accountId);
   configured = true;
 }
 
-export async function fedapayCreateCustomer(params: {
+function fedapayApiBase(): string {
+  const env = process.env.FEDAPAY_ENVIRONMENT?.toLowerCase() === "live" ? "live" : "sandbox";
+  if (env === "live") return "https://api.fedapay.com";
+  return "https://sandbox-api.fedapay.com";
+}
+
+function defaultFedapayHeaders(): Record<string, string> {
+  const key = process.env.FEDAPAY_SECRET_KEY?.trim() ?? "";
+  const h: Record<string, string> = {
+    Authorization: `Bearer ${key}`,
+    Accept: "application/json",
+    "X-Version": FedaPay.VERSION,
+    "X-Source": "FedaPay NodeLib",
+  };
+  const accountId = process.env.FEDAPAY_ACCOUNT_ID?.trim();
+  if (accountId) h["FedaPay-Account"] = String(accountId);
+  return h;
+}
+
+function normalizeCustomerRow(item: unknown): { id?: number; email?: string } {
+  if (!item || typeof item !== "object") return {};
+  const r = item as Record<string, unknown>;
+  if (r.attributes && typeof r.attributes === "object") {
+    const a = r.attributes as Record<string, unknown>;
+    const rawId = r.id;
+    const id =
+      typeof rawId === "number"
+        ? rawId
+        : typeof rawId === "string"
+          ? Number(rawId)
+          : undefined;
+    return {
+      id: id !== undefined && Number.isFinite(id) ? id : undefined,
+      email: typeof a.email === "string" ? a.email : undefined,
+    };
+  }
+  const id = typeof r.id === "number" ? r.id : typeof r.id === "string" ? Number(r.id) : undefined;
+  return {
+    id: id !== undefined && Number.isFinite(id) ? id : undefined,
+    email: typeof r.email === "string" ? r.email : undefined,
+  };
+}
+
+function extractCustomerRows(data: unknown): Array<{ id?: number; email?: string }> {
+  if (Array.isArray(data)) return data.map(normalizeCustomerRow);
+  if (data && typeof data === "object") {
+    const o = data as Record<string, unknown>;
+    const customers = o.customers ?? o.data;
+    if (Array.isArray(customers)) return customers.map(normalizeCustomerRow);
+  }
+  return [];
+}
+
+function pickCustomerIdForEmail(
+  rows: Array<{ id?: number; email?: string }>,
+  email: string
+): number | null {
+  const lower = email.toLowerCase();
+  const match =
+    rows.find((c) => c.email?.toLowerCase() === lower) ?? (rows.length === 1 ? rows[0] : undefined);
+  const id = match?.id;
+  return typeof id === "number" && Number.isFinite(id) ? id : null;
+}
+
+async function fedapaySearchCustomerIdByEmail(email: string): Promise<number | null> {
+  const base = fedapayApiBase();
+  const qs = new URLSearchParams({ "filter[email]": email });
+  const paths = [`${base}/v1/customers/search?${qs}`, `${base}/v1/customers?${qs}`];
+  for (const url of paths) {
+    const res = await fetch(url, { headers: defaultFedapayHeaders() });
+    if (!res.ok) continue;
+    const data: unknown = await res.json();
+    const rows = extractCustomerRows(data);
+    const id = pickCustomerIdForEmail(rows, email);
+    if (id != null) return id;
+  }
+
+  try {
+    const res = await Customer.all({ "filter[email]": email } as Record<string, string>);
+    const rows = extractCustomerRows(res);
+    return pickCustomerIdForEmail(rows, email);
+  } catch {
+    return null;
+  }
+}
+
+function isDuplicateCustomerEmailError(err: unknown): boolean {
+  if (!(err instanceof ApiConnectionError)) return false;
+  const errors = err.errors as Record<string, unknown> | undefined;
+  const emailErr = errors?.email;
+  if (!Array.isArray(emailErr)) return false;
+  return emailErr.some((m) => String(m).toLowerCase().includes("disponible"));
+}
+
+/**
+ * Crée un client FedaPay ou réutilise celui qui existe déjà pour le même e-mail
+ * (FedaPay refuse les doublons : erreur « n'est pas disponible » sur l'e-mail).
+ */
+export async function fedapayFindOrCreateCustomer(params: {
   email: string;
   firstname: string;
   lastname: string;
   phone: string;
 }) {
   configure();
-  return Customer.create({
-    firstname: params.firstname,
-    lastname: params.lastname,
-    email: params.email,
-    phone: params.phone,
-  });
+  try {
+    return await Customer.create({
+      firstname: params.firstname,
+      lastname: params.lastname,
+      email: params.email,
+      phone: params.phone,
+    });
+  } catch (e: unknown) {
+    if (!isDuplicateCustomerEmailError(e)) throw e;
+    const id = await fedapaySearchCustomerIdByEmail(params.email.trim());
+    if (id == null) {
+      throw new Error(
+        "Ce compte e-mail est déjà enregistré chez FedaPay mais la récupération du client a échoué. Contactez le support ou vérifiez l’API FedaPay."
+      );
+    }
+    return Customer.retrieve(id);
+  }
 }
 
 export async function fedapayCreateTransactionAndPaymentUrl(opts: {

@@ -13,6 +13,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const roles: string[] = Array.isArray(session.user?.roles) ? session.user.roles : [];
+
     const { searchParams } = new URL(request.url);
     const paroisseId = searchParams.get("paroisseId");
     const vicariatId = searchParams.get("vicariatId");
@@ -20,18 +22,32 @@ export async function GET(request: Request) {
     const service = new LecteurService();
     let result;
 
-    if (session.user.roles.includes("SUPERADMIN") || session.user.roles.includes("DIOCESAIN")) {
+    if (roles.includes("SUPERADMIN") || roles.includes("DIOCESAIN")) {
       if (paroisseId) result = await service.getLecteursByParish(paroisseId);
       else if (vicariatId) result = await service.getLecteursByVicariat(vicariatId);
       else result = await service.getLecteurs();
-    } else if (session.user.roles.includes("VICARIAL")) {
+    } else if (roles.includes("VICARIAL")) {
       // VICARIAL can filter by paroisseId (within their vicariat scope)
       if (paroisseId) result = await service.getLecteursByParish(paroisseId);
-      else result = await service.getLecteursByVicariat(session.user.vicariatId);
-    } else if (session.user.roles.includes("PAROISSIAL")) {
-       result = await service.getLecteursByParish(session.user.parishId);
+      else {
+        if (!session.user?.vicariatId) {
+          return NextResponse.json(
+            { error: "Compte vicarial sans vicariat associé. Reconnectez-vous ou contactez un administrateur." },
+            { status: 400 }
+          );
+        }
+        result = await service.getLecteursByVicariat(session.user.vicariatId);
+      }
+    } else if (roles.includes("PAROISSIAL")) {
+      if (!session.user?.parishId) {
+        return NextResponse.json(
+          { error: "Compte paroissial sans paroisse associée. Reconnectez-vous ou contactez un administrateur." },
+          { status: 400 }
+        );
+      }
+      result = await service.getLecteursByParish(session.user.parishId);
     } else {
-       return NextResponse.json({ error: "Forbidden access" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden access" }, { status: 403 });
     }
 
     const payload = Array.isArray(result) ? result.map((row) => serializeLecteur(row)) : serializeLecteur(result);
@@ -47,12 +63,14 @@ export async function POST(request: Request) {
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    
+
+    const roles: string[] = Array.isArray(session.user?.roles) ? session.user.roles : [];
+
     // Check role, at least Paroissial or above can create
-    const isParoissial = session.user.roles.includes("PAROISSIAL");
-    const isVicarial = session.user.roles.includes("VICARIAL");
-    const isDiocesain = session.user.roles.includes("DIOCESAIN");
-    const isSuperAdmin = session.user.roles.includes("SUPERADMIN");
+    const isParoissial = roles.includes("PAROISSIAL");
+    const isVicarial = roles.includes("VICARIAL");
+    const isDiocesain = roles.includes("DIOCESAIN");
+    const isSuperAdmin = roles.includes("SUPERADMIN");
     
     if (!isParoissial && !isVicarial && !isDiocesain && !isSuperAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

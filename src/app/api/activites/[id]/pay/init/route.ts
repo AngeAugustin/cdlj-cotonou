@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { ActiviteService } from "@/modules/activites/service";
 import { payerParticipationSchema } from "@/modules/activites/schema";
 import { getAppBaseUrl } from "@/lib/appBaseUrl";
-import { fedapayCreateCustomer, fedapayCreateTransactionAndPaymentUrl } from "@/lib/fedapay";
+import { fedapayFindOrCreateCustomer, fedapayCreateTransactionAndPaymentUrl } from "@/lib/fedapay";
 import { sendActivitePaymentConfirmationEmail } from "@/lib/resendMail";
 import mongoose from "mongoose";
 import { ZodError } from "zod";
@@ -62,7 +62,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const montantTotal = montantUnitaire * n;
 
     const baseUrl = getAppBaseUrl();
-    const callbackUrl = `${baseUrl}/activites/${encodeURIComponent(activiteId)}/participer?payment=return`;
+    const callbackUrlBase = `${baseUrl}/activites/${encodeURIComponent(activiteId)}/participer?payment=return`;
 
     const userId = session.user.id ?? userEmail;
     const { first, last } = splitName(session.user.name);
@@ -80,7 +80,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       montantUnitaire,
       nombreLecteurs: n,
       montantTotal,
-      callbackUrl,
+      callbackUrl: callbackUrlBase,
       metadata: {
         activiteNom: activite.nom,
         source: "cdlj-activite",
@@ -121,7 +121,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
     const paymentId = (pending as { _id: mongoose.Types.ObjectId })._id.toString();
 
-    const customer = await fedapayCreateCustomer({
+    const callbackUrl = `${callbackUrlBase}&pid=${encodeURIComponent(paymentId)}`;
+    await service.updatePaiementById(paymentId, { callbackUrl });
+
+    const customer = await fedapayFindOrCreateCustomer({
       email: userEmail,
       firstname: first,
       lastname: last,
