@@ -8,6 +8,10 @@ export class ActiviteService {
     return this.repo.findAll();
   }
 
+  listOpenActivitesForPresence() {
+    return this.repo.listOpenForPresence();
+  }
+
   getActivite(id: string) {
     return this.repo.findById(id);
   }
@@ -72,6 +76,18 @@ export class ActiviteService {
 
   listParticipantsDetail(activiteId: string, paroisseId?: string) {
     return this.repo.listParticipantsWithLecteur(activiteId, paroisseId);
+  }
+
+  findParticipantByUniqueId(activiteId: string, uniqueId: string) {
+    return this.repo.findParticipantByUniqueId(activiteId, uniqueId);
+  }
+
+  validatePresenceByUniqueId(activiteId: string, uniqueId: string) {
+    return this.repo.validatePresenceByUniqueId(activiteId, uniqueId);
+  }
+
+  listValidatedPresencesDetail(activiteId: string) {
+    return this.repo.listValidatedPresencesWithLecteur(activiteId);
   }
 
   async getStats(activiteId: string, vicariatId?: string | null) {

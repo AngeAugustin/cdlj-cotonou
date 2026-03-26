@@ -3,8 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:webpack": "next dev --webpack",
+    "dev": "next dev -H 0.0.0.0 --experimental-https --experimental-https-key certificates/dev-lan-key.pem --experimental-https-cert certificates/dev-lan.pem",
+    "dev:http": "next dev",
+    "dev:https": "next dev -H 0.0.0.0 --experimental-https --experimental-https-key certificates/dev-lan-key.pem --experimental-https-cert certificates/dev-lan.pem",
+    "dev:webpack": "next dev -H 0.0.0.0 --experimental-https --experimental-https-key certificates/dev-lan-key.pem --experimental-https-cert certificates/dev-lan.pem --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -20,6 +22,7 @@
     "@tiptap/react": "^3.20.4",
     "@tiptap/starter-kit": "^3.20.4",
     "@types/leaflet": "^1.9.21",
+    "@yudiel/react-qr-scanner": "^2.5.1",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

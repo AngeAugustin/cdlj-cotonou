@@ -50,6 +50,20 @@ type ParticipantRow = {
   grade?: { name?: string; abbreviation?: string } | null;
 };
 
+type PresenceRow = {
+  validatedAt: string;
+  paroisseName?: string;
+  vicariatName?: string;
+  lecteur: {
+    _id: string;
+    nom: string;
+    prenoms: string;
+    uniqueId: string;
+    dateNaissance?: string;
+  };
+  grade?: { name?: string; abbreviation?: string } | null;
+};
+
 type PaiementRow = {
   _id: string;
   createdAt?: string;
@@ -195,7 +209,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const resolvedParams = usePromise(params);
   const activiteId = resolvedParams.id;
   const { data: session, status } = useSession();
-  const roles: string[] = ((session?.user as any)?.roles ?? []) as string[];
+  const roles: string[] = ((session?.user as { roles?: string[] } | undefined)?.roles ?? []) as string[];
   const isManager = roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
   const isSuperAdmin = roles.includes("SUPERADMIN");
   const isVicarial = roles.includes("VICARIAL");
@@ -212,7 +226,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const [confirmTermineeOpen, setConfirmTermineeOpen] = useState(false);
   const [terminating, setTerminating] = useState(false);
 
-  const [tab, setTab] = useState<"infos" | "participation" | "paiements" | "anomalies">("infos");
+  const [tab, setTab] = useState<"infos" | "participation" | "presence" | "paiements" | "anomalies">("infos");
   const [paiements, setPaiements] = useState<PaiementRow[]>([]);
   const [paiementsLoading, setPaiementsLoading] = useState(false);
   const [selectedPaiementId, setSelectedPaiementId] = useState<string | null>(null);
@@ -222,6 +236,10 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const [meData, setMeData] = useState<{ paroisseName?: string; vicariatName?: string } | null>(null);
   const [selectedVicariat, setSelectedVicariat] = useState(PARTICIPANT_FILTER_ALL);
   const [selectedParoisse, setSelectedParoisse] = useState(PARTICIPANT_FILTER_ALL);
+  const [presencesLoading, setPresencesLoading] = useState(false);
+  const [presences, setPresences] = useState<PresenceRow[]>([]);
+  const [selectedPresenceVicariat, setSelectedPresenceVicariat] = useState(PARTICIPANT_FILTER_ALL);
+  const [selectedPresenceParoisse, setSelectedPresenceParoisse] = useState(PARTICIPANT_FILTER_ALL);
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -264,6 +282,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   }, [isParoissial]);
 
   const canSeeParticipants = isParoissial || isManager;
+  const canSeePresence = isManager;
 
   const vicariatOptions = useMemo(
     () =>
@@ -293,6 +312,34 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
     [participants, selectedVicariat, selectedParoisse]
   );
 
+  const presenceVicariatOptions = useMemo(
+    () =>
+      Array.from(new Set(presences.map((p) => p.vicariatName).filter((v): v is string => Boolean(v)))).sort((a, b) =>
+        a.localeCompare(b, "fr")
+      ),
+    [presences]
+  );
+
+  const presenceParoisseOptions = useMemo(() => {
+    const source =
+      selectedPresenceVicariat === PARTICIPANT_FILTER_ALL
+        ? presences
+        : presences.filter((p) => p.vicariatName === selectedPresenceVicariat);
+    return Array.from(new Set(source.map((p) => p.paroisseName).filter((v): v is string => Boolean(v)))).sort((a, b) =>
+      a.localeCompare(b, "fr")
+    );
+  }, [presences, selectedPresenceVicariat]);
+
+  const filteredPresences = useMemo(
+    () =>
+      presences.filter((p) => {
+        if (selectedPresenceVicariat !== PARTICIPANT_FILTER_ALL && p.vicariatName !== selectedPresenceVicariat) return false;
+        if (selectedPresenceParoisse !== PARTICIPANT_FILTER_ALL && p.paroisseName !== selectedPresenceParoisse) return false;
+        return true;
+      }),
+    [presences, selectedPresenceVicariat, selectedPresenceParoisse]
+  );
+
   const refreshParticipants = useCallback(async () => {
     if (!activiteId || !canSeeParticipants) return;
     setParticipantsLoading(true);
@@ -306,6 +353,20 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       setParticipantsLoading(false);
     }
   }, [activiteId, canSeeParticipants]);
+
+  const refreshPresences = useCallback(async () => {
+    if (!activiteId || !canSeePresence) return;
+    setPresencesLoading(true);
+    try {
+      const r = await fetch(`/api/activites/${encodeURIComponent(activiteId)}/presences`);
+      const data = await r.json().catch(() => ([]));
+      setPresences(Array.isArray(data) ? (data as PresenceRow[]) : []);
+    } catch {
+      setPresences([]);
+    } finally {
+      setPresencesLoading(false);
+    }
+  }, [activiteId, canSeePresence]);
 
   const refreshPaiements = useCallback(async () => {
     if (!activite || (tab !== "paiements" && tab !== "anomalies")) return;
@@ -329,6 +390,11 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   }, [activite, canSeeParticipants, refreshParticipants]);
 
   useEffect(() => {
+    if (!activite || !canSeePresence || tab !== "presence") return;
+    void refreshPresences();
+  }, [activite, canSeePresence, tab, refreshPresences]);
+
+  useEffect(() => {
     if (selectedVicariat === PARTICIPANT_FILTER_ALL) return;
     if (!vicariatOptions.includes(selectedVicariat)) {
       setSelectedVicariat(PARTICIPANT_FILTER_ALL);
@@ -341,6 +407,20 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       setSelectedParoisse(PARTICIPANT_FILTER_ALL);
     }
   }, [selectedParoisse, paroisseOptions]);
+
+  useEffect(() => {
+    if (selectedPresenceVicariat === PARTICIPANT_FILTER_ALL) return;
+    if (!presenceVicariatOptions.includes(selectedPresenceVicariat)) {
+      setSelectedPresenceVicariat(PARTICIPANT_FILTER_ALL);
+    }
+  }, [selectedPresenceVicariat, presenceVicariatOptions]);
+
+  useEffect(() => {
+    if (selectedPresenceParoisse === PARTICIPANT_FILTER_ALL) return;
+    if (!presenceParoisseOptions.includes(selectedPresenceParoisse)) {
+      setSelectedPresenceParoisse(PARTICIPANT_FILTER_ALL);
+    }
+  }, [selectedPresenceParoisse, presenceParoisseOptions]);
 
   useEffect(() => {
     if (!activite || (tab !== "paiements" && tab !== "anomalies")) return;
@@ -391,6 +471,12 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       setTab("paiements");
     }
   }, [isSuperAdmin, tab]);
+
+  useEffect(() => {
+    if (!canSeePresence && tab === "presence") {
+      setTab("infos");
+    }
+  }, [canSeePresence, tab]);
 
   useEffect(() => {
     if (!selectedPaiementId) return;
@@ -791,6 +877,18 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
             <Users className="w-4 h-4" />
             Participation
           </button>
+          {isManager ? (
+            <button
+              type="button"
+              onClick={() => setTab("presence")}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                tab === "presence" ? "bg-white text-emerald-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <CheckCircle className="w-4 h-4" />
+              Présence
+            </button>
+          ) : null}
           {(isManager || isVicarial || isParoissial) && (
             <button
               type="button"
@@ -1223,6 +1321,114 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                 })() : null}
               </div>
             )}
+          </div>
+        ) : tab === "presence" ? (
+          <div className="space-y-6">
+            {canSeePresence ? (
+              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
+                  <div>
+                    <h2 className="font-bold text-slate-900 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-emerald-600" /> Présences validées
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Liste des lecteurs dont la présence a été confirmée depuis la page publique de vérification.
+                    </p>
+                  </div>
+                  <span className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
+                    {filteredPresences.length} présence{filteredPresences.length > 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                {presences.length > 0 ? (
+                  <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div>
+                      <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-400">Vicariat</p>
+                      <Select
+                        value={selectedPresenceVicariat}
+                        onValueChange={(value) => {
+                          setSelectedPresenceVicariat(value ?? PARTICIPANT_FILTER_ALL);
+                          setSelectedPresenceParoisse(PARTICIPANT_FILTER_ALL);
+                        }}
+                      >
+                        <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 justify-between">
+                          <SelectValue>
+                            {selectedPresenceVicariat === PARTICIPANT_FILTER_ALL
+                              ? "Tous les vicariats"
+                              : selectedPresenceVicariat}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={PARTICIPANT_FILTER_ALL}>Tous les vicariats</SelectItem>
+                          {presenceVicariatOptions.map((vicariat) => (
+                            <SelectItem key={vicariat} value={vicariat}>
+                              {vicariat}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-400">Paroisse</p>
+                      <Select
+                        value={selectedPresenceParoisse}
+                        onValueChange={(value) => setSelectedPresenceParoisse(value ?? PARTICIPANT_FILTER_ALL)}
+                      >
+                        <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 justify-between">
+                          <SelectValue>
+                            {selectedPresenceParoisse === PARTICIPANT_FILTER_ALL
+                              ? "Toutes les paroisses"
+                              : selectedPresenceParoisse}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={PARTICIPANT_FILTER_ALL}>Toutes les paroisses</SelectItem>
+                          {presenceParoisseOptions.map((paroisse) => (
+                            <SelectItem key={paroisse} value={paroisse}>
+                              {paroisse}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : null}
+
+                {presencesLoading ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-emerald-700" />
+                ) : presences.length === 0 ? (
+                  <p className="text-sm text-slate-500">Aucune présence validée sur cette activité pour le moment.</p>
+                ) : filteredPresences.length === 0 ? (
+                  <p className="text-sm text-slate-500">Aucune présence ne correspond aux filtres sélectionnés.</p>
+                ) : (
+                  <ul className="max-h-[28rem] overflow-y-auto space-y-2 text-sm">
+                    {filteredPresences.map((presence) => (
+                      <li
+                        key={presence.lecteur._id}
+                        className="flex items-start justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/40 px-4 py-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900">
+                            {presence.lecteur.nom} {presence.lecteur.prenoms}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {presence.paroisseName ?? "—"}
+                            {presence.vicariatName ? ` • ${presence.vicariatName}` : ""}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {presence.grade?.name || presence.grade?.abbreviation || "Grade non renseigné"}
+                          </p>
+                          <p className="mt-2 text-xs font-medium text-emerald-800">
+                            Validée le {formatPaidAt(presence.validatedAt)}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-slate-500">{presence.lecteur.uniqueId}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
           </div>
         ) : tab === "infos" ? (
           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">

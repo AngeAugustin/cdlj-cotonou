@@ -4,6 +4,9 @@ import connectToDatabase from "@/lib/mongoose";
 import { CreateLecteurInput, UpdateLecteurInput } from "./schema";
 import { ActiviteParticipation } from "@/modules/activites/model";
 import { Activite } from "@/modules/activites/model";
+import "@/modules/vicariats/model";
+import "@/modules/paroisses/model";
+import "@/modules/grades/model";
 
 export class LecteurRepository {
   async findAll(): Promise<ILecteur[]> {

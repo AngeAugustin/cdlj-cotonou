@@ -77,6 +77,30 @@ if (mongoose.models.ActiviteParticipation) {
 export const ActiviteParticipation: Model<IActiviteParticipation> =
   mongoose.model<IActiviteParticipation>("ActiviteParticipation", participationSchema);
 
+export interface IActivitePresence extends Document {
+  activiteId: mongoose.Types.ObjectId;
+  lecteurId: mongoose.Types.ObjectId;
+  validatedAt: Date;
+}
+
+const presenceSchema = new Schema<IActivitePresence>(
+  {
+    activiteId: { type: Schema.Types.ObjectId, ref: "Activite", required: true },
+    lecteurId: { type: Schema.Types.ObjectId, ref: "Lecteur", required: true },
+    validatedAt: { type: Date, default: Date.now },
+  },
+  { timestamps: false }
+);
+
+presenceSchema.index({ activiteId: 1, lecteurId: 1 }, { unique: true });
+
+if (mongoose.models.ActivitePresence) {
+  delete mongoose.models.ActivitePresence;
+}
+
+export const ActivitePresence: Model<IActivitePresence> =
+  mongoose.model<IActivitePresence>("ActivitePresence", presenceSchema);
+
 export type ActivitePaiementStatus =
   | "pending"
   | "approved"

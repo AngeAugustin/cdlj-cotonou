@@ -1,8 +1,11 @@
 import mongoose, { Types } from "mongoose";
 import connectToDatabase from "@/lib/mongoose";
-import { Activite, ActiviteParticipation, ActivitePaiement } from "./model";
+import { Activite, ActiviteParticipation, ActivitePaiement, ActivitePresence } from "./model";
 import { Lecteur } from "@/modules/lecteurs/model";
 import { CreateActiviteInput, UpdateActiviteInput } from "./schema";
+import "@/modules/vicariats/model";
+import "@/modules/paroisses/model";
+import "@/modules/grades/model";
 
 const ACTIVE_PARTICIPATION_MATCH = { $ne: "refunded" } as const;
 
@@ -16,6 +19,14 @@ export class ActiviteRepository {
   async findAll() {
     await connectToDatabase();
     return Activite.find().sort({ dateDebut: -1 }).lean();
+  }
+
+  async listOpenForPresence() {
+    await connectToDatabase();
+    return Activite.find({ terminee: false })
+      .select("nom dateDebut dateFin lieu")
+      .sort({ dateDebut: -1 })
+      .lean();
   }
 
   async findById(id: string) {
@@ -61,6 +72,7 @@ export class ActiviteRepository {
   async delete(id: string) {
     await connectToDatabase();
     await ActiviteParticipation.deleteMany({ activiteId: id });
+    await ActivitePresence.deleteMany({ activiteId: id });
     return Activite.findByIdAndDelete(id).lean();
   }
 
@@ -122,6 +134,100 @@ export class ActiviteRepository {
 
     if (ops.length) await ActiviteParticipation.bulkWrite(ops);
     return lecteurs.length;
+  }
+
+  async findParticipantByUniqueId(activiteId: string, uniqueId: string) {
+    await connectToDatabase();
+    if (!mongoose.Types.ObjectId.isValid(activiteId)) return null;
+
+    const cleanedUniqueId = uniqueId.trim();
+    if (!cleanedUniqueId) return null;
+
+    const lecteur = await Lecteur.findOne({ uniqueId: cleanedUniqueId })
+      .populate("gradeId", "name abbreviation")
+      .populate("paroisseId", "name")
+      .populate("vicariatId", "name abbreviation")
+      .lean();
+
+    if (!lecteur) return null;
+
+    const participation = await ActiviteParticipation.findOne({
+      activiteId: new mongoose.Types.ObjectId(activiteId),
+      lecteurId: lecteur._id,
+      status: ACTIVE_PARTICIPATION_MATCH,
+    }).lean();
+
+    if (!participation) return null;
+
+    const presence = await ActivitePresence.findOne({
+      activiteId: new mongoose.Types.ObjectId(activiteId),
+      lecteurId: lecteur._id,
+    }).lean();
+
+    return {
+      lecteur: {
+        _id: lecteur._id.toString(),
+        nom: lecteur.nom,
+        prenoms: lecteur.prenoms,
+        uniqueId: lecteur.uniqueId,
+      },
+      grade: lecteur.gradeId
+        ? {
+            name: (lecteur.gradeId as { name?: string }).name,
+            abbreviation: (lecteur.gradeId as { abbreviation?: string }).abbreviation,
+          }
+        : null,
+      paroisseName: (lecteur.paroisseId as { name?: string } | null)?.name ?? null,
+      vicariatName: (lecteur.vicariatId as { name?: string } | null)?.name ?? null,
+      alreadyPresent: Boolean(presence),
+      validatedAt: presence?.validatedAt ?? null,
+      paidAt: participation.paidAt,
+    };
+  }
+
+  async validatePresenceByUniqueId(activiteId: string, uniqueId: string) {
+    await connectToDatabase();
+    if (!mongoose.Types.ObjectId.isValid(activiteId)) {
+      throw new Error("Activité introuvable");
+    }
+
+    const participant = await this.findParticipantByUniqueId(activiteId, uniqueId);
+    if (!participant) {
+      return null;
+    }
+
+    const aid = new mongoose.Types.ObjectId(activiteId);
+    const lid = new mongoose.Types.ObjectId(participant.lecteur._id);
+    const existing = await ActivitePresence.findOne({ activiteId: aid, lecteurId: lid }).lean();
+
+    if (existing) {
+      return {
+        status: "already_present" as const,
+        validatedAt: existing.validatedAt,
+        participant: {
+          ...participant,
+          alreadyPresent: true,
+          validatedAt: existing.validatedAt,
+        },
+      };
+    }
+
+    const validatedAt = new Date();
+    await ActivitePresence.create({
+      activiteId: aid,
+      lecteurId: lid,
+      validatedAt,
+    });
+
+    return {
+      status: "validated" as const,
+      validatedAt,
+      participant: {
+        ...participant,
+        alreadyPresent: true,
+        validatedAt,
+      },
+    };
   }
 
   async createPaiementDoc(data: {
@@ -320,6 +426,70 @@ export class ActiviteRepository {
       {
         $project: {
           paidAt: 1,
+          "lecteur._id": 1,
+          "lecteur.nom": 1,
+          "lecteur.prenoms": 1,
+          "lecteur.uniqueId": 1,
+          "lecteur.dateNaissance": 1,
+          "grade.name": 1,
+          "grade.abbreviation": 1,
+          paroisseName: "$paroisse.name",
+          vicariatName: "$vicariat.name",
+        },
+      },
+    ]);
+
+    return rows;
+  }
+
+  async listValidatedPresencesWithLecteur(activiteId: string) {
+    await connectToDatabase();
+    const match: Record<string, unknown> = {
+      activiteId: new mongoose.Types.ObjectId(activiteId),
+    };
+
+    const rows = await ActivitePresence.aggregate([
+      { $match: match },
+      {
+        $lookup: {
+          from: "lecteurs",
+          localField: "lecteurId",
+          foreignField: "_id",
+          as: "lecteur",
+        },
+      },
+      { $unwind: "$lecteur" },
+      {
+        $lookup: {
+          from: "grades",
+          localField: "lecteur.gradeId",
+          foreignField: "_id",
+          as: "grade",
+        },
+      },
+      { $unwind: { path: "$grade", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "paroisses",
+          localField: "lecteur.paroisseId",
+          foreignField: "_id",
+          as: "paroisse",
+        },
+      },
+      { $unwind: { path: "$paroisse", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "vicariats",
+          localField: "lecteur.vicariatId",
+          foreignField: "_id",
+          as: "vicariat",
+        },
+      },
+      { $unwind: { path: "$vicariat", preserveNullAndEmptyArrays: true } },
+      { $sort: { validatedAt: -1, "lecteur.nom": 1, "lecteur.prenoms": 1 } },
+      {
+        $project: {
+          validatedAt: 1,
           "lecteur._id": 1,
           "lecteur.nom": 1,
           "lecteur.prenoms": 1,

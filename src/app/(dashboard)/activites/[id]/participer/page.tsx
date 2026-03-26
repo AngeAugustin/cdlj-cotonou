@@ -482,9 +482,6 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
         </Link>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Participer</h1>
         <p className="text-slate-600 mt-1 font-medium">{activite.nom}</p>
-        <p className="text-slate-500 mt-2 text-sm">
-          Enregistrez les lecteurs participants (le paiement effectif sera branché plus tard).
-        </p>
       </div>
 
       {(activite.numeroPaiement?.trim() || activite.montant != null) && (
