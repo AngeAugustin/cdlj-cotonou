@@ -116,6 +116,7 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
   const fedapayReturnHandled = useRef(false);
   /** Timers navigateur : identifiants numériques (pas `NodeJS.Timeout` des typings Node). */
   const paymentPollTimeoutRef = useRef<number | null>(null);
+  const paymentPollDeadlineTimeoutRef = useRef<number | null>(null);
 
   const [paymentPolling, setPaymentPolling] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -212,11 +213,28 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
     setPaymentPolling(true);
 
     let cancelled = false;
-    let polls = 0;
-    const MAX_POLLS = 45;
     const POLL_MS = 2000;
+    const MAX_POLL_DURATION_MS = 120_000;
+
+    const stopPolling = (message: string, type: "success" | "error" = "error") => {
+      if (cancelled) return;
+      cancelled = true;
+      setPaymentPolling(false);
+      if (paymentPollTimeoutRef.current != null) {
+        window.clearTimeout(paymentPollTimeoutRef.current);
+        paymentPollTimeoutRef.current = null;
+      }
+      if (paymentPollDeadlineTimeoutRef.current != null) {
+        window.clearTimeout(paymentPollDeadlineTimeoutRef.current);
+        paymentPollDeadlineTimeoutRef.current = null;
+      }
+      showToast(message, type);
+      void loadLecteursEtParticipations();
+      cleanUrl();
+    };
 
     const scheduleNext = () => {
+      if (cancelled) return;
       if (paymentPollTimeoutRef.current != null) {
         window.clearTimeout(paymentPollTimeoutRef.current);
       }
@@ -224,6 +242,46 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
         void poll();
       }, POLL_MS);
     };
+
+    paymentPollDeadlineTimeoutRef.current = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetch(
+            `/api/activites/${encodeURIComponent(activiteId)}/pay/status?pid=${encodeURIComponent(pid!)}`,
+            { method: "PATCH" }
+          );
+          const data = await res.json().catch(() => ({}));
+          const st = typeof data?.status === "string" ? data.status : null;
+
+          if (!res.ok) {
+            stopPolling(typeof data?.error === "string" ? data.error : "Paiement annulé ou non finalisé.", "error");
+            return;
+          }
+
+          if (st === "approved") {
+            stopPolling("Paiement confirmé par FedaPay. Les participants sont inscrits.", "success");
+            return;
+          }
+
+          if (st === "declined" || st === "canceled" || st === "failed" || st === "non_finalized") {
+            const msg =
+              st === "declined"
+                ? "Paiement refusé."
+                : st === "canceled"
+                  ? "Paiement annulé."
+                  : st === "failed"
+                    ? "Paiement en échec."
+                    : "Paiement annulé ou non finalisé.";
+            stopPolling(msg, "error");
+            return;
+          }
+
+          stopPolling("Paiement annulé ou non finalisé.", "error");
+        } catch {
+          stopPolling("Paiement annulé ou non finalisé.", "error");
+        }
+      })();
+    }, MAX_POLL_DURATION_MS);
 
     const poll = async () => {
       if (cancelled) return;
@@ -233,60 +291,29 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
         );
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          if (!cancelled) {
-            setPaymentPolling(false);
-            showToast(typeof data.error === "string" ? data.error : "Erreur de vérification du paiement", "error");
-            void loadLecteursEtParticipations();
-            cleanUrl();
-          }
+          stopPolling(typeof data.error === "string" ? data.error : "Erreur de vérification du paiement", "error");
           return;
         }
         const st = data.status as string;
         if (st === "approved") {
-          if (!cancelled) {
-            setPaymentPolling(false);
-            showToast("Paiement confirmé par FedaPay. Les participants sont inscrits.", "success");
-            void loadLecteursEtParticipations();
-            cleanUrl();
-          }
+          stopPolling("Paiement confirmé par FedaPay. Les participants sont inscrits.", "success");
           return;
         }
-        if (st === "declined" || st === "canceled" || st === "failed") {
-          if (!cancelled) {
-            setPaymentPolling(false);
-            const msg =
-              st === "declined"
-                ? "Paiement refusé."
-                : st === "canceled"
-                  ? "Paiement annulé."
-                  : "Paiement en échec.";
-            showToast(msg, "error");
-            void loadLecteursEtParticipations();
-            cleanUrl();
-          }
-          return;
-        }
-        polls++;
-        if (polls >= MAX_POLLS) {
-          if (!cancelled) {
-            setPaymentPolling(false);
-            showToast(
-              "Le paiement est encore en cours de traitement. Rechargez la page dans quelques instants pour voir les participants.",
-              "success"
-            );
-            void loadLecteursEtParticipations();
-            cleanUrl();
-          }
+        if (st === "declined" || st === "canceled" || st === "failed" || st === "non_finalized") {
+          const msg =
+            st === "declined"
+              ? "Paiement refusé."
+              : st === "canceled"
+                ? "Paiement annulé."
+                : st === "failed"
+                  ? "Paiement en échec."
+                  : "Paiement annulé ou non finalisé.";
+          stopPolling(msg, "error");
           return;
         }
         scheduleNext();
       } catch {
-        if (!cancelled) {
-          setPaymentPolling(false);
-          showToast("Erreur réseau lors de la vérification du paiement.", "error");
-          void loadLecteursEtParticipations();
-          cleanUrl();
-        }
+        stopPolling("Erreur réseau lors de la vérification du paiement.", "error");
       }
     };
 
@@ -294,9 +321,14 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
 
     return () => {
       cancelled = true;
+      setPaymentPolling(false);
       if (paymentPollTimeoutRef.current != null) {
         window.clearTimeout(paymentPollTimeoutRef.current);
         paymentPollTimeoutRef.current = null;
+      }
+      if (paymentPollDeadlineTimeoutRef.current != null) {
+        window.clearTimeout(paymentPollDeadlineTimeoutRef.current);
+        paymentPollDeadlineTimeoutRef.current = null;
       }
     };
   }, [activite, activiteId, loadLecteursEtParticipations, router]);

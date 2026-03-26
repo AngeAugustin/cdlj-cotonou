@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type Activite = {
@@ -34,19 +35,10 @@ type Activite = {
   terminee: boolean;
 };
 
-type StatsPayload = {
-  totalLecteurs: number;
-  totalParticipants: number;
-  byParoisse: {
-    paroisseId: string;
-    paroisseName: string;
-    vicariatName?: string;
-    count: number;
-  }[];
-};
-
 type ParticipantRow = {
   paidAt: string;
+  paroisseName?: string;
+  vicariatName?: string;
   lecteur: {
     _id: string;
     nom: string;
@@ -96,11 +88,24 @@ function formatPaidAt(iso: string) {
 }
 
 function buildParticipantExportTable(participants: ParticipantRow[]) {
-  const header = ["Matricule", "Nom", "Prénoms", "Grade", "Âge", "Date de paiement"];
+  const includeParoisse = participants.some((p) => Boolean(p.paroisseName));
+  const includeVicariat = participants.some((p) => Boolean(p.vicariatName));
+  const header = [
+    "Matricule",
+    "Nom",
+    "Prénoms",
+    ...(includeParoisse ? ["Paroisse"] : []),
+    ...(includeVicariat ? ["Vicariat"] : []),
+    "Grade",
+    "Âge",
+    "Date de paiement",
+  ];
   const rows = participants.map((p) => [
     p.lecteur.uniqueId,
     p.lecteur.nom,
     p.lecteur.prenoms,
+    ...(includeParoisse ? [p.paroisseName || "—"] : []),
+    ...(includeVicariat ? [p.vicariatName || "—"] : []),
     p.grade?.name || p.grade?.abbreviation || "—",
     ageFromBirth(p.lecteur.dateNaissance),
     formatPaidAt(p.paidAt),
@@ -122,6 +127,8 @@ function triggerBrowserDownload(blob: Blob, filename: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 500);
 }
 
+const PARTICIPANT_FILTER_ALL = "__all__";
+
 export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = usePromise(params);
   const activiteId = resolvedParams.id;
@@ -136,9 +143,6 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activite, setActivite] = useState<Activite | null>(null);
 
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [stats, setStats] = useState<StatsPayload | null>(null);
-
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
 
@@ -148,8 +152,11 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const [tab, setTab] = useState<"infos" | "participation" | "paiements">("infos");
   const [paiements, setPaiements] = useState<PaiementRow[]>([]);
   const [paiementsLoading, setPaiementsLoading] = useState(false);
+  const [selectedPaiementId, setSelectedPaiementId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [meData, setMeData] = useState<{ paroisseName?: string; vicariatName?: string } | null>(null);
+  const [selectedVicariat, setSelectedVicariat] = useState(PARTICIPANT_FILTER_ALL);
+  const [selectedParoisse, setSelectedParoisse] = useState(PARTICIPANT_FILTER_ALL);
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -172,17 +179,6 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       .finally(() => setLoading(false));
   }, [status, activiteId]);
 
-  useEffect(() => {
-    if (!activite) return;
-    if (!(isManager || isVicarial)) return;
-    setStatsLoading(true);
-    void fetch(`/api/activites/${encodeURIComponent(activite._id)}/stats`)
-      .then((r) => r.json().catch(() => ({})))
-      .then((data) => setStats(data as StatsPayload))
-      .catch(() => setStats(null))
-      .finally(() => setStatsLoading(false));
-  }, [activite, isManager, isVicarial]);
-
   /** Données paroisse/vicariat de l’utilisateur paroissial (pour le PDF). */
   useEffect(() => {
     if (!isParoissial) return;
@@ -202,16 +198,60 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       .catch(() => {});
   }, [isParoissial]);
 
-  /** Liste des participants paroisse : dès que l’activité est chargée (pas seulement si terminée). */
+  const canSeeParticipants = isParoissial || isManager;
+
+  const vicariatOptions = useMemo(
+    () =>
+      Array.from(new Set(participants.map((p) => p.vicariatName).filter((v): v is string => Boolean(v)))).sort((a, b) =>
+        a.localeCompare(b, "fr")
+      ),
+    [participants]
+  );
+
+  const paroisseOptions = useMemo(() => {
+    const source =
+      selectedVicariat === PARTICIPANT_FILTER_ALL
+        ? participants
+        : participants.filter((p) => p.vicariatName === selectedVicariat);
+    return Array.from(new Set(source.map((p) => p.paroisseName).filter((v): v is string => Boolean(v)))).sort((a, b) =>
+      a.localeCompare(b, "fr")
+    );
+  }, [participants, selectedVicariat]);
+
+  const filteredParticipants = useMemo(
+    () =>
+      participants.filter((p) => {
+        if (selectedVicariat !== PARTICIPANT_FILTER_ALL && p.vicariatName !== selectedVicariat) return false;
+        if (selectedParoisse !== PARTICIPANT_FILTER_ALL && p.paroisseName !== selectedParoisse) return false;
+        return true;
+      }),
+    [participants, selectedVicariat, selectedParoisse]
+  );
+
+  /** Liste des participants payés : paroisse courante pour PAROISSIAL, activité entière pour manager. */
   useEffect(() => {
-    if (!activite || !isParoissial) return;
+    if (!activite || !canSeeParticipants) return;
     setParticipantsLoading(true);
     void fetch(`/api/activites/${encodeURIComponent(activite._id)}/participations`)
       .then((r) => r.json().catch(() => ([])))
       .then((data) => setParticipants(Array.isArray(data) ? (data as ParticipantRow[]) : []))
       .catch(() => setParticipants([]))
       .finally(() => setParticipantsLoading(false));
-  }, [activite, isParoissial]);
+  }, [activite, canSeeParticipants]);
+
+  useEffect(() => {
+    if (selectedVicariat === PARTICIPANT_FILTER_ALL) return;
+    if (!vicariatOptions.includes(selectedVicariat)) {
+      setSelectedVicariat(PARTICIPANT_FILTER_ALL);
+    }
+  }, [selectedVicariat, vicariatOptions]);
+
+  useEffect(() => {
+    if (selectedParoisse === PARTICIPANT_FILTER_ALL) return;
+    if (!paroisseOptions.includes(selectedParoisse)) {
+      setSelectedParoisse(PARTICIPANT_FILTER_ALL);
+    }
+  }, [selectedParoisse, paroisseOptions]);
 
   useEffect(() => {
     if (!activite || tab !== "paiements") return;
@@ -224,10 +264,13 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       .finally(() => setPaiementsLoading(false));
   }, [activite, tab, isManager, isVicarial, isParoissial]);
 
-  const participationRate = useMemo(() => {
-    if (!stats || !stats.totalLecteurs) return 0;
-    return Math.round((stats.totalParticipants / stats.totalLecteurs) * 100);
-  }, [stats]);
+  useEffect(() => {
+    if (!selectedPaiementId) return;
+    const stillSelectable = paiements.some((p) => p._id === selectedPaiementId && p.status === "approved");
+    if (!stillSelectable) {
+      setSelectedPaiementId(null);
+    }
+  }, [paiements, selectedPaiementId]);
 
   const terminerActivite = async () => {
     if (!activite) return;
@@ -249,8 +292,8 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   };
 
   const downloadParticipantsExcel = () => {
-    if (!activite || !participants.length) return;
-    const { header, rows } = buildParticipantExportTable(participants);
+    if (!activite || !filteredParticipants.length) return;
+    const { header, rows } = buildParticipantExportTable(filteredParticipants);
     const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Participants");
@@ -264,7 +307,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   };
 
   const downloadParticipantsPdf = async () => {
-    if (!activite || !participants.length) return;
+    if (!activite || !filteredParticipants.length) return;
 
     const { jsPDF } = await import("jspdf");
     const autoTable = (await import("jspdf-autotable")).default;
@@ -403,7 +446,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
     doc.line(10, INFO_Y + 14, W - 10, INFO_Y + 14);
 
     // ── Table ────────────────────────────────────────────────
-    const { header, rows } = buildParticipantExportTable(participants);
+    const { header, rows } = buildParticipantExportTable(filteredParticipants);
     const TABLE_START = INFO_Y + 16;
     const HEADER_H = 28; // header height to reserve on continuation pages
 
@@ -614,95 +657,225 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
         </div>
 
         {tab === "paiements" ? (
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-6">
-            <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              <Banknote className="w-5 h-5 text-amber-900" />
-              Paiements enregistrés pour cette activité
-            </h2>
+          <div className="space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                <Banknote className="w-5 h-5 text-amber-900" />
+                Paiements enregistrés
+              </h2>
+              {paiements.length > 0 && (
+                <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                  {paiements.length} transaction{paiements.length > 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+
             {paiementsLoading ? (
-              <div className="flex items-center gap-3 text-slate-600 py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-amber-900" />
+              <div className="bg-white rounded-3xl border border-slate-100 flex items-center justify-center gap-3 py-12 text-slate-500">
+                <Loader2 className="w-5 h-5 animate-spin text-amber-900" />
                 Chargement…
               </div>
             ) : paiements.length === 0 ? (
-              <p className="text-sm text-slate-500">Aucun paiement enregistré pour le moment.</p>
+              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm py-12 text-center">
+                <p className="text-sm text-slate-500">Aucun paiement enregistré pour le moment.</p>
+              </div>
             ) : (
-              <ul className="space-y-6">
-                {paiements.map((p) => (
-                  <li
-                    key={p._id}
-                    className="rounded-2xl border border-slate-100 bg-slate-50/40 p-4 space-y-3"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                          {p.createdAt ? format(new Date(p.createdAt), "PPPp", { locale: fr }) : "—"}
-                        </p>
-                        <p className="text-sm text-slate-700 mt-1">
-                          {(isManager || isVicarial) && p.paroisseName ? (
-                            <span className="font-semibold text-slate-900">Paroisse : {p.paroisseName}</span>
-                          ) : null}
-                          {p.userEmail ? (
-                            <span className="block text-slate-600">
-                              Compte : <span className="font-mono text-xs">{p.userEmail}</span>
-                            </span>
-                          ) : null}
-                        </p>
-                      </div>
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                          p.status === "approved"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : p.status === "pending"
-                              ? "bg-amber-100 text-amber-900"
-                              : "bg-slate-200 text-slate-700"
+              <div className="flex gap-6 items-start">
+                {/* ── Tickets list — 60% ─────────────────────────── */}
+                <ul className="space-y-5 flex-[6]">
+                {paiements.map((p) => {
+                  const isSelectable = p.status === "approved";
+                  const s =
+                    p.status === "approved"
+                      ? { bar: "bg-emerald-400", badge: "bg-emerald-50 text-emerald-800 border-emerald-200", dot: "bg-emerald-500", label: "Approuvé" }
+                      : p.status === "pending"
+                        ? { bar: "bg-amber-400", badge: "bg-amber-50 text-amber-900 border-amber-200", dot: "bg-amber-400 animate-pulse", label: "En attente" }
+                        : p.status === "non_finalized"
+                          ? { bar: "bg-red-300", badge: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-400", label: "Non finalisé" }
+                        : { bar: "bg-slate-300", badge: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400", label: p.status };
+
+                  const isSelected = isSelectable && selectedPaiementId === p._id;
+                  return (
+                    <li key={p._id}>
+                      {/* ── Ticket card ─────────────────────────────────── */}
+                      <div
+                        onClick={isSelectable ? () => setSelectedPaiementId(isSelected ? null : p._id) : undefined}
+                        className={`relative flex rounded-2xl border shadow-md overflow-visible transition-all duration-200 ${
+                          isSelected
+                            ? "border-amber-300 shadow-amber-200/60 ring-2 ring-amber-200 bg-white"
+                            : isSelectable
+                              ? "border-slate-100 shadow-slate-200/40 bg-white hover:border-slate-200 cursor-pointer"
+                              : "border-slate-100 shadow-slate-200/40 bg-white cursor-default"
                         }`}
                       >
-                        {p.status}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
-                      <div>
-                        <span className="text-slate-500">Montant unitaire</span>
-                        <p className="font-semibold text-slate-900">{formatMoney(p.montantUnitaire)}</p>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">Lecteurs</span>
-                        <p className="font-semibold text-slate-900">{p.nombreLecteurs}</p>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">Total</span>
-                        <p className="font-semibold text-amber-900">{formatMoney(p.montantTotal)}</p>
-                      </div>
-                    </div>
-                    {p.fedapayReference ? (
-                      <p className="text-xs text-slate-600">
-                        Réf. FedaPay : <span className="font-mono">{p.fedapayReference}</span>
-                      </p>
-                    ) : null}
-                    {p.lecteurs && p.lecteurs.length > 0 ? (
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
-                          Lecteurs concernés
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {p.lecteurs.map((l) => (
-                            <div
-                              key={l._id}
-                              className="inline-flex w-fit max-w-full min-w-0 items-center rounded-2xl border border-amber-200/90 bg-gradient-to-br from-amber-50/95 to-white px-2.5 py-2 shadow-sm"
-                              title={`${l.nom} ${l.prenoms}`}
-                            >
-                              <span className="text-xs font-bold leading-snug text-slate-900 break-words text-left">
-                                {l.nom} {l.prenoms}
+
+                        {/* Status accent bar — left edge */}
+                        <div className={`w-1 rounded-l-2xl shrink-0 ${s.bar}`} />
+
+                        <div className="flex flex-1 min-w-0 overflow-hidden rounded-r-2xl">
+
+                          {/* ── Main body ──────────────────────────────────── */}
+                          <div className="flex-1 min-w-0 px-5 py-4 space-y-3">
+
+                            {/* Row 1: badge + date */}
+                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold leading-none border ${s.badge}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                                {s.label}
+                              </span>
+                              <span className="text-[11px] text-slate-400 font-medium shrink-0">
+                                {p.createdAt ? format(new Date(p.createdAt), "d MMM yyyy · HH:mm", { locale: fr }) : "—"}
                               </span>
                             </div>
-                          ))}
+
+                            {/* Row 2: paroisse / email (managers uniquement) */}
+                            {(isManager || isVicarial) && (p.paroisseName || p.userEmail) && (
+                              <p className="text-[13px] font-bold text-slate-900 truncate">
+                                {p.paroisseName ?? p.userEmail}
+                              </p>
+                            )}
+
+                            {/* Row 3: formule montant */}
+                            <div className="flex flex-wrap items-stretch gap-2">
+                              <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-center">
+                                <p className="text-[8px] uppercase tracking-widest text-slate-400 font-bold mb-0.5">Unitaire</p>
+                                <p className="text-xs font-semibold text-slate-700 whitespace-nowrap">{formatMoney(p.montantUnitaire)}</p>
+                              </div>
+                              <div className="flex items-center text-slate-300 font-light text-base select-none px-0.5">×</div>
+                              <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-center">
+                                <p className="text-[8px] uppercase tracking-widest text-slate-400 font-bold mb-0.5">Lecteurs</p>
+                                <p className="text-xs font-semibold text-slate-700">{p.nombreLecteurs}</p>
+                              </div>
+                              <div className="flex items-center text-slate-300 font-light text-base select-none px-0.5">=</div>
+                              <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-2 text-center">
+                                <p className="text-[8px] uppercase tracking-widest text-amber-500 font-bold mb-0.5">Total</p>
+                                <p className="text-sm font-extrabold text-amber-900 whitespace-nowrap">{formatMoney(p.montantTotal)}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* ── Ticket perforation ─────────────────────────── */}
+                          <div className="relative flex flex-col items-center self-stretch w-7 shrink-0">
+                            {/* Top notch */}
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[14px] h-[14px] rounded-full bg-slate-100 border border-slate-200 z-10" />
+                            {/* Dashed line */}
+                            <div className="flex-1 w-0 border-l-2 border-dashed border-slate-200 my-1" />
+                            {/* Bottom notch */}
+                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-[14px] h-[14px] rounded-full bg-slate-100 border border-slate-200 z-10" />
+                          </div>
+
+                          {/* ── Stub — référence + lecteurs ────────────────── */}
+                          <div className="w-52 shrink-0 bg-slate-50/80 px-4 py-4 flex flex-col gap-3 justify-center">
+                            <div>
+                              <p className="text-[8px] uppercase tracking-widest text-slate-400 font-bold mb-1.5">Réf. FedaPay</p>
+                              {p.fedapayReference ? (
+                                <p className="font-mono text-[11px] text-slate-700 font-semibold break-all leading-snug">{p.fedapayReference}</p>
+                              ) : (
+                                <p className="text-[11px] text-slate-400 italic">Aucune référence</p>
+                              )}
+                            </div>
+                            {p.lecteurs && p.lecteurs.length > 0 && (
+                              <div>
+                                <p className="text-[8px] uppercase tracking-widest text-slate-400 font-bold mb-1">
+                                  Lecteurs
+                                </p>
+                                <p className="text-xl font-extrabold text-slate-800">{p.lecteurs.length}</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+                    </li>
+                  );
+                })}
+                </ul>
+
+                {/* ── Lecteurs panel — 40% ───────────────────────── */}
+                {(() => {
+                  // Aggregate unique lecteurs across approved paiements only
+                  const approvedPaiements = paiements.filter((p) => p.status === "approved");
+                  const seen = new Set<string>();
+                  const allLecteurs: { _id: string; nom: string; prenoms: string; paroisseName?: string; paiementId: string }[] = [];
+                  approvedPaiements.forEach((p) => {
+                    (p.lecteurs ?? []).forEach((l: { _id: string; nom: string; prenoms: string }) => {
+                      if (!seen.has(l._id)) {
+                        seen.add(l._id);
+                        allLecteurs.push({ ...l, paroisseName: p.paroisseName, paiementId: p._id });
+                      }
+                    });
+                  });
+
+                  // Sort: selected paiement's lecteurs first, rest after
+                  const sortedLecteurs = selectedPaiementId
+                    ? [
+                        ...allLecteurs.filter((l) => l.paiementId === selectedPaiementId),
+                        ...allLecteurs.filter((l) => l.paiementId !== selectedPaiementId),
+                      ]
+                    : allLecteurs;
+
+                  const selectedCount = selectedPaiementId
+                    ? allLecteurs.filter((l) => l.paiementId === selectedPaiementId).length
+                    : null;
+
+                  return (
+                    <div className="flex-[4] bg-white rounded-2xl border border-slate-100 shadow-md shadow-slate-200/30 overflow-hidden sticky top-4">
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/70">
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                            Lecteurs inscrits
+                          </p>
+                          {selectedPaiementId && (
+                            <p className="text-[10px] text-amber-700 font-semibold mt-0.5">
+                              {selectedCount} sélectionné{selectedCount !== 1 ? "s" : ""} · cliquez pour désélectionner
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-[11px] font-extrabold text-amber-900 bg-amber-50 border border-amber-100 rounded-full px-2.5 py-0.5 leading-none">
+                          {allLecteurs.length}
+                        </span>
+                      </div>
+                      {/* List */}
+                      <ul className="divide-y divide-slate-50 max-h-[520px] overflow-y-auto">
+                        {sortedLecteurs.length === 0 ? (
+                          <li className="px-5 py-6 text-center text-sm text-slate-400">Aucun lecteur trouvé.</li>
+                        ) : (
+                          sortedLecteurs.map((l, i) => {
+                            const highlighted = selectedPaiementId && l.paiementId === selectedPaiementId;
+                            return (
+                              <li
+                                key={l._id}
+                                className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${
+                                  highlighted
+                                    ? "bg-amber-50/70 border-l-2 border-amber-300"
+                                    : "hover:bg-slate-50/60"
+                                }`}
+                              >
+                                {/* Index bubble */}
+                                <span className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold leading-none ${
+                                  highlighted
+                                    ? "bg-amber-200 border border-amber-300 text-amber-900"
+                                    : "bg-amber-50 border border-amber-100 text-amber-700"
+                                }`}>
+                                  {i + 1}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <p className={`text-[12px] font-semibold truncate leading-tight ${highlighted ? "text-amber-900" : "text-slate-800"}`}>
+                                    {l.nom} {l.prenoms}
+                                  </p>
+                                  {(isManager || isVicarial) && l.paroisseName && (
+                                    <p className="text-[10px] text-slate-400 truncate leading-tight">{l.paroisseName}</p>
+                                  )}
+                                </div>
+                              </li>
+                            );
+                          })
+                        )}
+                      </ul>
+                    </div>
+                  );
+                })()}
+              </div>
             )}
           </div>
         ) : tab === "infos" ? (
@@ -737,58 +910,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
           </div>
         ) : (
           <div className="space-y-6">
-            {(isManager || isVicarial) ? (
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
-                <h2 className="font-bold text-slate-900 flex items-center gap-2 mb-3">
-                  <Users className="w-4 h-4" /> Participation par paroisse
-                </h2>
-                {statsLoading ? (
-                  <div className="flex items-center gap-3 text-slate-600">
-                    <Loader2 className="w-5 h-5 animate-spin text-amber-900" />
-                    Chargement des statistiques…
-                  </div>
-                ) : stats ? (
-                  <>
-                    <p className="text-sm text-slate-600 mb-3">
-                      <span className="font-semibold text-amber-900">{stats.totalParticipants}</span> participant(s) sur{" "}
-                      <span className="font-semibold">{stats.totalLecteurs}</span> lecteur(s) ({participationRate}%).
-                    </p>
-                    <div className="rounded-2xl border border-slate-100 overflow-hidden">
-                      <table className="w-full text-sm">
-                        <thead className="bg-slate-50 text-left">
-                          <tr>
-                            <th className="p-3 font-semibold text-slate-700">Paroisse</th>
-                            {isManager ? <th className="p-3 font-semibold text-slate-700">Vicariat</th> : null}
-                            <th className="p-3 font-semibold text-slate-700 text-right">Participants</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {stats.byParoisse.length === 0 ? (
-                            <tr>
-                              <td colSpan={isManager ? 3 : 2} className="p-4 text-slate-500 text-center">
-                                Aucune participation enregistrée
-                              </td>
-                            </tr>
-                          ) : (
-                            stats.byParoisse.map((row) => (
-                              <tr key={row.paroisseId} className="hover:bg-amber-50/40">
-                                <td className="p-3">{row.paroisseName}</td>
-                                {isManager ? <td className="p-3 text-slate-600">{row.vicariatName ?? "—"}</td> : null}
-                                <td className="p-3 text-right font-semibold text-amber-900">{row.count}</td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-sm text-slate-500">Statistiques indisponibles.</p>
-                )}
-              </div>
-            ) : null}
-
-            {isParoissial ? (
+            {canSeeParticipants ? (
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
                   <h2 className="font-bold text-slate-900 flex items-center gap-2">
@@ -801,7 +923,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                       variant="outline"
                       className="rounded-xl"
                       onClick={downloadParticipantsExcel}
-                      disabled={!participants.length || participantsLoading}
+                      disabled={!filteredParticipants.length || participantsLoading}
                     >
                       <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel
                     </Button>
@@ -811,25 +933,79 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                       variant="outline"
                       className="rounded-xl"
                       onClick={() => void downloadParticipantsPdf()}
-                      disabled={!participants.length || participantsLoading}
+                      disabled={!filteredParticipants.length || participantsLoading}
                     >
                       <FileText className="w-4 h-4 mr-1" /> PDF
                     </Button>
                   </div>
                 </div>
+                {isManager && participants.length > 0 ? (
+                  <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div>
+                      <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-400">Vicariat</p>
+                      <Select
+                        value={selectedVicariat}
+                        onValueChange={(value) => {
+                          setSelectedVicariat(value ?? PARTICIPANT_FILTER_ALL);
+                          setSelectedParoisse(PARTICIPANT_FILTER_ALL);
+                        }}
+                      >
+                        <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 justify-between">
+                          <SelectValue>{selectedVicariat === PARTICIPANT_FILTER_ALL ? "Tous les vicariats" : selectedVicariat}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={PARTICIPANT_FILTER_ALL}>Tous les vicariats</SelectItem>
+                          {vicariatOptions.map((vicariat) => (
+                            <SelectItem key={vicariat} value={vicariat}>
+                              {vicariat}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-400">Paroisse</p>
+                      <Select value={selectedParoisse} onValueChange={(value) => setSelectedParoisse(value ?? PARTICIPANT_FILTER_ALL)}>
+                        <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 justify-between">
+                          <SelectValue>{selectedParoisse === PARTICIPANT_FILTER_ALL ? "Toutes les paroisses" : selectedParoisse}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={PARTICIPANT_FILTER_ALL}>Toutes les paroisses</SelectItem>
+                          {paroisseOptions.map((paroisse) => (
+                            <SelectItem key={paroisse} value={paroisse}>
+                              {paroisse}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : null}
                 {participantsLoading ? (
                   <Loader2 className="w-6 h-6 animate-spin text-amber-900" />
                 ) : participants.length === 0 ? (
                   <p className="text-sm text-slate-500">
-                    Aucune participation payée pour votre paroisse sur cette activité pour le moment.
+                    {isManager
+                      ? "Aucune participation payée sur cette activité pour le moment."
+                      : "Aucune participation payée pour votre paroisse sur cette activité pour le moment."}
                   </p>
+                ) : filteredParticipants.length === 0 ? (
+                  <p className="text-sm text-slate-500">Aucun participant ne correspond aux filtres sélectionnés.</p>
                 ) : (
                   <ul className="max-h-80 overflow-y-auto space-y-2 text-sm">
-                    {participants.map((p) => (
-                      <li key={p.lecteur._id} className="flex justify-between gap-2 py-2 border-b border-slate-50">
-                        <span className="font-medium text-slate-900">
-                          {p.lecteur.nom} {p.lecteur.prenoms}
-                        </span>
+                    {filteredParticipants.map((p) => (
+                      <li key={p.lecteur._id} className="flex items-start justify-between gap-3 py-2 border-b border-slate-50">
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-900">
+                            {p.lecteur.nom} {p.lecteur.prenoms}
+                          </p>
+                          {isManager && (p.paroisseName || p.vicariatName) ? (
+                            <p className="text-xs text-slate-500">
+                              {p.paroisseName ?? "—"}
+                              {p.vicariatName ? ` • ${p.vicariatName}` : ""}
+                            </p>
+                          ) : null}
+                        </div>
                         <span className="text-slate-500 shrink-0">{p.lecteur.uniqueId}</span>
                       </li>
                     ))}

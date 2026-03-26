@@ -50,6 +50,11 @@ export async function PUT(
     const body = await request.json();
     const validated = updateActiviteSchema.parse(body);
     const service = new ActiviteService();
+    const existing = await service.getActivite(id);
+    if (!existing) return NextResponse.json({ error: "Activité introuvable" }, { status: 404 });
+    if (existing.terminee) {
+      return NextResponse.json({ error: "Une activité terminée ne peut plus être modifiée" }, { status: 403 });
+    }
     const result = await service.updateActivite(id, validated);
     if (!result) return NextResponse.json({ error: "Activité introuvable" }, { status: 404 });
     return NextResponse.json(result);

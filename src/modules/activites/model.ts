@@ -66,7 +66,7 @@ export const ActiviteParticipation: Model<IActiviteParticipation> =
   mongoose.models.ActiviteParticipation ||
   mongoose.model<IActiviteParticipation>("ActiviteParticipation", participationSchema);
 
-export type ActivitePaiementStatus = "pending" | "approved" | "declined" | "canceled" | "failed";
+export type ActivitePaiementStatus = "pending" | "approved" | "declined" | "canceled" | "failed" | "non_finalized";
 
 export interface IActivitePaiement extends Document {
   activiteId: mongoose.Types.ObjectId;
@@ -100,7 +100,7 @@ const activitePaiementSchema = new Schema<IActivitePaiement>(
     montantTotal: { type: Number, required: true, min: 0 },
     status: {
       type: String,
-      enum: ["pending", "approved", "declined", "canceled", "failed"],
+      enum: ["pending", "approved", "declined", "canceled", "failed", "non_finalized"],
       default: "pending",
     },
     fedapayTransactionId: { type: Number, default: null },

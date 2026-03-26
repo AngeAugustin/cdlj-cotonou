@@ -123,7 +123,7 @@ export class ActiviteRepository {
     montantUnitaire: number;
     nombreLecteurs: number;
     montantTotal: number;
-    status: "pending" | "approved" | "declined" | "canceled" | "failed";
+    status: "pending" | "approved" | "declined" | "canceled" | "failed" | "non_finalized";
     callbackUrl: string;
     metadata: Record<string, unknown>;
   }) {
@@ -135,7 +135,7 @@ export class ActiviteRepository {
   async updatePaiementById(
     id: string,
     patch: Partial<{
-      status: "pending" | "approved" | "declined" | "canceled" | "failed";
+      status: "pending" | "approved" | "declined" | "canceled" | "failed" | "non_finalized";
       fedapayTransactionId: number | null;
       fedapayReference: string | null;
       fedapayCustomerId: number | null;
@@ -250,6 +250,24 @@ export class ActiviteRepository {
         },
       },
       { $unwind: { path: "$grade", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "paroisses",
+          localField: "paroisseId",
+          foreignField: "_id",
+          as: "paroisse",
+        },
+      },
+      { $unwind: { path: "$paroisse", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "vicariats",
+          localField: "vicariatId",
+          foreignField: "_id",
+          as: "vicariat",
+        },
+      },
+      { $unwind: { path: "$vicariat", preserveNullAndEmptyArrays: true } },
       { $sort: { "lecteur.nom": 1, "lecteur.prenoms": 1 } },
       {
         $project: {
@@ -261,6 +279,8 @@ export class ActiviteRepository {
           "lecteur.dateNaissance": 1,
           "grade.name": 1,
           "grade.abbreviation": 1,
+          paroisseName: "$paroisse.name",
+          vicariatName: "$vicariat.name",
         },
       },
     ]);

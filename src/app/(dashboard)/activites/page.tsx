@@ -343,17 +343,19 @@ export default function ActivitesPage() {
           </Link>
           {isManager && (
             <>
-              <Button
-                type="button"
-                size="icon-sm"
-                variant="outline"
-                className="rounded-xl"
-                title="Modifier"
-                aria-label="Modifier l’activité"
-                onClick={() => openEdit(a)}
-              >
-                <Pencil className="size-3.5" />
-              </Button>
+              {!a.terminee && (
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="outline"
+                  className="rounded-xl"
+                  title="Modifier"
+                  aria-label="Modifier l’activité"
+                  onClick={() => openEdit(a)}
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+              )}
               {isSuperAdmin && (
                 <Button
                   type="button"
