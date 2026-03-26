@@ -384,8 +384,7 @@ export default function VerifierPresencePage() {
                 <QrCode className="h-6 w-6" />
               </div>
               <div>
-                <h2 className="text-lg font-extrabold text-slate-900">Page publique Vérifier</h2>
-                <p className="text-sm text-slate-500">Cette page peut être utilisée sans connexion.</p>
+                <h2 className="text-lg font-extrabold text-slate-900">Scanner pour vérifier</h2>
               </div>
             </div>
 
@@ -471,6 +470,57 @@ export default function VerifierPresencePage() {
               </div>
             </div>
 
+            {feedback ? (
+              <div
+                className={`mt-4 rounded-[1.75rem] border px-5 py-4 ${
+                  feedback.type === "success"
+                    ? "border-emerald-200 bg-emerald-50"
+                    : feedback.type === "info"
+                      ? "border-amber-200 bg-amber-50"
+                      : "border-red-200 bg-red-50"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  {feedback.type === "success" ? (
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                  ) : (
+                    <AlertCircle
+                      className={`mt-0.5 h-5 w-5 shrink-0 ${
+                        feedback.type === "info" ? "text-amber-700" : "text-red-600"
+                      }`}
+                    />
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-bold text-slate-900">{feedback.title}</p>
+                    <p className="mt-1 text-sm text-slate-700">{feedback.message}</p>
+                  </div>
+                </div>
+
+                {feedback.participant ? (
+                  <div className="mt-4 rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-sm text-slate-700">
+                    <p className="font-bold text-slate-900">
+                      {feedback.participant.lecteur.nom} {feedback.participant.lecteur.prenoms}
+                    </p>
+                    <p className="mt-1 font-mono text-xs text-slate-500">{feedback.participant.lecteur.uniqueId}</p>
+                    <p className="mt-2">
+                      {feedback.participant.grade?.name ||
+                        feedback.participant.grade?.abbreviation ||
+                        "Grade non renseigné"}
+                    </p>
+                    <p className="mt-1">
+                      {feedback.participant.paroisseName || "Paroisse inconnue"}
+                      {feedback.participant.vicariatName ? ` · ${feedback.participant.vicariatName}` : ""}
+                    </p>
+                    {feedback.validatedAt ? (
+                      <p className="mt-2 text-xs font-medium text-slate-500">
+                        Présence validée le {formatDateTime(feedback.validatedAt)}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -504,10 +554,6 @@ export default function VerifierPresencePage() {
                 </Button>
               </form>
 
-              <p className="mt-3 text-xs text-slate-500">
-                En développement, utilisez `https://localhost:3000/verifier`. Le script `npm run dev` lance maintenant
-                automatiquement l’application en HTTPS.
-              </p>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-3">
@@ -539,64 +585,6 @@ export default function VerifierPresencePage() {
                 <li>3. Présenter le QR code de la carte du lecteur devant la caméra.</li>
                 <li>4. Vérifier les informations affichées puis cliquer sur OK pour confirmer la présence.</li>
               </ol>
-            </div>
-
-            <div className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-xl shadow-slate-200/60">
-              <h2 className="text-lg font-extrabold text-slate-900">Dernier résultat</h2>
-              {!feedback ? (
-                <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
-                  Aucun lecteur scanné pour le moment.
-                </div>
-              ) : (
-                <div
-                  className={`mt-4 rounded-2xl border px-5 py-4 ${
-                    feedback.type === "success"
-                      ? "border-emerald-200 bg-emerald-50"
-                      : feedback.type === "info"
-                        ? "border-amber-200 bg-amber-50"
-                        : "border-red-200 bg-red-50"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    {feedback.type === "success" ? (
-                      <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-                    ) : (
-                      <AlertCircle
-                        className={`mt-0.5 h-5 w-5 shrink-0 ${
-                          feedback.type === "info" ? "text-amber-700" : "text-red-600"
-                        }`}
-                      />
-                    )}
-                    <div className="min-w-0">
-                      <p className="font-bold text-slate-900">{feedback.title}</p>
-                      <p className="mt-1 text-sm text-slate-700">{feedback.message}</p>
-                    </div>
-                  </div>
-
-                  {feedback.participant ? (
-                    <div className="mt-4 rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-sm text-slate-700">
-                      <p className="font-bold text-slate-900">
-                        {feedback.participant.lecteur.nom} {feedback.participant.lecteur.prenoms}
-                      </p>
-                      <p className="mt-1 font-mono text-xs text-slate-500">{feedback.participant.lecteur.uniqueId}</p>
-                      <p className="mt-2">
-                        {feedback.participant.grade?.name ||
-                          feedback.participant.grade?.abbreviation ||
-                          "Grade non renseigné"}
-                      </p>
-                      <p className="mt-1">
-                        {feedback.participant.paroisseName || "Paroisse inconnue"}
-                        {feedback.participant.vicariatName ? ` · ${feedback.participant.vicariatName}` : ""}
-                      </p>
-                      {feedback.validatedAt ? (
-                        <p className="mt-2 text-xs font-medium text-slate-500">
-                          Présence validée le {formatDateTime(feedback.validatedAt)}
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              )}
             </div>
           </div>
         </div>
