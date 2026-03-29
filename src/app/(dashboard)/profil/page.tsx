@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Loader2,
-  User,
-  Mail,
   Phone,
   Hash,
   Shield,
@@ -196,9 +194,6 @@ export default function ProfilPage() {
         </div>
 
         <div className="px-8 py-2">
-          <InfoRow icon={User} label="Prénom" value={profile.firstName} />
-          <InfoRow icon={User} label="Nom" value={profile.lastName} />
-          <InfoRow icon={Mail} label="Adresse e-mail" value={profile.email} />
           <InfoRow icon={Phone} label="Téléphone" value={profile.phone?.trim() ? profile.phone : "—"} />
           <InfoRow icon={Hash} label="Numéro utilisateur" value={profile.numero ?? "—"} />
           <InfoRow icon={Shield} label="Rôles" value={rolesText} />

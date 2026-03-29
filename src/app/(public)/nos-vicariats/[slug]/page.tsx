@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, MapPin, Church, Users, Mail,
-  Phone, Calendar, ChevronRight, Camera
+  Phone, Calendar, ChevronRight
 } from "lucide-react";
 import { VICARIATS, VICARIATS_DETAILS } from "@/lib/vicariats-data";
 
@@ -238,35 +238,6 @@ export default async function VicariatDetailPage({
                 Ouvrir dans OpenStreetMap
               </a>
             </div>
-          </div>
-        </section>
-
-        {/* ── ÉQUIPE VICARIALE ────────────────────────────────── */}
-        <section>
-          <div className="flex items-center gap-3 mb-6">
-            <span className={`w-1 h-6 rounded-full bg-gradient-to-b ${vicariat.color}`} />
-            <h2 className="text-2xl font-extrabold text-slate-900">Équipe Vicariale</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
-            {details.equipe.map((m, i) => (
-              <div
-                key={i}
-                className="group bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center"
-              >
-                <div className="relative mb-4">
-                  <div
-                    className={`w-16 h-16 rounded-full bg-gradient-to-br ${m.gradient} flex items-center justify-center text-white font-black text-lg ring-2 ring-white shadow-md group-hover:scale-105 transition-transform duration-300`}
-                  >
-                    {m.initials}
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white border border-slate-100 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera className="w-2.5 h-2.5 text-slate-400" />
-                  </div>
-                </div>
-                <h3 className="text-slate-900 font-extrabold text-sm leading-tight">{m.name}</h3>
-                <span className="text-amber-700 text-xs font-bold uppercase tracking-wider mt-1">{m.role}</span>
-              </div>
-            ))}
           </div>
         </section>
 

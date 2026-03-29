@@ -4,6 +4,10 @@ import {
   buildPasswordResetEmailText,
 } from "@/lib/email/passwordResetTemplate";
 import { buildActivitePaymentEmailHtml } from "@/lib/email/activitePaymentTemplate";
+import {
+  buildUserWelcomeEmailHtml,
+  buildUserWelcomeEmailText,
+} from "@/lib/email/userWelcomeTemplate";
 
 function getClient(): Resend {
   const key = process.env.RESEND_API_KEY;
@@ -62,5 +66,35 @@ export async function sendPasswordResetCodeEmail(to: string, code: string): Prom
   });
   if (error) {
     throw new Error(error.message ?? "Échec d'envoi de l'e-mail");
+  }
+}
+
+export async function sendUserWelcomeEmail(
+  to: string,
+  params: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    numero?: string;
+    roles: string[];
+    parishName: string;
+    vicariatName: string;
+    vicariatAbbreviation?: string;
+    temporaryPassword: string;
+    loginUrl: string;
+  }
+): Promise<void> {
+  const resend = getClient();
+  const { error } = await resend.emails.send({
+    from: fromHeader(),
+    to: [to],
+    subject: "Votre compte a été créé — Portail CDLJ",
+    html: buildUserWelcomeEmailHtml(params),
+    text: buildUserWelcomeEmailText(params),
+    tags: [{ name: "cdlj_email", value: "user-welcome" }],
+  });
+  if (error) {
+    throw new Error(error.message ?? "Échec d'envoi de l'e-mail de création");
   }
 }

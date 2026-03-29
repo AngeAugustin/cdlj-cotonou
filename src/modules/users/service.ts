@@ -1,8 +1,12 @@
 import mongoose from "mongoose";
+import { randomInt } from "crypto";
 import bcryptjs from "bcryptjs";
 import { z } from "zod";
 import connectToDatabase from "@/lib/mongoose";
 import { Paroisse } from "@/modules/paroisses/model";
+import { Vicariat } from "@/modules/vicariats/model";
+import { getAppBaseUrl } from "@/lib/appBaseUrl";
+import { sendUserWelcomeEmail } from "@/lib/resendMail";
 import { User } from "./model";
 import { UserRepository } from "./repository";
 
@@ -14,7 +18,6 @@ export const createUserSchema = z.object({
   lastName: z.string().min(1, "Le nom est requis"),
   email: z.string().email("Email invalide"),
   phone: z.string().optional(),
-  password: z.string().min(8, "Le mot de passe doit faire au moins 8 caractères"),
   roles: z.array(ROLE_ENUM).min(1, "Au moins un rôle").max(3, "Maximum 3 rôles"),
   paroisseId: z.string().min(1, "La paroisse est obligatoire pour tout utilisateur"),
 });
@@ -41,12 +44,31 @@ export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
 async function ensureParishBelongsAndGetVicariat(paroisseId: string) {
   await connectToDatabase();
-  const p = await Paroisse.findById(paroisseId).select("vicariatId").lean();
+  const p = await Paroisse.findById(paroisseId).select("name vicariatId").lean();
   if (!p) throw new Error("Paroisse introuvable");
+  const v = await Vicariat.findById(p.vicariatId).select("name abbreviation").lean();
+  if (!v) throw new Error("Vicariat introuvable");
   return {
     parishId: new mongoose.Types.ObjectId(paroisseId),
     vicariatId: p.vicariatId as mongoose.Types.ObjectId,
+    parishName: p.name,
+    vicariatName: v.name,
+    vicariatAbbreviation: v.abbreviation,
   };
+}
+
+function generateTemporaryPassword(length = 8): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let out = "";
+  for (let i = 0; i < length; i++) {
+    out += alphabet[randomInt(alphabet.length)];
+  }
+  return out;
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return "échec inattendu lors de l'envoi de l'e-mail";
 }
 
 async function generateUniqueNumero(): Promise<string> {
@@ -79,9 +101,10 @@ export class UserService {
     ]);
     if (existing) throw new Error("Cet email est déjà utilisé");
 
-    const passwordHash = await bcryptjs.hash(data.password, 10);
+    const temporaryPassword = generateTemporaryPassword();
+    const passwordHash = await bcryptjs.hash(temporaryPassword, 10);
 
-    return this.repo.create({
+    const created = await this.repo.create({
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
@@ -91,6 +114,36 @@ export class UserService {
       parishId: pv.parishId,
       vicariatId: pv.vicariatId,
     });
+
+    try {
+      await sendUserWelcomeEmail(data.email, {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone?.trim() || undefined,
+        numero: created?.numero ?? undefined,
+        roles: data.roles,
+        parishName: pv.parishName,
+        vicariatName: pv.vicariatName,
+        vicariatAbbreviation: pv.vicariatAbbreviation,
+        temporaryPassword,
+        loginUrl: `${getAppBaseUrl()}/auth/login`,
+      });
+    } catch (error) {
+      const createdId = created?._id ? String(created._id) : "";
+      if (createdId) {
+        try {
+          await this.repo.delete(createdId);
+        } catch (rollbackError) {
+          throw new Error(
+            `Compte non créé : ${errorMessage(error)}. L'annulation automatique du compte a échoué (${errorMessage(rollbackError)}).`
+          );
+        }
+      }
+      throw new Error(`Compte non créé : ${errorMessage(error)}.`);
+    }
+
+    return created;
   }
 
   async updateUser(id: string, data: UpdateUserInput) {

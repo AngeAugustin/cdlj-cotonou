@@ -96,7 +96,7 @@ function vicariatLabel(u: ApiUser, vicariats: VicariatOpt[]): string {
 export default function UtilisateursPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const roles: string[] = (session?.user as any)?.roles ?? [];
+  const roles = (session?.user as { roles?: string[] } | undefined)?.roles ?? [];
   const isSuperAdmin = roles.includes("SUPERADMIN");
 
   const [usersList, setUsersList] = useState<ApiUser[]>([]);
@@ -161,11 +161,6 @@ export default function UtilisateursPage() {
     () => [...paroisses].sort((a, b) => a.name.localeCompare(b.name, "fr")),
     [paroisses]
   );
-  const sortedVicariats = useMemo(
-    () => [...vicariats].sort((a, b) => a.name.localeCompare(b.name, "fr")),
-    [vicariats]
-  );
-
   const selectedParoisse = useMemo(
     () => sortedParoisses.find((p) => p._id === paroisseId),
     [sortedParoisses, paroisseId]
@@ -220,7 +215,7 @@ export default function UtilisateursPage() {
     setPhone(user.phone ?? "");
     setPassword("");
     setSelectedRoles([...user.roles]);
-    setParoisseId(refId(user.parishId as any));
+    setParoisseId(refId(user.parishId));
     setIsModalOpen(true);
   };
 
@@ -234,11 +229,7 @@ export default function UtilisateursPage() {
       showToast("Nom, prénom, email et au moins un rôle sont requis.", "error");
       return;
     }
-    if (!editUserId && !password.trim()) {
-      showToast("Mot de passe requis pour la création (min. 8 caractères).", "error");
-      return;
-    }
-    if (!editUserId && password.length < 8) {
+    if (editUserId && password.trim() && password.length < 8) {
       showToast("Le mot de passe doit faire au moins 8 caractères.", "error");
       return;
     }
@@ -256,9 +247,7 @@ export default function UtilisateursPage() {
       paroisseId: paroisseId.trim(),
     };
 
-    if (!editUserId) {
-      body.password = password;
-    } else if (password.trim()) {
+    if (editUserId && password.trim()) {
       body.password = password;
     }
 
@@ -276,7 +265,7 @@ export default function UtilisateursPage() {
         showToast(err.error ?? "Erreur", "error");
         return;
       }
-      showToast(editUserId ? "Utilisateur mis à jour" : "Utilisateur créé");
+      showToast(editUserId ? "Utilisateur mis à jour" : "Utilisateur créé et email envoyé");
       setIsModalOpen(false);
       loadAll();
     } catch {
@@ -338,7 +327,8 @@ export default function UtilisateursPage() {
             <span className="text-slate-800 font-semibold">
               Chaque utilisateur doit être rattaché à une paroisse
             </span>{" "}
-            : le vicariat est enregistré automatiquement à partir de cette paroisse, quel que soit le ou les rôles.
+            : le vicariat est enregistré automatiquement à partir de cette paroisse, quel que soit le ou les rôles. À la
+            création, un mot de passe temporaire est généré puis envoyé par e-mail.
           </p>
         </div>
         <Button
@@ -370,7 +360,8 @@ export default function UtilisateursPage() {
             <Shield className="w-16 h-16 text-slate-200 mb-4" />
             <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun utilisateur</h3>
             <p className="text-slate-500 max-w-md mb-6">
-              Créez des comptes avec nom, prénoms, numéro (généré automatiquement), téléphone, email et jusqu’à trois rôles.
+              Créez des comptes avec nom, prénoms, numéro, téléphone, email et jusqu’à trois rôles. Le mot de passe
+              temporaire est généré automatiquement puis envoyé par e-mail.
             </p>
             <Button
               onClick={openModalForCreate}
@@ -577,17 +568,24 @@ export default function UtilisateursPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>{editUserId ? "Nouveau mot de passe (optionnel)" : "Mot de passe"}</Label>
-                <Input
-                  type="password"
-                  autoComplete={editUserId ? "new-password" : "new-password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 rounded-xl"
-                  placeholder={editUserId ? "Laisser vide pour conserver" : "Minimum 8 caractères"}
-                />
-              </div>
+              {editUserId ? (
+                <div className="space-y-2">
+                  <Label>Nouveau mot de passe (optionnel)</Label>
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 rounded-xl"
+                    placeholder="Laisser vide pour conserver"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-slate-700">
+                  Un mot de passe temporaire de <span className="font-bold text-slate-900">8 caractères alphanumériques</span>{" "}
+                  sera généré automatiquement et envoyé à l’adresse e-mail renseignée après la création du compte.
+                </div>
+              )}
 
               <div className="space-y-3 pt-2 border-t border-slate-100">
                 <div>
