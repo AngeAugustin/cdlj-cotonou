@@ -17,10 +17,11 @@ import { useState } from "react";
 interface SidebarUserMenuProps {
   name: string;
   initial: string;
+  subtitle?: string;
   collapsed?: boolean;
 }
 
-export default function SidebarUserMenu({ name, initial, collapsed = false }: SidebarUserMenuProps) {
+export default function SidebarUserMenu({ name, initial, subtitle, collapsed = false }: SidebarUserMenuProps) {
   const [open, setOpen] = useState(false);
 
   const avatar = (
@@ -54,18 +55,30 @@ export default function SidebarUserMenu({ name, initial, collapsed = false }: Si
         </div>
       ) : (
         /* Mode étendu : carte complète */
-        <div
-          className="bg-amber-900/40 border border-amber-800/50 rounded-xl p-2 flex items-center justify-between cursor-pointer hover:bg-amber-900/60 transition-colors"
-          onClick={() => setOpen(true)}
-        >
-          <div className="flex items-center gap-2">
-            {avatar}
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-bold text-white truncate max-w-[100px]">{name}</span>
-              <span className="text-xs text-amber-500">Déconnexion</span>
+        <div className="bg-amber-900/40 border border-amber-800/50 rounded-xl p-2.5 space-y-2">
+          <div
+            className="flex items-center justify-between cursor-pointer hover:bg-amber-900/40 rounded-lg px-1 py-1 transition-colors"
+            onClick={() => setOpen(true)}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              {avatar}
+              <div className="flex flex-col leading-tight min-w-0">
+                <span className="text-sm font-bold text-white truncate max-w-[140px]">{name}</span>
+                <span className="text-xs text-amber-300/90 truncate max-w-[140px]">
+                  {subtitle || "Sans paroisse"}
+                </span>
+              </div>
             </div>
+            <ChevronDown className="w-4 h-4 text-slate-300 shrink-0" />
           </div>
-          <ChevronDown className="w-4 h-4 text-slate-500" />
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-amber-700/60 bg-amber-950/50 px-3 py-2 text-xs font-bold text-amber-100 hover:bg-amber-900/70 transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Déconnexion
+          </button>
         </div>
       )}
 

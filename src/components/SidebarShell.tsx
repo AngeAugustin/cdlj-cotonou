@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   BarChart3, Users, Building2, Map, Shield,
   Activity, FileText, Wallet, Award, GraduationCap,
-  PanelLeftClose, PanelLeftOpen, Bell, Search, Settings, Newspaper,
+  PanelLeftClose, PanelLeftOpen, Bell, Search, Newspaper, Menu, X,
 } from "lucide-react";
 import SidebarUserMenu from "@/components/SidebarUserMenu";
 import LiveClock from "@/components/LiveClock";
@@ -35,12 +35,13 @@ const ALL_NAV = [
 ];
 
 interface SidebarShellProps {
-  user: { name?: string | null; roles: string[] };
+  user: { name?: string | null; roles: string[]; paroisseName?: string | null };
   children: React.ReactNode;
 }
 
 export default function SidebarShell({ user, children }: SidebarShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const normalizedUserRoles = (user.roles ?? []).map((role) => role.trim().toUpperCase());
   const hasVicarialRole = normalizedUserRoles.includes("VICARIAL");
 
@@ -54,6 +55,76 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
 
   return (
     <div className="flex min-h-screen bg-slate-50/50">
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-[2px] lg:hidden"
+          aria-label="Fermer le menu"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[86vw] flex-col
+                    text-slate-300 min-h-screen border-r border-white/5 shadow-2xl
+                    bg-gradient-to-b from-amber-950/95 via-amber-900/80 to-slate-900/95 backdrop-blur-2xl
+                    transition-transform duration-300 ease-out lg:hidden
+                    ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-800/10 via-transparent to-slate-900/30 pointer-events-none" />
+        <div className="absolute top-[-20%] right-[-20%] w-80 h-80 bg-amber-500/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-72 h-72 bg-slate-800/40 rounded-full blur-[100px] pointer-events-none" />
+
+        <div className="relative z-10 flex h-full flex-col overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-white/10">
+            <Link href="/dashboard" className="flex items-center gap-3 min-w-0" onClick={() => setMobileMenuOpen(false)}>
+              <div className="rounded-xl w-10 h-10 flex items-center justify-center overflow-hidden shrink-0">
+                <img src="https://i.postimg.cc/BnnDpTc2/CDLJ.png" alt="Logo CDLJ" className="w-full h-full object-contain" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-extrabold text-white truncate">Portail CDLJ</p>
+                <p className="text-[10px] font-medium text-amber-500 uppercase tracking-widest">
+                  {user.roles[0] || "Paroissial"}
+                </p>
+              </div>
+            </Link>
+            <button
+              type="button"
+              className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+              aria-label="Fermer le menu"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-24 space-y-0.5 custom-scrollbar">
+            <p className="px-4 text-xs font-bold text-amber-200/40 uppercase tracking-widest mb-3 mt-4">
+              Menu Principal
+            </p>
+            {navigation.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 hover:bg-amber-900/50 hover:text-white"
+              >
+                <item.icon className="w-5 h-5 text-amber-600 shrink-0" />
+                <span className="truncate">{item.name}</span>
+              </Link>
+            ))}
+          </div>
+
+          <div className="sticky bottom-0 p-2 border-t border-white/10 bg-slate-950/50 backdrop-blur-md">
+            <SidebarUserMenu
+              name={user.name || "Utilisateur"}
+              initial={initialsFromDisplayName(user.name)}
+              subtitle={user.paroisseName || undefined}
+              collapsed={false}
+            />
+          </div>
+        </div>
+      </aside>
 
       {/* ── SIDEBAR ─────────────────────────────────────────────── */}
       <aside
@@ -147,6 +218,7 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
             <SidebarUserMenu
               name={user.name || "Utilisateur"}
               initial={initialsFromDisplayName(user.name)}
+              subtitle={user.paroisseName || undefined}
               collapsed={collapsed}
             />
           </div>
@@ -157,18 +229,26 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
       <main className="flex-1 flex flex-col min-h-screen relative overflow-hidden min-w-0">
 
         {/* Top Navbar */}
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60
-                           flex items-center justify-between px-8 lg:px-12
+        <header className="min-h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60
+                           flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 lg:px-12 py-3
                            sticky top-0 z-30">
-          <div className="flex items-center gap-6">
-            <div className="relative group hidden sm:block">
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+            <button
+              type="button"
+              className="p-2 text-slate-500 hover:bg-amber-50 hover:text-amber-900 rounded-full transition-colors lg:hidden"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Ouvrir le menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="relative group flex-1 min-w-0 max-w-xl">
               <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-amber-900 transition-colors" />
               <input
                 type="text"
                 placeholder="Recherche rapide..."
                 className="pl-11 pr-4 py-2.5 bg-slate-100 hover:bg-slate-200/50 focus:bg-white
                            border-transparent focus:border-amber-900/20 focus:ring-amber-900/20
-                           rounded-full text-sm font-medium transition-all w-64 focus:w-80 outline-none"
+                           rounded-full text-sm font-medium transition-all w-full outline-none"
               />
             </div>
           </div>
@@ -193,9 +273,6 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
             <button className="relative p-2 text-slate-500 hover:bg-amber-50 hover:text-amber-900 rounded-full transition-colors group">
               <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-            </button>
-            <button className="p-2 text-slate-500 hover:bg-amber-50 hover:text-amber-900 rounded-full transition-colors lg:hidden">
-              <Settings className="w-5 h-5" />
             </button>
             <div className="hidden lg:flex items-center pl-5 border-l border-slate-200">
               <LiveClock />

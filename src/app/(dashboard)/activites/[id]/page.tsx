@@ -784,24 +784,28 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
           </div>
 
           <div className="relative z-10 px-6 py-8 sm:px-10 sm:py-10">
-            <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-8 flex items-center justify-between gap-3">
               <Button
                 variant="outline"
-                className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200/80 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-500 shadow-sm transition-all hover:bg-white hover:text-slate-800 group"
+                title="Retour à la liste"
+                aria-label="Retour à la liste"
+                className="inline-flex h-11 w-11 lg:w-fit items-center justify-center gap-2 rounded-full border border-slate-200/80 bg-white/70 px-0 lg:px-4 py-2 text-sm font-semibold text-slate-500 shadow-sm transition-all hover:bg-white hover:text-slate-800 group"
                 onClick={() => router.push("/activites")}
               >
-                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
-                Retour à la liste
+                <ArrowLeft className="h-4 w-4 lg:transition-transform lg:group-hover:-translate-x-0.5" />
+                <span className="hidden lg:inline">Retour à la liste</span>
               </Button>
 
               {isManager && !activite.terminee ? (
                 <Button
                   type="button"
-                  className="rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+                  title="Marquer comme terminée"
+                  aria-label="Marquer comme terminée"
+                  className="h-11 w-11 lg:w-fit rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-0 lg:px-4"
                   onClick={() => setConfirmTermineeOpen(true)}
                 >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Marquer comme terminée
+                  <CheckCircle className="w-4 h-4 lg:mr-2" />
+                  <span className="hidden lg:inline">Marquer comme terminée</span>
                 </Button>
               ) : null}
             </div>
@@ -1076,7 +1080,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                 </p>
               </div>
             ) : (
-              <div className="flex gap-6 items-start">
+              <div className="flex flex-col gap-4 lg:flex-row lg:gap-6 lg:items-start">
                 {/* ── Tickets list — 60% (pleine largeur si pas de panneau lecteurs) ─────────────────────────── */}
                 <ul className={`space-y-5 ${tab === "anomalies" ? "w-full" : "flex-[6]"}`}>
                 {listedPaiements.map((p) => {
@@ -1113,7 +1117,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                       {/* ── Ticket card ─────────────────────────────────── */}
                       <div
                         onClick={isSelectable ? () => setSelectedPaiementId(isSelected ? null : p._id) : undefined}
-                        className={`relative flex rounded-2xl border shadow-md overflow-visible transition-all duration-200 ${
+                        className={`relative flex flex-col lg:flex-row rounded-2xl border shadow-md overflow-hidden transition-all duration-200 ${
                           isSelected
                             ? "border-amber-300 shadow-amber-200/60 ring-2 ring-amber-200 bg-white"
                             : isSelectable
@@ -1122,21 +1126,21 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                         }`}
                       >
 
-                        {/* Status accent bar — left edge */}
-                        <div className={`w-1 rounded-l-2xl shrink-0 ${s.bar}`} />
+                        {/* Status accent bar */}
+                        <div className={`h-1 w-full lg:h-auto lg:w-1 lg:rounded-l-2xl shrink-0 ${s.bar}`} />
 
-                        <div className="flex flex-1 min-w-0 overflow-hidden rounded-r-2xl">
+                        <div className="flex flex-col lg:flex-row flex-1 min-w-0 overflow-hidden lg:rounded-r-2xl">
 
                           {/* ── Main body ──────────────────────────────────── */}
-                          <div className="flex-1 min-w-0 px-5 py-4 space-y-3">
+                          <div className="flex-1 min-w-0 px-4 py-4 sm:px-5 space-y-3">
 
                             {/* Row 1: badge + date */}
-                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold leading-none border ${s.badge}`}>
                                 <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
                                 {s.label}
                               </span>
-                              <span className="text-[11px] text-slate-400 font-medium shrink-0">
+                              <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium shrink-0">
                                 {p.createdAt ? format(new Date(p.createdAt), "d MMM yyyy · HH:mm", { locale: fr }) : "—"}
                               </span>
                             </div>
@@ -1180,17 +1184,17 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                             )}
 
                             {/* Row 3: formule montant */}
-                            <div className="flex flex-wrap items-stretch gap-2">
+                            <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-stretch">
                               <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-center">
                                 <p className="text-[8px] uppercase tracking-widest text-slate-400 font-bold mb-0.5">Unitaire</p>
                                 <p className="text-xs font-semibold text-slate-700 whitespace-nowrap">{formatMoney(p.montantUnitaire)}</p>
                               </div>
-                              <div className="flex items-center text-slate-300 font-light text-base select-none px-0.5">×</div>
+                              <div className="hidden sm:flex items-center text-slate-300 font-light text-base select-none px-0.5">×</div>
                               <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-center">
                                 <p className="text-[8px] uppercase tracking-widest text-slate-400 font-bold mb-0.5">Lecteurs</p>
                                 <p className="text-xs font-semibold text-slate-700">{p.nombreLecteurs}</p>
                               </div>
-                              <div className="flex items-center text-slate-300 font-light text-base select-none px-0.5">=</div>
+                              <div className="hidden sm:flex items-center text-slate-300 font-light text-base select-none px-0.5">=</div>
                               <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-2 text-center">
                                 <p className="text-[8px] uppercase tracking-widest text-amber-500 font-bold mb-0.5">Total</p>
                                 <p className="text-sm font-extrabold text-amber-900 whitespace-nowrap">{formatMoney(p.montantTotal)}</p>
@@ -1199,7 +1203,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                           </div>
 
                           {/* ── Ticket perforation ─────────────────────────── */}
-                          <div className="relative flex flex-col items-center self-stretch w-7 shrink-0">
+                          <div className="relative hidden lg:flex flex-col items-center self-stretch w-7 shrink-0">
                             {/* Top notch */}
                             <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[14px] h-[14px] rounded-full bg-slate-100 border border-slate-200 z-10" />
                             {/* Dashed line */}
@@ -1209,7 +1213,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                           </div>
 
                           {/* ── Stub — référence + lecteurs ────────────────── */}
-                          <div className="w-52 shrink-0 bg-slate-50/80 px-4 py-4 flex flex-col gap-3 justify-center">
+                          <div className="w-full lg:w-52 shrink-0 bg-slate-50/80 px-4 py-3 lg:py-4 flex flex-col sm:flex-row lg:flex-col gap-3 justify-center border-t border-slate-100 lg:border-t-0">
                             <div>
                               <p className="text-[8px] uppercase tracking-widest text-slate-400 font-bold mb-1.5">Réf. FedaPay</p>
                               {p.fedapayReference ? (
@@ -1219,7 +1223,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                               )}
                             </div>
                             {p.lecteurs && p.lecteurs.length > 0 && (
-                              <div>
+                              <div className="sm:min-w-[90px]">
                                 <p className="text-[8px] uppercase tracking-widest text-slate-400 font-bold mb-1">
                                   Lecteurs
                                 </p>
@@ -1262,7 +1266,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                     : null;
 
                   return (
-                    <div className="flex-[4] bg-white rounded-2xl border border-slate-100 shadow-md shadow-slate-200/30 overflow-hidden sticky top-4">
+                    <div className="lg:flex-[4] bg-white rounded-2xl border border-slate-100 shadow-md shadow-slate-200/30 overflow-hidden lg:sticky lg:top-4">
                       {/* Header */}
                       <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/70">
                         <div>

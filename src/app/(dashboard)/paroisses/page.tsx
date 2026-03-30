@@ -232,37 +232,47 @@ export default function ParoissesPage() {
     <div className="w-full space-y-8 relative">
 
       {/* ── Header ──────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            {isVicarial ? "Paroisses de mon Vicariat" : "Gestion des Paroisses"}
-          </h1>
-          <p className="text-slate-500 mt-1 text-base">
-            {isVicarial
-              ? "Liste des paroisses rattachées à votre vicariat."
-              : "Créez et administrez les paroisses du diocèse."}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Search bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Rechercher une paroisse…"
-              value={paroisseSearch}
-              onChange={(e) => setParoisseSearch(e.target.value)}
-              className="pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm w-56 focus:outline-none focus:ring-2 focus:ring-amber-900/20 focus:border-amber-900 transition-all"
-            />
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+              {isVicarial ? "Paroisses du Vicariat" : "Paroisses"}
+            </h1>
+            <p className="text-slate-500 mt-1 text-base">
+              {isVicarial
+                ? "Liste des paroisses rattachées à votre vicariat."
+                : "Créez et administrez les paroisses."}
+            </p>
           </div>
           {isAdmin && (
-            <Button
-              onClick={openCreate}
-              className="h-11 px-6 rounded-xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-lg shadow-amber-900/20"
-            >
-              <Plus className="w-4 h-4 mr-2" /> Ajouter une paroisse
-            </Button>
+            <>
+              <Button
+                onClick={openCreate}
+                size="icon"
+                title="Ajouter une paroisse"
+                aria-label="Ajouter une paroisse"
+                className="h-11 w-11 shrink-0 rounded-xl bg-amber-900 hover:bg-amber-800 text-white shadow-lg shadow-amber-900/20 lg:hidden"
+              >
+                <Plus className="w-5 h-5" />
+              </Button>
+              <Button
+                onClick={openCreate}
+                className="hidden h-11 px-6 shrink-0 rounded-xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-lg shadow-amber-900/20 lg:inline-flex"
+              >
+                <Plus className="w-4 h-4 mr-2" /> Ajouter une paroisse
+              </Button>
+            </>
           )}
+        </div>
+        <div className="relative w-full md:max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Rechercher une paroisse…"
+            value={paroisseSearch}
+            onChange={(e) => setParoisseSearch(e.target.value)}
+            className="pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-900/20 focus:border-amber-900 transition-all"
+          />
         </div>
       </div>
 
@@ -270,11 +280,17 @@ export default function ParoissesPage() {
       {!isLoading && paroisses.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {[
-            { label: "Paroisses",        value: paroisses.length,                              icon: Building2, color: "text-amber-700 bg-amber-50" },
-            { label: "Lecteurs au total", value: paroisses.reduce((s, p) => s + p.lecteurCount, 0), icon: Users,     color: "text-blue-700 bg-blue-50"  },
-            { label: "Avec coordonnateur", value: paroisses.filter((p) => p.coordonnateur).length, icon: Church,    color: "text-emerald-700 bg-emerald-50" },
+            { label: "Paroisses", value: paroisses.length, icon: Building2, color: "text-amber-700 bg-amber-50" },
+            { label: "Lecteurs au total", value: paroisses.reduce((s, p) => s + p.lecteurCount, 0), icon: Users, color: "text-blue-700 bg-blue-50" },
+            {
+              label: "Avec coordonnateur",
+              value: paroisses.filter((p) => p.coordonnateur).length,
+              icon: Church,
+              color: "text-emerald-700 bg-emerald-50",
+              className: "hidden lg:flex",
+            },
           ].map((s, i) => (
-            <div key={i} className="bg-white border border-slate-100 rounded-2xl px-5 py-4 flex items-center gap-4 shadow-sm">
+            <div key={i} className={`bg-white border border-slate-100 rounded-2xl px-5 py-4 items-center gap-4 shadow-sm flex ${s.className ?? ""}`.trim()}>
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${s.color}`}>
                 <s.icon className="w-5 h-5" />
               </div>
@@ -314,87 +330,54 @@ export default function ParoissesPage() {
             )}
           </div>
         ) : (
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
-                <th className="p-5 w-16">Logo</th>
-                <th className="p-5">Paroisse</th>
-                {isAdmin  && <th className="p-5 hidden md:table-cell">Vicariat</th>}
-                {isAdmin  && <th className="p-5 hidden lg:table-cell">Curé</th>}
-                {isVicarial && <th className="p-5 hidden md:table-cell">Coordonnateur</th>}
-                <th className="p-5 text-center">Lecteurs</th>
-                <th className="p-5 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100/80">
+          <>
+            <div className="divide-y divide-slate-100 lg:hidden">
               {filteredParoisses.map((p) => (
-                <tr key={p._id} className="hover:bg-amber-50/20 transition-colors group">
-
-                  {/* Logo */}
-                  <td className="p-5">
-                    <div className="w-11 h-11 rounded-xl border-2 border-slate-100 shadow-sm flex items-center justify-center bg-slate-50 overflow-hidden text-amber-900 shrink-0">
-                      {p.logo
-                        ? <img src={p.logo} alt={p.name} className="w-full h-full object-cover" />
-                        : <Building2 className="w-5 h-5 opacity-30" />}
+                <div key={`card-${p._id}`} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-11 h-11 rounded-xl border-2 border-slate-100 shadow-sm flex items-center justify-center bg-slate-50 overflow-hidden text-amber-900 shrink-0">
+                        {p.logo ? <img src={p.logo} alt={p.name} className="w-full h-full object-cover" /> : <Building2 className="w-5 h-5 opacity-30" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-extrabold text-slate-900 text-sm truncate">{p.name}</p>
+                        {p.vicariat?.name ? (
+                          <p className="text-xs text-slate-500 truncate">
+                            {p.vicariat.abbreviation ? `${p.vicariat.abbreviation} · ` : ""}
+                            {p.vicariat.name}
+                          </p>
+                        ) : null}
+                      </div>
                     </div>
-                  </td>
-
-                  {/* Nom + zone */}
-                  <td className="p-5">
-                    <p className="font-extrabold text-slate-900 text-sm">{p.name}</p>
-                    {isVicarial && p.coordonnateur && (
-                      <p className="text-xs text-slate-400 mt-0.5">{p.coordonnateur}</p>
-                    )}
-                  </td>
-
-                  {/* Vicariat (admin only) */}
-                  {isAdmin && (
-                    <td className="p-5 hidden md:table-cell">
-                      <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full">
-                        {p.vicariat?.abbreviation ?? "—"} · {p.vicariat?.name ?? "—"}
-                      </span>
-                    </td>
-                  )}
-
-                  {/* Curé (admin only) */}
-                  {isAdmin && (
-                    <td className="p-5 hidden lg:table-cell">
-                      {p.cureName
-                        ? <span className="text-sm text-slate-700 font-medium">{p.cureName}</span>
-                        : <span className="text-slate-400 italic text-sm">Non renseigné</span>}
-                    </td>
-                  )}
-
-                  {/* Coordonnateur (vicarial only) */}
-                  {isVicarial && (
-                    <td className="p-5 hidden md:table-cell">
-                      {p.coordonnateur
-                        ? <span className="text-sm text-slate-700 font-medium">{p.coordonnateur}</span>
-                        : <span className="text-slate-400 italic text-sm">Non renseigné</span>}
-                    </td>
-                  )}
-
-                  {/* Lecteur count */}
-                  <td className="p-5 text-center">
-                    <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                    <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-full shrink-0">
                       <Users className="w-3 h-3" />
                       {p.lecteurCount}
                     </span>
-                  </td>
+                  </div>
 
-                  {/* Actions */}
-                  <td className="p-5 text-right">
+                  <div className="grid grid-cols-1 gap-1 text-xs text-slate-600">
+                    {p.cureName ? <p><span className="text-slate-400">Cure:</span> {p.cureName}</p> : null}
+                    {p.coordonnateur ? <p><span className="text-slate-400">Coordonnateur:</span> {p.coordonnateur}</p> : null}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2">
                     {isAdmin ? (
-                      <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openEdit(p)}
-                          className="p-2 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all" title="Modifier">
+                      <>
+                        <button
+                          onClick={() => openEdit(p)}
+                          className="p-2 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-all"
+                          title="Modifier"
+                        >
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setDeleteId(p._id)}
-                          className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Supprimer">
+                        <button
+                          onClick={() => setDeleteId(p._id)}
+                          className="p-2 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all"
+                          title="Supprimer"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </button>
-                      </div>
+                      </>
                     ) : (
                       <button
                         onClick={() => openDetails(p)}
@@ -403,11 +386,84 @@ export default function ParoissesPage() {
                         <Eye className="w-3.5 h-3.5" /> Détails
                       </button>
                     )}
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[920px]">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
+                    <th className="p-5 w-16">Logo</th>
+                    <th className="p-5">Paroisse</th>
+                    {isAdmin && <th className="p-5">Vicariat</th>}
+                    {isAdmin && <th className="p-5">Curé</th>}
+                    {isVicarial && <th className="p-5">Coordonnateur</th>}
+                    <th className="p-5 text-center">Lecteurs</th>
+                    <th className="p-5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100/80">
+                  {filteredParoisses.map((p) => (
+                    <tr key={p._id} className="hover:bg-amber-50/20 transition-colors group">
+                      <td className="p-5">
+                        <div className="w-11 h-11 rounded-xl border-2 border-slate-100 shadow-sm flex items-center justify-center bg-slate-50 overflow-hidden text-amber-900 shrink-0">
+                          {p.logo ? <img src={p.logo} alt={p.name} className="w-full h-full object-cover" /> : <Building2 className="w-5 h-5 opacity-30" />}
+                        </div>
+                      </td>
+                      <td className="p-5">
+                        <p className="font-extrabold text-slate-900 text-sm">{p.name}</p>
+                        {isVicarial && p.coordonnateur && <p className="text-xs text-slate-400 mt-0.5">{p.coordonnateur}</p>}
+                      </td>
+                      {isAdmin && (
+                        <td className="p-5">
+                          <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full">
+                            {p.vicariat?.abbreviation ?? "—"} · {p.vicariat?.name ?? "—"}
+                          </span>
+                        </td>
+                      )}
+                      {isAdmin && (
+                        <td className="p-5">
+                          {p.cureName ? <span className="text-sm text-slate-700 font-medium">{p.cureName}</span> : <span className="text-slate-400 italic text-sm">Non renseigné</span>}
+                        </td>
+                      )}
+                      {isVicarial && (
+                        <td className="p-5">
+                          {p.coordonnateur ? <span className="text-sm text-slate-700 font-medium">{p.coordonnateur}</span> : <span className="text-slate-400 italic text-sm">Non renseigné</span>}
+                        </td>
+                      )}
+                      <td className="p-5 text-center">
+                        <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                          <Users className="w-3 h-3" />
+                          {p.lecteurCount}
+                        </span>
+                      </td>
+                      <td className="p-5 text-right">
+                        {isAdmin ? (
+                          <div className="flex items-center justify-end gap-1.5 opacity-100 xl:opacity-0 xl:group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => openEdit(p)} className="p-2 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all" title="Modifier">
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => setDeleteId(p._id)} className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Supprimer">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => openDetails(p)}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-900 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-all"
+                          >
+                            <Eye className="w-3.5 h-3.5" /> Détails
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -496,7 +552,7 @@ export default function ParoissesPage() {
               </div>
 
               {/* Logo */}
-              <div className="space-y-1.5">
+              <div className="hidden lg:block space-y-1.5">
                 <label className="text-sm font-bold text-slate-700">
                   Logo (URL) <span className="text-slate-400 font-normal text-xs">(Optionnel)</span>
                 </label>

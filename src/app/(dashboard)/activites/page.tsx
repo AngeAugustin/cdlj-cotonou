@@ -32,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DashboardPageShell, DashboardPanel } from "@/components/dashboard/page-shell";
 
 // ── Types ─────────────────────────────────────────────────
 type Activite = {
@@ -70,7 +71,8 @@ function formatMoney(n: number) {
 // ── Page ──────────────────────────────────────────────────
 export default function ActivitesPage() {
   const { data: session } = useSession();
-  const roles: string[] = (session?.user as any)?.roles ?? [];
+  const sessionUser = session?.user as { roles?: string[] } | undefined;
+  const roles: string[] = sessionUser?.roles ?? [];
   const isManager = roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
   const isSuperAdmin = roles.includes("SUPERADMIN");
   const isVicarial = roles.includes("VICARIAL");
@@ -275,29 +277,29 @@ export default function ActivitesPage() {
   );
 
   const ActivityRow = ({ a }: { a: Activite }) => (
-    <div className="px-5 py-3.5 flex items-start gap-4 hover:bg-slate-50/70 transition-colors group">
+    <div className="px-4 py-4 sm:px-5 sm:py-4 flex flex-col gap-3 hover:bg-slate-50/70 transition-colors group">
       {/* Thumbnail */}
-      <div className="w-10 h-10 rounded-xl shrink-0 overflow-hidden relative bg-slate-100 mt-0.5">
-        {a.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={a.image}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-amber-50">
-            <Activity className="w-5 h-5 text-amber-300" />
-          </div>
-        )}
-      </div>
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-xl shrink-0 overflow-hidden relative bg-slate-100 mt-0.5">
+          {a.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={a.image}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-amber-50">
+              <Activity className="w-5 h-5 text-amber-300" />
+            </div>
+          )}
+        </div>
 
-      {/* Texte + actions sur la même ligne (actions à droite) */}
-      <div className="flex-1 min-w-0 flex items-start gap-3">
-        <div className="min-w-0 flex-1 space-y-1">
+        {/* Texte */}
+        <div className="min-w-0 flex-1 space-y-1.5">
           {/* Title + badge */}
           <div className="flex items-start justify-between gap-3">
-            <h4 className="text-[13px] font-semibold text-slate-900 leading-snug truncate">{a.nom}</h4>
+            <h4 className="text-sm font-semibold text-slate-900 leading-snug truncate">{a.nom}</h4>
             <span
               className={`inline-flex shrink-0 items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold leading-none ${
                 a.terminee
@@ -311,7 +313,7 @@ export default function ActivitesPage() {
           </div>
 
           {/* Metadata */}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400">
             <span className="flex items-center gap-1">
               <Calendar className="w-3 h-3 shrink-0" />
               {format(new Date(a.dateDebut), "d MMM", { locale: fr })}
@@ -330,9 +332,10 @@ export default function ActivitesPage() {
             </span>
           </div>
         </div>
+      </div>
 
-        {/* Actions : même bandeau que le texte, à droite */}
-        <div className="shrink-0 flex flex-wrap items-center justify-end gap-1.5 pt-0.5">
+      {/* Actions */}
+      <div className="flex flex-wrap items-center justify-end gap-1.5 pt-1 border-t border-slate-100/80 md:border-0 md:pt-0">
           <Link
             href={`/activites/${a._id}`}
             className={cn(buttonVariants({ variant: "outline", size: "icon-sm" }), "rounded-xl")}
@@ -393,16 +396,47 @@ export default function ActivitesPage() {
               <UserPlus className="size-3.5" />
             </Link>
           )}
-        </div>
       </div>
     </div>
   );
 
   return (
-    <div className="w-full space-y-8 pb-12">
+    <DashboardPageShell
+      title="Activités"
+      description={
+        isManager
+          ? "Créez et pilotez les activités diocésaines."
+          : isVicarial
+            ? "Suivez les activités et la participation des paroisses de votre vicariat."
+            : "Consultez les activités et enregistrez la participation de vos lecteurs."
+      }
+      actions={
+        isManager ? (
+          <>
+            <Button
+              type="button"
+              onClick={openCreate}
+              size="icon"
+              title="Ajouter une activité"
+              aria-label="Ajouter une activité"
+              className="h-11 w-11 shrink-0 rounded-xl bg-amber-900 hover:bg-amber-800 text-white shadow-xl shadow-amber-900/20 lg:hidden"
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+            <Button
+              type="button"
+              onClick={openCreate}
+              className="hidden lg:inline-flex h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-xl shadow-amber-900/20 shrink-0"
+            >
+              <Plus className="w-5 h-5 mr-2" /> Créer une activité
+            </Button>
+          </>
+        ) : null
+      }
+    >
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-white font-medium ${
+          className={`fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 z-[100] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-white font-medium ${
             toast.type === "success" ? "bg-emerald-700" : "bg-red-600"
           }`}
         >
@@ -410,28 +444,6 @@ export default function ActivitesPage() {
           {toast.message}
         </div>
       )}
-
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Activités</h1>
-          <p className="text-slate-500 mt-2 text-lg">
-            {isManager
-              ? "Créez et pilotez les activités diocésaines."
-              : isVicarial
-                ? "Suivez les activités et la participation des paroisses de votre vicariat."
-                : "Consultez les activités et enregistrez la participation de vos lecteurs."}
-          </p>
-        </div>
-        {isManager && (
-          <Button
-            type="button"
-            onClick={openCreate}
-            className="h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-xl shadow-amber-900/20 shrink-0"
-          >
-            <Plus className="w-5 h-5 mr-2" /> Créer une activité
-          </Button>
-        )}
-      </div>
 
       <div className="flex flex-wrap gap-3">
         <TabBtn active={mainTab === "encours"} onClick={() => setMainTab("encours")}>
@@ -457,13 +469,13 @@ export default function ActivitesPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
+        <DashboardPanel className="overflow-hidden">
           <div className="divide-y divide-slate-50">
             {filtered.map((a) => (
               <ActivityRow key={a._id} a={a} />
             ))}
           </div>
-        </div>
+        </DashboardPanel>
       )}
 
       {/* ── Formulaire admin ── */}
@@ -584,6 +596,6 @@ export default function ActivitesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardPageShell>
   );
 }

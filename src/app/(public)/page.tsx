@@ -91,10 +91,10 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: Users,        value: "+10 000", label: "Lecteurs actifs",         sub: "À travers tout le diocèse",          color: "text-amber-400",  bg: "bg-amber-400/10" },
-              { icon: Church,       value: "42",      label: "Paroisses affiliées",      sub: "Sur l'ensemble de Cotonou",          color: "text-blue-400",   bg: "bg-blue-400/10"  },
-              { icon: MapPin,       value: "8",       label: "Vicariats couverts",       sub: "Organisation territoriale complète", color: "text-emerald-400",bg: "bg-emerald-400/10"},
-              { icon: CalendarDays, value: "+120",    label: "Activités organisées",     sub: "Chaque année sur le diocèse",        color: "text-rose-400",   bg: "bg-rose-400/10"  },
+              { icon: Users,        value: "+ 3000",  label: "Lecteurs actifs",                 sub: "À travers tout le diocèse",          color: "text-amber-400",  bg: "bg-amber-400/10" },
+              { icon: Church,       value: "+ 124",   label: "Paroisses affiliées",             sub: "Sur l'ensemble de Cotonou",          color: "text-blue-400",   bg: "bg-blue-400/10"  },
+              { icon: MapPin,       value: "+ 15",    label: "Vicariats forains",               sub: "Organisation territoriale complète", color: "text-emerald-400",bg: "bg-emerald-400/10"},
+              { icon: CalendarDays, value: "+ 10",    label: "activités organisées par An",     sub: "Chaque année sur le diocèse",        color: "text-rose-400",   bg: "bg-rose-400/10"  },
             ].map(({ icon: Icon, value, label, sub, color, bg }) => (
               <div key={label} className="flex flex-col items-center text-center p-8 rounded-3xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 group">
                 <div className={`w-12 h-12 rounded-2xl ${bg} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300`}>

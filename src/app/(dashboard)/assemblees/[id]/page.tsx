@@ -268,21 +268,25 @@ export default function AssembleeDetailsPage({ params }: { params: Promise<{ id:
           </div>
 
           <div className="relative z-10 px-6 py-8 sm:px-10 sm:py-10">
-            <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-8 flex items-center justify-between gap-3">
               <Button
                 variant="outline"
-                className="rounded-2xl w-fit"
+                title="Retour à la liste"
+                aria-label="Retour à la liste"
+                className="rounded-2xl h-11 w-11 lg:w-fit px-0 lg:px-4"
                 onClick={() => router.push("/assemblees")}
               >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Retour à la liste
+                <ArrowLeft className="w-4 h-4 lg:mr-2" />
+                <span className="hidden lg:inline">Retour à la liste</span>
               </Button>
 
               {(isManager || isVicarial) && !assemblee.terminee ? (
                 <div className="flex gap-3 flex-wrap justify-end">
                   <Button
                     type="button"
-                    className="rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-semibold"
+                    title="Soumettre le rapport"
+                    aria-label="Soumettre le rapport"
+                    className="rounded-2xl h-11 w-11 lg:w-fit px-0 lg:px-4 bg-amber-900 hover:bg-amber-800 text-white font-semibold"
                     onClick={() => {
                       setReportToReplace(null);
                       setUploadVicariatId("");
@@ -290,17 +294,19 @@ export default function AssembleeDetailsPage({ params }: { params: Promise<{ id:
                       setUploadOpen(true);
                     }}
                   >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Soumettre rapport
+                    <Upload className="w-4 h-4 lg:mr-2" />
+                    <span className="hidden lg:inline">Soumettre rapport</span>
                   </Button>
                   {isManager ? (
                     <Button
                       type="button"
-                      className="rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+                      title="Marquer comme terminée"
+                      aria-label="Marquer comme terminée"
+                      className="rounded-2xl h-11 w-11 lg:w-fit px-0 lg:px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                       onClick={() => setConfirmTermineeOpen(true)}
                     >
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Marquer comme terminée
+                      <CheckCircle className="w-4 h-4 lg:mr-2" />
+                      <span className="hidden lg:inline">Marquer comme terminée</span>
                     </Button>
                   ) : null}
                 </div>

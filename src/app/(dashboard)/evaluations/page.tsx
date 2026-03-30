@@ -276,15 +276,29 @@ export default function EvaluationsPage() {
         </div>
       ) : null}
 
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Évaluations</h1>
-          <p className="text-slate-500 mt-2 text-lg">Évaluations annuelles pour le passage de grades des lecteurs.</p>
+          <p className="text-slate-500 mt-2 text-lg">Créez et gérez les évaluations.</p>
         </div>
         {isManager ? (
-          <Button onClick={openCreate} className="h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-xl shadow-amber-900/20 transition-all">
-            <Plus className="w-5 h-5 mr-2" /> Nouvelle Évaluation
-          </Button>
+          <>
+            <Button
+              onClick={openCreate}
+              size="icon"
+              title="Ajouter une évaluation"
+              aria-label="Ajouter une évaluation"
+              className="h-11 w-11 shrink-0 rounded-xl bg-amber-900 hover:bg-amber-800 text-white shadow-xl shadow-amber-900/20 transition-all lg:hidden"
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+            <Button
+              onClick={openCreate}
+              className="hidden lg:inline-flex h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-xl shadow-amber-900/20 transition-all"
+            >
+              <Plus className="w-5 h-5 mr-2" /> Nouvelle Évaluation
+            </Button>
+          </>
         ) : null}
       </div>
 

@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   AlertCircle,
+  CalendarDays,
   CheckCircle,
   Download,
   Eye,
@@ -363,25 +364,40 @@ export default function AssembleesPage() {
         </div>
       ) : null}
 
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Assemblées Générales</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <span className="sm:hidden">Assemb. Générales</span>
+            <span className="hidden sm:inline">Assemblées Générales</span>
+          </h1>
           <p className="text-slate-500 mt-2 text-lg">
             {isManager
-              ? "Créez, gérez et consultez les rapports associés."
+              ? "Créez, gérez les rapports d'AG."
               : isVicarial
                 ? "Soumettez votre rapport et consultez l'historique."
                 : "Consultez les assemblées générales."}
           </p>
         </div>
         {isManager ? (
-          <Button
-            type="button"
-            onClick={openCreate}
-            className="h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-xl shadow-amber-900/20 shrink-0"
-          >
-            <Plus className="w-5 h-5 mr-2" /> Créer une Assemblée
-          </Button>
+          <>
+            <Button
+              type="button"
+              onClick={openCreate}
+              size="icon"
+              title="Ajouter une assemblée générale"
+              aria-label="Ajouter une assemblée générale"
+              className="h-11 w-11 shrink-0 rounded-xl bg-amber-900 hover:bg-amber-800 text-white shadow-xl shadow-amber-900/20 lg:hidden"
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+            <Button
+              type="button"
+              onClick={openCreate}
+              className="hidden lg:inline-flex h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-xl shadow-amber-900/20 shrink-0"
+            >
+              <Plus className="w-5 h-5 mr-2" /> Créer une Assemblée
+            </Button>
+          </>
         ) : null}
       </div>
 
@@ -428,56 +444,72 @@ export default function AssembleesPage() {
           </p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
           {filtered.map((a) => (
             <div
               key={a._id}
-              className="bg-white rounded-3xl border border-slate-100 shadow-lg shadow-slate-200/30 overflow-hidden flex flex-col"
+              className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/25 overflow-hidden flex flex-col"
             >
-              <div className="aspect-[16/10] bg-gradient-to-br from-amber-100 to-stone-200 relative">
-                {a.image ? (
-                  <img src={a.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <FileText className="w-16 h-16 text-amber-900/30" />
+              <div className="p-4 space-y-3 flex-1 flex flex-col">
+                <div className="flex items-center gap-3">
+                  <div className="relative h-12 w-12 rounded-2xl overflow-hidden border border-white shadow-md shrink-0 bg-gradient-to-br from-amber-100 to-stone-200">
+                    {a.image ? (
+                      <img src={a.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-amber-900/40" />
+                      </div>
+                    )}
                   </div>
-                )}
-                {a.terminee ? (
-                  <span className="absolute top-3 right-3 text-xs font-bold bg-slate-900/80 text-white px-3 py-1 rounded-full">
-                    Terminée
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-slate-900 text-sm leading-tight truncate">{a.nom}</p>
+                    <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5">
+                      <CalendarDays className="w-3.5 h-3.5 text-amber-900/60 shrink-0" />
+                      {format(new Date(a.date), "d MMM yyyy HH:mm", { locale: fr })}
+                    </p>
+                  </div>
+                  <span
+                    className={`ml-auto shrink-0 text-[10px] font-extrabold uppercase tracking-wide px-2.5 py-1 rounded-full border ${
+                      a.terminee
+                        ? "bg-slate-100 text-slate-700 border-slate-200"
+                        : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    }`}
+                  >
+                    {a.terminee ? "Terminée" : "En cours"}
                   </span>
-                ) : null}
-              </div>
-              <div className="p-5 flex flex-col gap-4 flex-1">
-                <div>
-                  <h3 className="font-bold text-slate-900 text-lg leading-tight">{a.nom}</h3>
-                  <p className="text-sm text-slate-500 mt-1 flex items-center gap-2">
-                    <span className="shrink-0 inline-flex">
-                      <Upload className="w-4 h-4 text-amber-900/50" />
-                    </span>
-                    {format(new Date(a.date), "d MMM yyyy HH:mm", { locale: fr })}
-                  </p>
-                  <p className="text-sm text-slate-500 mt-1 flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-amber-900/50" /> {a.lieu}
+                </div>
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Lieu</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-amber-800/70 shrink-0" />
+                    <span className="truncate">{a.lieu}</span>
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2 mt-auto">
+                <div className="flex flex-wrap items-center justify-end gap-2 mt-auto pt-1">
                   <Button
                     type="button"
                     variant="outline"
-                    className="rounded-xl border-slate-200 font-semibold"
+                    size="sm"
+                    title="Détails"
+                    aria-label="Détails"
+                    className="rounded-lg border-slate-200 font-semibold h-8 w-8 lg:w-auto px-0 lg:px-3"
                     onClick={() => router.push(`/assemblees/${a._id}`)}
                   >
-                    <Eye className="w-4 h-4 mr-2" /> Détails
+                    <Eye className="w-4 h-4 lg:mr-2" />
+                    <span className="hidden lg:inline">Détails</span>
                   </Button>
 
                   {isVicarial && !a.terminee ? (
                     <Button
                       type="button"
-                      className="rounded-xl bg-amber-900 hover:bg-amber-800 text-white font-semibold"
+                      size="sm"
+                      title="Soumettre rapport"
+                      aria-label="Soumettre rapport"
+                      className="rounded-lg bg-amber-900 hover:bg-amber-800 text-white font-semibold h-8 w-8 lg:w-auto px-0 lg:px-3"
                       onClick={() => openUpload(a)}
                     >
-                      <Upload className="w-4 h-4 mr-2" /> Soumettre rapport
+                      <Upload className="w-3.5 h-3.5 lg:mr-1.5" />
+                      <span className="hidden lg:inline">Soumettre rapport</span>
                     </Button>
                   ) : null}
 
@@ -485,30 +517,49 @@ export default function AssembleesPage() {
                     <>
                       <Button
                         type="button"
-                        className="rounded-xl bg-amber-900 hover:bg-amber-800 text-white font-semibold"
+                        size="sm"
+                        title="Soumettre rapport"
+                        aria-label="Soumettre rapport"
+                        className="rounded-lg bg-amber-900 hover:bg-amber-800 text-white font-semibold h-8 w-8 lg:w-auto px-0 lg:px-3"
                         onClick={() => openUpload(a)}
                       >
-                        <Upload className="w-4 h-4 mr-2" /> Soumettre rapport
-                      </Button>
-                      <Button type="button" size="sm" variant="outline" className="rounded-xl" onClick={() => openEdit(a)}>
-                        <Pencil className="w-4 h-4 mr-1" /> Modifier
+                        <Upload className="w-3.5 h-3.5 lg:mr-1.5" />
+                        <span className="hidden lg:inline">Soumettre rapport</span>
                       </Button>
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="rounded-xl text-red-600 border-red-200 hover:bg-red-50"
-                        onClick={() => setDeleteTarget(a)}
+                        title="Modifier"
+                        aria-label="Modifier"
+                        className="rounded-lg h-8 w-8 lg:w-auto px-0 lg:px-3"
+                        onClick={() => openEdit(a)}
                       >
-                        <Trash2 className="w-4 h-4 mr-1" /> Supprimer
+                        <Pencil className="w-4 h-4 lg:mr-1" />
+                        <span className="hidden lg:inline">Modifier</span>
                       </Button>
                       <Button
                         type="button"
                         size="sm"
-                        className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white"
-                    onClick={() => setTerminTarget(a)}
+                        variant="outline"
+                        title="Supprimer"
+                        aria-label="Supprimer"
+                        className="rounded-lg h-8 w-8 lg:w-auto px-0 lg:px-3 text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => setDeleteTarget(a)}
                       >
-                        <CheckCircle className="w-4 h-4 mr-1" /> Terminée
+                        <Trash2 className="w-4 h-4 lg:mr-1" />
+                        <span className="hidden lg:inline">Supprimer</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        title="Marquer terminée"
+                        aria-label="Marquer terminée"
+                        className="rounded-lg h-8 w-8 lg:w-auto px-0 lg:px-3 bg-emerald-700 hover:bg-emerald-800 text-white"
+                        onClick={() => setTerminTarget(a)}
+                      >
+                        <CheckCircle className="w-4 h-4 lg:mr-1" />
+                        <span className="hidden lg:inline">Terminée</span>
                       </Button>
                     </>
                   ) : null}

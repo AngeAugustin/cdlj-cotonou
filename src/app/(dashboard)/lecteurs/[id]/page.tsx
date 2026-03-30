@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import {
   ArrowLeft, Loader2, Calendar, MapPin, Phone, Hash,
   Church, Activity, User, ShieldCheck, HeartPulse,
-  GraduationCap, BookOpen, PhoneCall, Map, BadgeCheck,
+  GraduationCap, PhoneCall, Map, BadgeCheck,
   Clock, CheckCircle2, Hourglass, AlertTriangle, Download,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -297,15 +297,17 @@ export default function LecteurDetailPage() {
         <div className="relative z-10 px-6 py-8 sm:px-10 sm:py-10">
 
           {/* Retour (gauche) · Carte (droite) */}
-          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-8 flex items-center justify-between gap-3">
             <Link
               href="/lecteurs"
               className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200/80 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-500 shadow-sm transition-all hover:bg-white hover:text-slate-800 group"
+              title="Retour à la liste"
+              aria-label="Retour à la liste"
             >
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
-              Retour à la liste
+              <span className="hidden lg:inline">Retour à la liste</span>
             </Link>
-            <div className="flex w-full justify-end sm:w-auto sm:justify-start">
+            <div className="flex justify-end">
               <LecteurCarteMembre lecteur={lecteur} showHelperText={false} />
             </div>
           </div>
@@ -393,9 +395,11 @@ export default function LecteurDetailPage() {
               ${tab === key
                 ? "bg-white text-amber-900 shadow-sm shadow-slate-200/60"
                 : "text-slate-500 hover:text-slate-700"}`}
+            title={label}
+            aria-label={label}
           >
             <Icon className="w-4 h-4" />
-            {label}
+            <span className="hidden lg:inline">{label}</span>
           </button>
         ))}
       </div>
@@ -427,16 +431,6 @@ export default function LecteurDetailPage() {
                   </span>
                 </InfoCard>
 
-                <InfoCard icon={BookOpen} label="Niveau scolaire / professionnel" color="green">
-                  {lecteur.niveau}
-                  {lecteur.details && (
-                    <span className="block text-slate-500 font-medium text-xs mt-1">{lecteur.details}</span>
-                  )}
-                </InfoCard>
-
-                <InfoCard icon={Hash} label="Année d'adhésion">
-                  {lecteur.anneeAdhesion}
-                </InfoCard>
               </div>
             </div>
 
@@ -513,9 +507,11 @@ export default function LecteurDetailPage() {
                     href={idPhotoSrc}
                     download
                     className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-all"
+                    title="Télécharger la carte"
+                    aria-label="Télécharger la carte"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    Télécharger
+                    <span className="hidden lg:inline">Télécharger</span>
                   </a>
                 </div>
               ) : (

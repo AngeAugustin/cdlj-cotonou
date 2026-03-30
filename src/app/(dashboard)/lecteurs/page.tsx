@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LecteurForm, type LecteurFormInitial } from "@/modules/lecteurs/components/LecteurForm";
+import { DashboardPageShell, DashboardPanel } from "@/components/dashboard/page-shell";
 import {
   type ApiLecteur,
   type ParishRef,
@@ -124,7 +125,7 @@ export default function LecteursPage() {
         if (Array.isArray(vj)) setVicariatsOpts(vj.map((x: { _id: string; name: string }) => ({ _id: String(x._id), name: x.name })));
         if (Array.isArray(pj))
           setParoissesOpts(
-            pj.map((x: any) => ({
+            pj.map((x: { _id: string; name: string; vicariatId?: string; vicariat?: { _id?: string } }) => ({
               _id: String(x._id),
               name: String(x.name),
               vicariatId: x.vicariatId ? String(x.vicariatId) : x.vicariat?._id ? String(x.vicariat._id) : "",
@@ -260,36 +261,44 @@ export default function LecteursPage() {
   }
 
   return (
-    <div className="w-full space-y-10 pb-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Lecteurs</h1>
-          <p className="text-slate-500 mt-2 text-lg max-w-2xl">
-            Liste des lecteurs enregistrés pour votre juridiction : recherche, export, fiche dédiée avec historique
-            des participations aux activités (TDR interface paroissiale).
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
+    <DashboardPageShell
+      title="Lecteurs"
+      description="Créez et Gérez vos lecteurs"
+      actions={
+        <>
           <Button
             type="button"
             variant="outline"
-            className="h-12 px-6 rounded-2xl border-slate-200 text-slate-700 font-bold hover:bg-slate-50 gap-2 shadow-sm"
+            size="icon"
+            className="h-12 w-12 rounded-2xl border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm"
             onClick={exportCsv}
             disabled={!filtered.length}
+            title="Télécharger la liste CSV"
+            aria-label="Télécharger la liste CSV"
           >
-            <Download className="w-4 h-4" /> Télécharger la liste (CSV)
+            <Download className="w-5 h-5" />
           </Button>
           {canCreate ? (
-            <Link
-              href="/lecteurs/new"
-              className="inline-flex items-center justify-center h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold gap-2 shadow-xl shadow-amber-900/20 transition-colors"
-            >
-              <UserPlus className="w-5 h-5" /> Inscrire un lecteur
-            </Link>
+            <>
+              <Link
+                href="/lecteurs/new"
+                className="inline-flex lg:hidden items-center justify-center h-12 w-12 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white shadow-xl shadow-amber-900/20 transition-colors"
+                title="Ajouter un lecteur"
+                aria-label="Ajouter un lecteur"
+              >
+                <UserPlus className="w-5 h-5" />
+              </Link>
+              <Link
+                href="/lecteurs/new"
+                className="hidden lg:inline-flex items-center justify-center h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold gap-2 shadow-xl shadow-amber-900/20 transition-colors"
+              >
+                <UserPlus className="w-5 h-5" /> Inscrire un lecteur
+              </Link>
+            </>
           ) : null}
-        </div>
-      </div>
+        </>
+      }
+    >
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {stats.map((s) => (
@@ -335,7 +344,7 @@ export default function LecteursPage() {
         </div>
       ) : null}
 
-      <div className="bg-white border border-slate-100 rounded-3xl shadow-xl shadow-slate-200/20 overflow-hidden relative">
+      <DashboardPanel className="overflow-hidden relative">
         {loading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="w-10 h-10 animate-spin text-amber-900" />
@@ -343,14 +352,88 @@ export default function LecteursPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-slate-500 font-medium">Aucun lecteur à afficher.</div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="divide-y divide-slate-100 md:hidden">
+            {filtered.map((l) => {
+              const rowAvatar = displayAvatarSrc(l);
+              const r = rattachementLines(l);
+              return (
+                <div key={`card-${l._id}`} className="p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-11 w-11 border-2 border-white shadow-md shrink-0">
+                      {rowAvatar ? <AvatarImage src={rowAvatar} alt="" className="object-cover" /> : null}
+                      <AvatarFallback className="bg-gradient-to-br from-amber-100 to-amber-200 text-amber-900 font-extrabold text-sm">
+                        {lecteurInitials(l)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="font-extrabold text-slate-900 text-sm truncate">{l.nom} {l.prenoms}</p>
+                      <p className="text-xs font-semibold text-slate-500 font-mono">
+                        {l.uniqueId}
+                        <span className="px-1.5 text-slate-300">-</span>
+                        <span className="font-semibold text-slate-600">{gradeLabel(l)}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="col-span-2"><p className="text-slate-400">Rattachement</p><p className="font-semibold text-slate-700">{r.vicariat} · {r.paroisse}</p></div>
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <Link
+                      href={`/lecteurs/${l._id}`}
+                      className={cn(buttonVariants({ variant: "outline", size: "icon" }), "rounded-lg")}
+                      title="Détails"
+                      aria-label="Détails du lecteur"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Link>
+                    {canCreate ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="rounded-lg"
+                          title="Modifier"
+                          aria-label="Modifier le lecteur"
+                          onClick={() => {
+                            setEditTarget(l);
+                            setEditOpen(true);
+                            void fetch(`/api/lecteurs/${l._id}`)
+                              .then((r2) => r2.json().catch(() => ({})))
+                              .then((data: { lecteur?: ApiLecteur }) => {
+                                if (data.lecteur) setEditTarget(data.lecteur);
+                              });
+                          }}
+                        >
+                          <FileEdit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="rounded-lg border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                          title="Supprimer"
+                          aria-label="Supprimer le lecteur"
+                          onClick={() => setDeleteTarget(l)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[820px]">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-100 uppercase text-[10px] font-extrabold tracking-widest text-slate-500">
                   <th className="p-5 font-semibold">Lecteur</th>
                   <th className="p-5 font-semibold hidden md:table-cell">Numéro</th>
-                  <th className="p-5 font-semibold">Grade</th>
-                  <th className="p-5 font-semibold hidden sm:table-cell">Âge</th>
+                  <th className="p-5 font-semibold hidden lg:table-cell">Grade</th>
+                  <th className="p-5 font-semibold hidden lg:table-cell">Âge</th>
                   <th className="p-5 font-semibold hidden md:table-cell min-w-[10rem]">Rattachement</th>
                   <th className="p-5 font-semibold text-right">Actions</th>
                 </tr>
@@ -374,6 +457,11 @@ export default function LecteursPage() {
                             {l.nom} {l.prenoms}
                           </p>
                           <p className="text-xs font-semibold text-slate-500 md:hidden font-mono">{l.uniqueId}</p>
+                          <p className="hidden md:block lg:hidden text-xs font-semibold text-slate-500 font-mono">
+                            {l.uniqueId}
+                            <span className="px-1.5 text-slate-300">-</span>
+                            <span className="font-semibold text-slate-600">{gradeLabel(l)}</span>
+                          </p>
                           <p className="text-[11px] text-slate-500 md:hidden mt-1 leading-snug">
                             <span className="font-semibold text-slate-600">{r.vicariat}</span>
                             <span className="text-slate-400"> · </span>
@@ -387,10 +475,10 @@ export default function LecteursPage() {
                         {l.uniqueId}
                       </span>
                     </td>
-                    <td className="p-5">
+                    <td className="p-5 hidden lg:table-cell">
                       <span className="font-bold text-slate-700 text-sm">{gradeLabel(l)}</span>
                     </td>
-                    <td className="p-5 hidden sm:table-cell">
+                    <td className="p-5 hidden lg:table-cell">
                       <span className="text-sm font-semibold text-slate-600">{formatAgeLabel(l.dateNaissance)}</span>
                     </td>
                     <td className="p-5 hidden md:table-cell align-top">
@@ -398,7 +486,7 @@ export default function LecteursPage() {
                       <div className="text-xs text-slate-500 mt-0.5 leading-snug">{r.paroisse}</div>
                     </td>
                     <td className="p-5 text-right">
-                      <div className="flex items-center justify-end gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                         <Link
                           href={`/lecteurs/${l._id}`}
                           className={cn(
@@ -457,8 +545,9 @@ export default function LecteursPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
-      </div>
+      </DashboardPanel>
 
       {/* Édition */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -523,6 +612,6 @@ export default function LecteursPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardPageShell>
   );
 }

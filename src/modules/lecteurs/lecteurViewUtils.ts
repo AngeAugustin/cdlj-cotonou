@@ -191,7 +191,7 @@ export function formatDateFr(d: unknown): string {
 export function rattachementLines(l: ApiLecteur): { vicariat: string; paroisse: string } {
   const vicariat =
     l.vicariatId && typeof l.vicariatId === "object" && "name" in l.vicariatId
-      ? (l.vicariatId as VicariatRef).name
+      ? `Vicariat ${((l.vicariatId as VicariatRef).abbreviation || (l.vicariatId as VicariatRef).name).trim()}`
       : "—";
   const paroisse =
     l.paroisseId && typeof l.paroisseId === "object" && "name" in l.paroisseId

@@ -272,11 +272,13 @@ export function LecteurCarteMembre({
         <Button
           type="button"
           variant="outline"
-          className="h-11 w-fit shrink-0 rounded-full border-amber-200/80 bg-white/90 font-bold text-amber-900 shadow-sm hover:bg-amber-50"
+          className="h-11 w-11 lg:w-fit shrink-0 rounded-full border-amber-200/80 bg-white/90 font-bold text-amber-900 shadow-sm hover:bg-amber-50"
           onClick={() => setOpen(true)}
+          title="Télécharger la carte"
+          aria-label="Télécharger la carte"
         >
-          <CreditCard className="mr-2 h-4 w-4" />
-          Télécharger la carte
+          <CreditCard className="h-4 w-4 lg:mr-2" />
+          <span className="hidden lg:inline">Télécharger la carte</span>
         </Button>
         {showHelperText ? (
           <p className="text-sm text-slate-500">
@@ -287,27 +289,27 @@ export function LecteurCarteMembre({
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className="max-w-[calc(100%-1.5rem)] gap-0 overflow-hidden rounded-3xl p-0 sm:max-w-2xl"
+          className="w-[calc(100%-1rem)] max-w-3xl gap-0 overflow-hidden rounded-3xl p-0"
           showCloseButton
         >
-          <DialogHeader className="border-b border-slate-100 px-5 py-4 text-left">
-            <DialogTitle className="text-lg font-extrabold text-slate-900">Carte de lecteur</DialogTitle>
-            <DialogDescription className="text-sm text-slate-500">
+          <DialogHeader className="border-b border-slate-100 px-4 py-3 text-left sm:px-5 sm:py-4">
+            <DialogTitle className="text-base font-extrabold text-slate-900 sm:text-lg">Carte de lecteur</DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 sm:text-sm">
               Aperçu au format carte bancaire (ISO ID-1). Le PDF reprend cette représentation à l’identique.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex justify-center bg-gradient-to-b from-slate-50 to-slate-100/80 px-4 py-8">
-            <div
-              ref={captureRef}
-              id="lecteur-carte-capture"
-              className="rounded-2xl shadow-2xl shadow-slate-900/25"
-            >
-              <LecteurCarteFace lecteur={lecteur} />
+          <div className="bg-gradient-to-b from-slate-50 to-slate-100/80 px-2 py-4 sm:px-4 sm:py-8">
+            <div className="w-full overflow-x-auto">
+              <div className="mx-auto w-[510px] min-w-[510px] rounded-2xl shadow-2xl shadow-slate-900/25">
+                <div ref={captureRef} id="lecteur-carte-capture">
+                  <LecteurCarteFace lecteur={lecteur} />
+                </div>
+              </div>
             </div>
           </div>
 
-          <DialogFooter className="-mx-0 -mb-0 rounded-b-3xl border-t border-slate-100 bg-white px-4 py-4 sm:justify-center">
+          <DialogFooter className="-mx-0 -mb-0 rounded-b-3xl border-t border-slate-100 bg-white px-4 py-3 sm:py-4 sm:justify-center">
             <Button
               type="button"
               className="h-11 w-full max-w-sm rounded-xl bg-amber-900 font-bold hover:bg-amber-950 sm:w-auto"

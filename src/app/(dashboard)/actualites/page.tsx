@@ -618,23 +618,34 @@ export default function ActualitesPage() {
       )}
 
       {/* ── Header ───────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <Newspaper className="w-6 h-6 text-amber-700" />
             Actualités
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">
-            Gérez les articles publiés sur la page Blog & Actualités
+            Créez et gérez les articles.
           </p>
         </div>
-        <Button
-          onClick={() => { setEditItem(null); setModalOpen(true); }}
-          className="bg-amber-900 hover:bg-amber-800 text-white rounded-xl gap-2 font-semibold"
-        >
-          <Plus className="w-4 h-4" />
-          Nouvel article
-        </Button>
+        <>
+          <Button
+            onClick={() => { setEditItem(null); setModalOpen(true); }}
+            size="icon"
+            title="Ajouter un nouvel article"
+            aria-label="Ajouter un nouvel article"
+            className="h-10 w-10 shrink-0 bg-amber-900 hover:bg-amber-800 text-white rounded-xl font-semibold sm:h-11 sm:w-11 lg:hidden"
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+          <Button
+            onClick={() => { setEditItem(null); setModalOpen(true); }}
+            className="hidden lg:inline-flex bg-amber-900 hover:bg-amber-800 text-white rounded-xl gap-2 font-semibold"
+          >
+            <Plus className="w-4 h-4" />
+            Nouvel article
+          </Button>
+        </>
       </div>
 
       {/* ── Stats ────────────────────────────────────────── */}
@@ -665,136 +676,148 @@ export default function ActualitesPage() {
         />
       </div>
 
-      {/* ── Table ────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20 text-slate-400">
-            <Loader2 className="w-6 h-6 animate-spin mr-3" /> Chargement…
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
-            <Newspaper className="w-10 h-10 opacity-30" />
-            <p className="text-sm font-medium">Aucun article trouvé</p>
-            <Button variant="outline" size="sm"
-              onClick={() => { setEditItem(null); setModalOpen(true); }}
-              className="mt-2 gap-1.5">
-              <Plus className="w-3.5 h-3.5" /> Créer le premier article
-            </Button>
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/60">
-                <th className="text-left px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wider">Article</th>
-                <th className="text-left px-4 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wider hidden md:table-cell">Catégorie</th>
-                <th className="text-left px-4 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wider hidden lg:table-cell">Auteur</th>
-                <th className="text-left px-4 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wider hidden lg:table-cell">Date</th>
-                <th className="text-center px-4 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wider hidden sm:table-cell">Une</th>
-                <th className="px-4 py-3.5 w-32" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((a) => (
-                <tr key={a._id} className="group hover:bg-slate-50/60 transition-colors">
-
-                  {/* Article */}
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      {a.image ? (
-                        <img src={a.image} alt={a.title}
-                          className="w-12 h-10 rounded-lg object-cover shrink-0 border border-slate-100" />
-                      ) : (
-                        <div className="w-12 h-10 rounded-lg bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center shrink-0">
-                          <span className="text-xs font-bold text-amber-800">{initials(a.title)}</span>
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="font-semibold text-slate-800 truncate max-w-[240px]">{a.title}</p>
-                        <p className="text-xs text-slate-400 truncate max-w-[240px]">{a.excerpt}</p>
-                      </div>
+      {/* ── Cartes ───────────────────────────────────────── */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20 text-slate-400">
+          <Loader2 className="w-6 h-6 animate-spin mr-3" /> Chargement…
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+          <Newspaper className="w-10 h-10 opacity-30" />
+          <p className="text-sm font-medium">Aucun article trouvé</p>
+          <Button variant="outline" size="sm"
+            onClick={() => { setEditItem(null); setModalOpen(true); }}
+            className="mt-2 gap-1.5">
+            <Plus className="w-3.5 h-3.5" /> Créer le premier article
+          </Button>
+        </div>
+      ) : (
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {filtered.map((a) => (
+              <article
+                key={a._id}
+                className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20 p-4 space-y-3"
+              >
+                <div className="flex items-start gap-3">
+                  {a.image ? (
+                    <img
+                      src={a.image}
+                      alt={a.title}
+                      className="w-14 h-12 rounded-xl object-cover shrink-0 border border-slate-100 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-14 h-12 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center shrink-0 border border-amber-200/60 shadow-sm">
+                      <span className="text-xs font-extrabold text-amber-800">{initials(a.title)}</span>
                     </div>
-                  </td>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-extrabold text-slate-900 text-sm leading-tight line-clamp-2">{a.title}</p>
+                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">{a.excerpt}</p>
+                  </div>
+                </div>
 
-                  {/* Catégorie */}
-                  <td className="px-4 py-4 hidden md:table-cell">
-                    <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 text-xs font-medium px-2.5 py-1 rounded-full">
-                      <Tag className="w-3 h-3" /> {a.category}
-                    </span>
-                  </td>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                    <Tag className="w-3 h-3" /> {a.category}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${
+                      a.published ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {a.published ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                    {a.published ? "Publié" : "Brouillon"}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setConfirmAction(
+                        a.featured
+                          ? {
+                              id: a._id,
+                              type: "unfeature",
+                              label: "Retirer de la une",
+                              description: `"${a.title}" ne sera plus affiché en tête de la page Blog & Actualités.`,
+                            }
+                          : {
+                              id: a._id,
+                              type: "feature",
+                              label: "Mettre à la une",
+                              description: `"${a.title}" apparaîtra en position principale sur la page Blog & Actualités.`,
+                            },
+                      )
+                    }
+                    title={a.featured ? "Retirer de la une" : "Mettre à la une"}
+                    className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${
+                      a.featured
+                        ? "text-amber-700 bg-amber-50 border-amber-200"
+                        : "text-slate-600 bg-white border-slate-200 hover:border-amber-200 hover:text-amber-700"
+                    }`}
+                  >
+                    {a.featured ? <Star className="w-3 h-3 fill-amber-400" /> : <StarOff className="w-3 h-3" />}
+                    {a.featured ? "À la une" : "Standard"}
+                  </button>
+                </div>
 
-                  {/* Auteur */}
-                  <td className="px-4 py-4 hidden lg:table-cell">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-amber-900/10 flex items-center justify-center text-xs font-bold text-amber-900">
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2">
+                  <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+                    <span className="inline-flex items-center gap-1.5 min-w-0">
+                      <span className="w-6 h-6 rounded-full bg-amber-900/10 flex items-center justify-center text-[10px] font-bold text-amber-900 shrink-0">
                         {a.author.charAt(0)}
-                      </div>
-                      <span className="text-slate-600 text-xs">{a.author}</span>
-                    </div>
-                  </td>
-
-                  {/* Date */}
-                  <td className="px-4 py-4 hidden lg:table-cell">
-                    <span className="text-slate-500 text-xs flex items-center gap-1.5">
+                      </span>
+                      <span className="truncate">{a.author}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 shrink-0">
                       <Calendar className="w-3.5 h-3.5" /> {formatDate(a.createdAt)}
                     </span>
-                  </td>
+                  </div>
+                </div>
 
-                  {/* À la une */}
-                  <td className="px-4 py-4 text-center hidden sm:table-cell">
+                <div className="flex items-center justify-end gap-1.5 pt-1">
+                  {!a.published && (
                     <button
-                      onClick={() => setConfirmAction(a.featured
-                        ? { id: a._id, type: "unfeature", label: "Retirer de la une", description: `"${a.title}" ne sera plus affiché en tête de la page Blog & Actualités.` }
-                        : { id: a._id, type: "feature",   label: "Mettre à la une",   description: `"${a.title}" apparaîtra en position principale sur la page Blog & Actualités.` }
-                      )}
-                      title={a.featured ? "Retirer de la une" : "Mettre à la une"}
-                      className={`p-1.5 rounded-lg transition-all ${a.featured ? "text-amber-500 bg-amber-50" : "text-slate-300 hover:text-amber-400"}`}
+                      onClick={() =>
+                        setConfirmAction({
+                          id: a._id,
+                          type: "publish",
+                          label: "Publier l'article",
+                          description: `"${a.title}" sera visible par tous les visiteurs sur la page Blog & Actualités.`,
+                        })
+                      }
+                      className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                      title="Publier"
                     >
-                      {a.featured
-                        ? <Star className="w-4 h-4 fill-amber-400" />
-                        : <StarOff className="w-4 h-4" />}
+                      <Send className="w-4 h-4" />
                     </button>
-                  </td>
-
-                  {/* Actions */}
-                  <td className="px-4 py-4">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {/* Publier — visible uniquement si brouillon */}
-                      {!a.published && (
-                        <button
-                          onClick={() => setConfirmAction({
-                            id: a._id, type: "publish",
-                            label: "Publier l'article",
-                            description: `"${a.title}" sera visible par tous les visiteurs sur la page Blog & Actualités.`,
-                          })}
-                          className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
-                          title="Publier">
-                          <Send className="w-4 h-4" />
-                        </button>
-                      )}
-                      <button onClick={() => setPreviewItem(a)}
-                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all"
-                        title="Aperçu">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => { setEditItem(a); setModalOpen(true); }}
-                        className="p-1.5 text-slate-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-all"
-                        title="Modifier">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setDeleteId(a._id)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                        title="Supprimer">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+                  )}
+                  <button
+                    onClick={() => setPreviewItem(a)}
+                    className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all"
+                    title="Aperçu"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditItem(a);
+                      setModalOpen(true);
+                    }}
+                    className="p-2 text-slate-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-all"
+                    title="Modifier"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setDeleteId(a._id)}
+                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                    title="Supprimer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+      )}
 
       {/* ── Create / Edit Modal ───────────────────────────── */}
       <ArticleModal

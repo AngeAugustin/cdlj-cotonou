@@ -160,17 +160,28 @@ export default function GradesPage() {
   return (
     <div className="w-full space-y-8 relative">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Grades & Niveaux</h1>
-          <p className="text-slate-500 mt-2 text-lg">Configuration globale des grades (Postulat, Noviciat, Lectorat I, etc).</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Grades</h1>
+          <p className="text-slate-500 mt-2 text-lg">Créez et gérez les grades.</p>
         </div>
-        <Button 
-          onClick={openModalForCreate}
-          className="h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-xl shadow-amber-900/20 transition-all"
-        >
-          <Plus className="w-5 h-5 mr-2" /> Créer un Grade
-        </Button>
+        <>
+          <Button
+            onClick={openModalForCreate}
+            size="icon"
+            title="Ajouter un grade"
+            aria-label="Ajouter un grade"
+            className="h-11 w-11 shrink-0 rounded-xl bg-amber-900 hover:bg-amber-800 text-white shadow-xl shadow-amber-900/20 transition-all lg:hidden"
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
+          <Button
+            onClick={openModalForCreate}
+            className="hidden lg:inline-flex h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-xl shadow-amber-900/20 transition-all shrink-0"
+          >
+            <Plus className="w-5 h-5 mr-2" /> Créer un Grade
+          </Button>
+        </>
       </div>
 
       {/* Liste des Grades */}

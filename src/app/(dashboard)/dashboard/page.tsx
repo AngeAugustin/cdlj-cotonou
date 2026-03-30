@@ -16,6 +16,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { dashboardPrimaryRole, getDashboardData } from "@/lib/dashboardData";
+import { DashboardPageShell, DashboardPanel } from "@/components/dashboard/page-shell";
 
 function formatInt(n: number) {
   return new Intl.NumberFormat("fr-FR").format(n);
@@ -38,17 +39,11 @@ export default async function DashboardPage() {
   const showAssembleesKpi = data.isVicarial && !data.isManager;
 
   return (
-    <div className="w-full space-y-6">
+    <DashboardPageShell
+      title={`Vue globale ${role.toLowerCase()}`}
+      description="Suivez l'activité et l'évolution de votre juridiction en un coup d'œil."
+    >
       <div className="space-y-5">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Vue globale <span className="text-amber-900 capitalize">{role.toLowerCase()}</span>
-          </h1>
-          <p className="text-slate-500 mt-2 text-base">
-            Suivez l&apos;activité et l&apos;évolution de votre juridiction en un coup d&apos;œil.
-          </p>
-        </div>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white px-4 py-3 rounded-2xl border border-slate-100 shadow-lg shadow-slate-200/20 flex items-center gap-3 group hover:-translate-y-0.5 transition-all min-h-0">
           <div className="w-10 h-10 shrink-0 bg-amber-50 rounded-xl flex items-center justify-center text-amber-900 group-hover:scale-105 group-hover:bg-amber-900 group-hover:text-white transition-all">
@@ -129,7 +124,7 @@ export default async function DashboardPage() {
             </Link>
           </div>
 
-          <div className="bg-white border border-slate-100 rounded-3xl shadow-lg shadow-slate-200/20 overflow-hidden">
+          <DashboardPanel className="shadow-lg overflow-hidden">
             {data.recentActivites.length === 0 ? (
               <p className="p-8 text-sm text-slate-500 text-center">Aucune activité enregistrée pour le moment.</p>
             ) : (
@@ -206,7 +201,7 @@ export default async function DashboardPage() {
                 ))}
               </div>
             )}
-          </div>
+          </DashboardPanel>
         </div>
 
         <div className="space-y-6">
@@ -278,6 +273,6 @@ export default async function DashboardPage() {
           ) : null}
         </div>
       </div>
-    </div>
+    </DashboardPageShell>
   );
 }

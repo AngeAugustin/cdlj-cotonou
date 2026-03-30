@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Shield,
   Plus,
+  UserPlus,
   Search,
   Edit2,
   Trash2,
@@ -31,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { DashboardPageShell, DashboardPanel } from "@/components/dashboard/page-shell";
 
 const AVAILABLE_ROLES = ["SUPERADMIN", "DIOCESAIN", "VICARIAL", "PAROISSIAL"] as const;
 
@@ -318,26 +320,29 @@ export default function UtilisateursPage() {
   }
 
   return (
-    <div className="w-full space-y-8 relative pb-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Utilisateurs &amp; rôles</h1>
-          <p className="text-slate-500 mt-2 text-lg max-w-2xl">
-            Création, modification, suppression et attribution des rôles (TDR — SuperAdmin).{" "}
-            <span className="text-slate-800 font-semibold">
-              Chaque utilisateur doit être rattaché à une paroisse
-            </span>{" "}
-            : le vicariat est enregistré automatiquement à partir de cette paroisse, quel que soit le ou les rôles. À la
-            création, un mot de passe temporaire est généré puis envoyé par e-mail.
-          </p>
-        </div>
-        <Button
-          onClick={openModalForCreate}
-          className="h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-xl shadow-amber-900/20 shrink-0"
-        >
-          <Plus className="w-5 h-5 mr-2" /> Nouvel utilisateur
-        </Button>
-      </div>
+    <DashboardPageShell
+      title="Utilisateurs"
+      description="Créez et gérez les utilisateurs."
+      actions={
+        <>
+          <Button
+            onClick={openModalForCreate}
+            size="icon"
+            title="Ajouter un nouvel utilisateur"
+            aria-label="Ajouter un nouvel utilisateur"
+            className="h-10 w-10 rounded-xl bg-amber-900 hover:bg-amber-800 text-white shadow-xl shadow-amber-900/20 md:h-11 md:w-11 lg:hidden"
+          >
+            <UserPlus className="w-4.5 h-4.5" />
+          </Button>
+          <Button
+            onClick={openModalForCreate}
+            className="hidden lg:inline-flex h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-xl shadow-amber-900/20 shrink-0"
+          >
+            <Plus className="w-5 h-5 mr-2" /> Nouvel utilisateur
+          </Button>
+        </>
+      }
+    >
 
       {usersList.length > 0 && (
         <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-col sm:flex-row gap-4">
@@ -354,7 +359,7 @@ export default function UtilisateursPage() {
         </div>
       )}
 
-      <div className="bg-white border border-slate-100 rounded-3xl shadow-xl shadow-slate-200/20 overflow-hidden min-h-[400px]">
+      <DashboardPanel className="overflow-hidden min-h-[400px]">
         {filteredUsers.length === 0 && !loading ? (
           <div className="flex flex-col items-center justify-center p-24 text-center">
             <Shield className="w-16 h-16 text-slate-200 mb-4" />
@@ -372,7 +377,70 @@ export default function UtilisateursPage() {
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="divide-y divide-slate-100 md:hidden">
+            {filteredUsers.map((user) => (
+              <div key={`card-${user._id}`} className="p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-amber-900 bg-amber-100 shrink-0">
+                    {user.firstName.charAt(0)}
+                    {user.lastName.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-slate-900 text-sm truncate">
+                      {user.lastName} {user.firstName}
+                    </p>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider font-mono">
+                      {user.numero ?? "—"}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-xs text-slate-600 space-y-1">
+                  <p className="flex items-center gap-2"><Church className="w-3.5 h-3.5 text-slate-400" /> {parishLabel(user)}</p>
+                  <p className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {vicariatLabel(user, vicariats)}</p>
+                  <p className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 text-slate-400" /> {user.email}</p>
+                  <p className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 text-slate-400" /> {user.phone || "—"}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {user.roles.map((role) => (
+                    <span
+                      key={`mobile-role-${user._id}-${role}`}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                        role === "SUPERADMIN"
+                          ? "bg-red-50 text-red-700 border-red-200"
+                          : role === "DIOCESAIN"
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : role === "VICARIAL"
+                              ? "bg-purple-50 text-purple-700 border-purple-200"
+                              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      }`}
+                    >
+                      {role}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openModalForEdit(user)}
+                    className="p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
+                    title="Modifier"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteUserId(user._id)}
+                    className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                    title="Supprimer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-100 uppercase text-[10px] font-extrabold tracking-widest text-slate-500">
@@ -469,8 +537,9 @@ export default function UtilisateursPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
-      </div>
+      </DashboardPanel>
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -707,6 +776,6 @@ export default function UtilisateursPage() {
           <span className="font-bold text-sm tracking-wide">{toast.message}</span>
         </div>
       )}
-    </div>
+    </DashboardPageShell>
   );
 }

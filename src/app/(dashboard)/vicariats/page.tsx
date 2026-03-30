@@ -154,17 +154,28 @@ export default function VicariatsPage() {
   return (
     <div className="w-full space-y-8 relative">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Vicariats</h1>
-          <p className="text-slate-500 mt-2 text-lg">Gestion centralisée des vicariats forains.</p>
+          <p className="text-slate-500 mt-2 text-lg">Créez et Gérez les vicariats forains.</p>
         </div>
-        <Button 
-          onClick={openModalForCreate}
-          className="h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-xl shadow-amber-900/20 transition-all"
-        >
-          <Plus className="w-5 h-5 mr-2" /> Ajouter un Vicariat
-        </Button>
+        <>
+          <Button
+            onClick={openModalForCreate}
+            size="icon"
+            title="Ajouter un vicariat"
+            aria-label="Ajouter un vicariat"
+            className="h-11 w-11 shrink-0 rounded-xl bg-amber-900 hover:bg-amber-800 text-white shadow-xl shadow-amber-900/20 transition-all lg:hidden"
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
+          <Button
+            onClick={openModalForCreate}
+            className="hidden lg:inline-flex h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-xl shadow-amber-900/20 transition-all shrink-0"
+          >
+            <Plus className="w-5 h-5 mr-2" /> Ajouter un Vicariat
+          </Button>
+        </>
       </div>
 
       {/* Liste des Vicariats */}
@@ -188,79 +199,87 @@ export default function VicariatsPage() {
             </Button>
           </div>
         ) : (
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-100 uppercase text-[10px] font-extrabold tracking-widest text-slate-500">
-                <th className="p-6 font-semibold w-24">Logo</th>
-                <th className="p-6 font-semibold">Dénomination</th>
-                <th className="p-6 font-semibold hidden md:table-cell">Aumônier Vicarial</th>
-                <th className="p-6 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100/80">
+          <>
+            <div className="divide-y divide-slate-100 lg:hidden">
               {vicariats.map((vic) => (
-                <tr key={vic._id} className="hover:bg-amber-50/30 transition-colors group">
-                  <td className="p-6">
-                    <div className="w-12 h-12 rounded-xl border-2 border-slate-100 shadow-sm flex items-center justify-center bg-slate-50 overflow-hidden text-amber-900 shrink-0">
-                      {vic.logo ? (
-                        <img src={vic.logo} alt={vic.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <Map className="w-5 h-5 opacity-40" />
-                      )}
+                <div key={`card-${vic._id}`} className="p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-11 h-11 rounded-xl border-2 border-slate-100 shadow-sm flex items-center justify-center bg-slate-50 overflow-hidden text-amber-900 shrink-0">
+                      {vic.logo ? <img src={vic.logo} alt={vic.name} className="w-full h-full object-cover" /> : <Map className="w-5 h-5 opacity-40" />}
                     </div>
-                  </td>
-                  <td className="p-6">
-                    <div>
-                      <p className="font-extrabold text-slate-900 text-base">{vic.name}</p>
-                      <p className="text-xs font-semibold text-slate-500 uppercase mt-1 tracking-wider">
-                        Abréviation : {vic.abbreviation}
+                    <div className="min-w-0">
+                      <p className="font-extrabold text-slate-900 text-sm truncate">{vic.name}</p>
+                      <p className="text-xs font-semibold text-slate-500 uppercase mt-1 tracking-wider truncate">Abréviation : {vic.abbreviation}</p>
+                      <p className="text-xs text-slate-600 mt-1">
+                        {vic.aumonier ? vic.aumonier : <span className="text-slate-400 italic">Aumônier non assigné</span>}
                       </p>
                     </div>
-                  </td>
-                  <td className="p-6 hidden md:table-cell">
-                    {vic.aumonier ? (
-                      <span className="font-bold text-slate-700 text-sm">{vic.aumonier}</span>
-                    ) : (
-                      <span className="text-slate-400 italic text-sm">Non assigné</span>
-                    )}
-                  </td>
-                  <td className="p-6 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => openModalForEdit(vic)}
-                        className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all" 
-                        title="Modifier"
-                      >
-                        <Edit2 className="w-5 h-5" />
-                      </button>
-                      <button 
-                         onClick={() => handleDeleteClick(vic._id)}
-                         className="p-2 rounded-xl transition-all text-slate-400 hover:text-red-600 hover:bg-red-50"
-                         title="Supprimer"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                    {/* Fallback Mobile */}
-                     <div className="flex items-center justify-end gap-2 lg:hidden">
-                      <button 
-                        onClick={() => openModalForEdit(vic)}
-                        className="p-2 text-amber-600 bg-amber-50 rounded-xl"
-                      >
-                        <Edit2 className="w-5 h-5" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteClick(vic._id)}
-                        className="p-2 rounded-xl text-red-600 bg-red-50"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => openModalForEdit(vic)}
+                      className="p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
+                      title="Modifier"
+                    >
+                      <Edit2 className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(vic._id)}
+                      className="p-2 rounded-xl transition-all text-slate-500 hover:text-red-600 hover:bg-red-50"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[900px]">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-100 uppercase text-[10px] font-extrabold tracking-widest text-slate-500">
+                    <th className="p-6 font-semibold w-24">Logo</th>
+                    <th className="p-6 font-semibold">Dénomination</th>
+                    <th className="p-6 font-semibold">Aumônier Vicarial</th>
+                    <th className="p-6 font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100/80">
+                  {vicariats.map((vic) => (
+                    <tr key={vic._id} className="hover:bg-amber-50/30 transition-colors group">
+                      <td className="p-6">
+                        <div className="w-12 h-12 rounded-xl border-2 border-slate-100 shadow-sm flex items-center justify-center bg-slate-50 overflow-hidden text-amber-900 shrink-0">
+                          {vic.logo ? <img src={vic.logo} alt={vic.name} className="w-full h-full object-cover" /> : <Map className="w-5 h-5 opacity-40" />}
+                        </div>
+                      </td>
+                      <td className="p-6">
+                        <div>
+                          <p className="font-extrabold text-slate-900 text-base">{vic.name}</p>
+                          <p className="text-xs font-semibold text-slate-500 uppercase mt-1 tracking-wider">
+                            Abréviation : {vic.abbreviation}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="p-6">
+                        {vic.aumonier ? <span className="font-bold text-slate-700 text-sm">{vic.aumonier}</span> : <span className="text-slate-400 italic text-sm">Non assigné</span>}
+                      </td>
+                      <td className="p-6 text-right">
+                        <div className="flex items-center justify-end gap-2 opacity-100 xl:opacity-0 xl:group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => openModalForEdit(vic)} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all" title="Modifier">
+                            <Edit2 className="w-5 h-5" />
+                          </button>
+                          <button onClick={() => handleDeleteClick(vic._id)} className="p-2 rounded-xl transition-all text-slate-400 hover:text-red-600 hover:bg-red-50" title="Supprimer">
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -327,7 +346,7 @@ export default function VicariatsPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="hidden lg:block space-y-2">
                   <label className="text-sm font-bold text-slate-700">Logo (URL) <span className="text-slate-400 font-normal text-xs">(Optionnel)</span></label>
                   <input 
                     type="url" 
