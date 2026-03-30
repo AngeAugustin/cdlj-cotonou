@@ -2,14 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import {
   BarChart3, Users, Building2, Map, Shield,
   Activity, FileText, Wallet, Award, GraduationCap,
-  PanelLeftClose, PanelLeftOpen, Bell, Search, Newspaper, Menu, X,
+  PanelLeftClose, PanelLeftOpen, Bell, Search, Newspaper, Menu, X, User, LogOut,
 } from "lucide-react";
 import SidebarUserMenu from "@/components/SidebarUserMenu";
 import LiveClock from "@/components/LiveClock";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 function initialsFromDisplayName(name: string | null | undefined): string {
   const n = (name ?? "U").trim();
@@ -42,6 +52,8 @@ interface SidebarShellProps {
 export default function SidebarShell({ user, children }: SidebarShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileUserMenuOpen, setMobileUserMenuOpen] = useState(false);
+  const [mobileLogoutConfirmOpen, setMobileLogoutConfirmOpen] = useState(false);
   const normalizedUserRoles = (user.roles ?? []).map((role) => role.trim().toUpperCase());
   const hasVicarialRole = normalizedUserRoles.includes("VICARIAL");
 
@@ -115,14 +127,6 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
             ))}
           </div>
 
-          <div className="sticky bottom-0 p-2 border-t border-white/10 bg-slate-950/50 backdrop-blur-md">
-            <SidebarUserMenu
-              name={user.name || "Utilisateur"}
-              initial={initialsFromDisplayName(user.name)}
-              subtitle={user.paroisseName || undefined}
-              collapsed={false}
-            />
-          </div>
         </div>
       </aside>
 
@@ -254,9 +258,50 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
           </div>
 
           <div className="flex items-center gap-3 sm:gap-5">
+            <div className="relative lg:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileUserMenuOpen((v) => !v)}
+                className="flex items-center gap-2 rounded-full p-0.5 pr-2 sm:pr-3
+                           hover:bg-amber-50 transition-colors border border-transparent
+                           hover:border-amber-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-900/30"
+                aria-label="Ouvrir le menu utilisateur"
+              >
+                <Avatar className="h-9 w-9 border-2 border-slate-200 shadow-sm shrink-0">
+                  <AvatarFallback className="bg-gradient-to-br from-amber-400 to-amber-700 text-white text-sm font-bold">
+                    {initialsFromDisplayName(user.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="hidden sm:inline text-sm font-semibold text-slate-700 max-w-[140px] truncate">
+                  {user.name || "Profil"}
+                </span>
+              </button>
+              {mobileUserMenuOpen ? (
+                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-slate-200 bg-white shadow-lg z-40 p-1.5">
+                  <Link
+                    href="/profil"
+                    onClick={() => setMobileUserMenuOpen(false)}
+                    className="w-full inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    <User className="w-4 h-4" /> Voir profil
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileUserMenuOpen(false);
+                      setMobileLogoutConfirmOpen(true);
+                    }}
+                    className="w-full inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+                  >
+                    <LogOut className="w-4 h-4" /> Se déconnecter
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
             <Link
               href="/profil"
-              className="flex items-center gap-2 rounded-full p-0.5 pr-2 sm:pr-3
+              className="hidden lg:flex items-center gap-2 rounded-full p-0.5 pr-2 sm:pr-3
                          hover:bg-amber-50 transition-colors border border-transparent
                          hover:border-amber-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-900/30"
               aria-label="Mon profil"
@@ -285,6 +330,31 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
           {children}
         </div>
       </main>
+
+      <Dialog open={mobileLogoutConfirmOpen} onOpenChange={setMobileLogoutConfirmOpen}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mx-auto mb-2">
+              <LogOut className="w-5 h-5 text-red-600" />
+            </div>
+            <DialogTitle className="text-center text-base">Confirmer la déconnexion</DialogTitle>
+            <DialogDescription className="text-center">
+              Êtes-vous sûr de vouloir vous déconnecter ? Vous devrez vous reconnecter pour accéder à votre espace.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMobileLogoutConfirmOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => signOut({ callbackUrl: "/auth/login" })}
+            >
+              Se déconnecter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
