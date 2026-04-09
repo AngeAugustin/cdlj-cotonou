@@ -8,11 +8,11 @@ import { Menu, X } from "lucide-react";
 
 const navLinks = [
   { href: "/", label: "Accueil" },
-  { href: "/verifier", label: "Vérifier" },
-  { href: "/news", label: "Blog & Actualités" },
   { href: "/about", label: "À Propos" },
   { href: "/nos-vicariats", label: "Vicariats" },
   { href: "/forums", label: "Forums" },
+  { href: "/news", label: "Blog & Actualités" },
+  { href: "/verifier", label: "Vérifier" },
 ];
 
 export function Navbar() {

@@ -52,7 +52,7 @@ export default function AboutPage() {
             </p>
             <Link href="/news">
               <button className="group relative inline-flex items-center justify-center gap-2 bg-amber-900 hover:bg-amber-800 text-white px-8 py-4 rounded-full font-bold shadow-xl shadow-amber-900/20 transition-all hover:-translate-y-1 overflow-hidden">
-                <span className="relative z-10">Découvrir nos actions</span>
+                <span className="relative z-10">Découvrez nos actualités</span>
                 <ChevronRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
               </button>
@@ -220,39 +220,44 @@ export default function AboutPage() {
       </section>
 
       {/* ── ÉQUIPE DIOCÉSAINE ─────────────────────────────────── */}
-      <section className="relative overflow-hidden py-24 px-4 md:px-8 bg-gradient-to-br from-amber-950 via-amber-900/90 to-amber-950/95">
-        {/* Glow spots */}
-        <div className="absolute top-0 right-0 w-[500px] h-[400px] rounded-full bg-amber-600/10 blur-[140px] pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[300px] rounded-full bg-slate-900/30 blur-[120px] pointer-events-none" />
+      <section className="relative overflow-hidden py-24 px-4 md:px-8 bg-white">
+        {/* Dégradé ambre transparent (tons de l’ancien fond) */}
+        <div
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-950/[0.07] via-amber-900/[0.04] to-amber-950/[0.09]"
+          aria-hidden
+        />
+        {/* Halos discrets */}
+        <div className="pointer-events-none absolute top-0 right-0 h-[400px] w-[500px] rounded-full bg-amber-600/[0.08] blur-[140px]" />
+        <div className="pointer-events-none absolute bottom-0 left-0 h-[300px] w-[400px] rounded-full bg-amber-950/[0.06] blur-[120px]" />
 
         <div className="relative z-10 max-w-6xl mx-auto">
 
           {/* ── Header éditorial ── */}
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-16 pb-8 border-b border-white/[0.06]">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-16 pb-8 border-b border-slate-200">
             <div>
               <div className="flex items-center gap-3 mb-3">
-                <span className="w-6 h-[2px] bg-amber-500" />
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-amber-500">Bureau exécutif</span>
+                <span className="w-6 h-[2px] bg-amber-600" />
+                <span className="text-xs font-bold uppercase tracking-[0.2em] text-amber-700">Bureau exécutif</span>
               </div>
-              <h2 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight">
+              <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
                 Équipe Diocésaine<br />
-                <span className="text-amber-500/80">Actuelle</span>
+                <span className="text-amber-800">Actuelle</span>
               </h2>
             </div>
-            <p className="text-sm text-white max-w-xs leading-relaxed md:text-right">
+            <p className="text-sm text-slate-600 max-w-xs leading-relaxed md:text-right">
               Les membres engagés qui portent chaque jour la mission et les valeurs de la CDLJ de Cotonou.
             </p>
           </div>
 
           {/* ── Direction Spirituelle ── */}
           <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-white/[0.06]" />
+            <div className="flex-1 h-px bg-slate-200" />
             <div className="flex items-center gap-2 shrink-0">
-              <span className="w-1 h-1 rounded-full bg-amber-400/60" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-amber-400/70">Direction Spirituelle</span>
-              <span className="w-1 h-1 rounded-full bg-amber-400/60" />
+              <span className="w-1 h-1 rounded-full bg-amber-600/50" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-amber-800/80">Direction Spirituelle</span>
+              <span className="w-1 h-1 rounded-full bg-amber-600/50" />
             </div>
-            <div className="flex-1 h-px bg-white/[0.06]" />
+            <div className="flex-1 h-px bg-slate-200" />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto mb-8">
@@ -261,38 +266,38 @@ export default function AboutPage() {
                 initials: "MN", name: "Père Marius NOUGBODE",
                 role: "Aumônier de l'Enfance Missionnaire",
                 accent: "from-amber-300 to-yellow-500",
-                pill: "bg-amber-400/15 text-amber-300 border-amber-400/25",
-                glow: "shadow-amber-500/20",
+                pill: "bg-amber-50 text-amber-900 border-amber-200",
+                glow: "shadow-amber-500/25",
               },
               {
                 initials: "AO", name: "Fr Abel OBALEKE",
                 role: "Parrain de la communauté",
                 accent: "from-yellow-300 to-amber-400",
-                pill: "bg-yellow-400/15 text-yellow-300 border-yellow-400/25",
-                glow: "shadow-yellow-500/20",
+                pill: "bg-yellow-50 text-yellow-900 border-yellow-200",
+                glow: "shadow-yellow-500/25",
               },
             ].map((m, i) => (
-              <div key={i} className="group relative overflow-hidden rounded-2xl border border-amber-500/[0.15] bg-amber-500/[0.04] hover:bg-amber-500/[0.08] hover:border-amber-400/[0.25] transition-all duration-500 p-6">
+              <div key={i} className="group relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white/90 shadow-md shadow-amber-950/5 backdrop-blur-sm hover:border-amber-300/40 hover:shadow-lg transition-all duration-500 p-6">
                 {/* Top accent line — plus épais pour marquer l'autorité */}
                 <div className={`absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r ${m.accent}`} />
                 {/* Watermark */}
-                <span className="absolute -right-3 -bottom-5 text-[7rem] font-black text-amber-400/[0.06] select-none leading-none pointer-events-none">
+                <span className="absolute -right-3 -bottom-5 text-[7rem] font-black text-amber-950/[0.05] select-none leading-none pointer-events-none">
                   {m.initials}
                 </span>
                 {/* Étoile/insigne spirituel */}
-                <span className="absolute top-5 right-5 text-amber-400/40 text-base select-none">✦</span>
+                <span className="absolute top-5 right-5 text-amber-700/35 text-base select-none">✦</span>
 
                 {/* Avatar */}
                 <div className="relative w-16 h-16 mb-4">
-                  <div className={`w-full h-full rounded-full bg-gradient-to-br ${m.accent} flex items-center justify-center text-amber-950 font-black text-lg ring-2 ring-amber-400/20 shadow-lg ${m.glow} group-hover:ring-amber-400/40 transition-all duration-300`}>
+                  <div className={`w-full h-full rounded-full bg-gradient-to-br ${m.accent} flex items-center justify-center text-amber-950 font-black text-lg ring-2 ring-amber-200/80 shadow-lg ${m.glow} group-hover:ring-amber-400/50 transition-all duration-300`}>
                     {m.initials}
                   </div>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-950 border border-amber-400/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <Camera className="w-2.5 h-2.5 text-amber-400/50" />
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <Camera className="w-2.5 h-2.5 text-slate-400" />
                   </div>
                 </div>
 
-                <h3 className="text-white font-extrabold text-xl leading-tight mb-2">{m.name}</h3>
+                <h3 className="text-slate-900 font-extrabold text-xl leading-tight mb-2">{m.name}</h3>
                 <span className={`inline-flex items-center text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${m.pill}`}>
                   {m.role}
                 </span>
@@ -302,40 +307,40 @@ export default function AboutPage() {
 
           {/* Séparateur bureau exécutif */}
           <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-white/[0.06]" />
+            <div className="flex-1 h-px bg-slate-200" />
             <div className="flex items-center gap-2 shrink-0">
-              <span className="w-1 h-1 rounded-full bg-white/20" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/25">Bureau Exécutif</span>
-              <span className="w-1 h-1 rounded-full bg-white/20" />
+              <span className="w-1 h-1 rounded-full bg-slate-400/60" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Bureau Exécutif</span>
+              <span className="w-1 h-1 rounded-full bg-slate-400/60" />
             </div>
-            <div className="flex-1 h-px bg-white/[0.06]" />
+            <div className="flex-1 h-px bg-slate-200" />
           </div>
 
           {/* ── Ligne 1 — 2 membres principaux ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto mb-4">
             {[
-              { n: "01", initials: "LD", name: "Fr Landry DJOSSOU", role: "Coordonnateur Diocésain", accent: "from-amber-400 to-amber-600", pill: "bg-amber-500/15 text-amber-400 border-amber-500/20" },
-              { n: "02", initials: "BS", name: "Fr Bienheureux SESSOU", role: "Secrétaire Général", accent: "from-sky-400 to-sky-600", pill: "bg-sky-500/15 text-sky-400 border-sky-500/20" },
+              { n: "01", initials: "LD", name: "Fr Landry DJOSSOU", role: "Coordonnateur Diocésain", accent: "from-amber-400 to-amber-600", pill: "bg-amber-50 text-amber-900 border-amber-200" },
+              { n: "02", initials: "BS", name: "Fr Bienheureux SESSOU", role: "Secrétaire Général", accent: "from-sky-400 to-sky-600", pill: "bg-sky-50 text-sky-900 border-sky-200" },
             ].map((m) => (
-              <div key={m.n} className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.12] transition-all duration-500 p-6">
+              <div key={m.n} className="group relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white/90 shadow-md shadow-amber-950/5 backdrop-blur-sm hover:border-amber-200/60 hover:shadow-lg transition-all duration-500 p-6">
                 {/* Top accent line */}
                 <div className={`absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r ${m.accent}`} />
                 {/* Watermark initial */}
-                <span className="absolute -right-3 -bottom-5 text-[7rem] font-black text-white/[0.04] select-none leading-none pointer-events-none">
+                <span className="absolute -right-3 -bottom-5 text-[7rem] font-black text-slate-900/[0.04] select-none leading-none pointer-events-none">
                   {m.initials}
                 </span>
                 {/* Corner number */}
-                <span className="absolute top-5 right-5 text-[10px] font-black text-white/20 tracking-widest">#{m.n}</span>
+                <span className="absolute top-5 right-5 text-[10px] font-black text-slate-300 tracking-widest">#{m.n}</span>
                 {/* Photo space */}
                 <div className="relative w-16 h-16 mb-4">
-                  <div className={`w-full h-full rounded-full bg-gradient-to-br ${m.accent} flex items-center justify-center text-white font-black text-lg ring-2 ring-white/10 shadow-lg group-hover:ring-white/20 transition-all duration-300`}>
+                  <div className={`w-full h-full rounded-full bg-gradient-to-br ${m.accent} flex items-center justify-center text-white font-black text-lg ring-2 ring-slate-200/80 shadow-lg group-hover:ring-amber-200/60 transition-all duration-300`}>
                     {m.initials}
                   </div>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-950 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <Camera className="w-2.5 h-2.5 text-white/50" />
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <Camera className="w-2.5 h-2.5 text-slate-400" />
                   </div>
                 </div>
-                <h3 className="text-white font-extrabold text-xl leading-tight mb-2">{m.name}</h3>
+                <h3 className="text-slate-900 font-extrabold text-xl leading-tight mb-2">{m.name}</h3>
                 <span className={`inline-flex items-center text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${m.pill}`}>
                   {m.role}
                 </span>
@@ -346,26 +351,26 @@ export default function AboutPage() {
           {/* ── Ligne 2 — 3 membres principaux ── */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
             {[
-              { n: "03", initials: "AA", name: "Fr Alexis ASSOGBA", role: "CASF", accent: "from-emerald-400 to-emerald-600", pill: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" },
-              { n: "04", initials: "GH", name: "Sr Grâce HOUNTON", role: "Trésorière Générale", accent: "from-violet-400 to-violet-600", pill: "bg-violet-500/15 text-violet-400 border-violet-500/20" },
-              { n: "05", initials: "LG", name: "Fr Lionel GNANCADJA", role: "Organisateur Général", accent: "from-rose-400 to-rose-600", pill: "bg-rose-500/15 text-rose-400 border-rose-500/20" },
+              { n: "03", initials: "AA", name: "Fr Alexis ASSOGBA", role: "CASF", accent: "from-emerald-400 to-emerald-600", pill: "bg-emerald-50 text-emerald-900 border-emerald-200" },
+              { n: "04", initials: "GH", name: "Sr Grâce HOUNTON", role: "Trésorière Générale", accent: "from-violet-400 to-violet-600", pill: "bg-violet-50 text-violet-900 border-violet-200" },
+              { n: "05", initials: "LG", name: "Fr Lionel GNANCADJA", role: "Organisateur Général", accent: "from-rose-400 to-rose-600", pill: "bg-rose-50 text-rose-900 border-rose-200" },
             ].map((m) => (
-              <div key={m.n} className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.12] transition-all duration-500 p-5">
+              <div key={m.n} className="group relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white/90 shadow-md shadow-amber-950/5 backdrop-blur-sm hover:border-amber-200/50 hover:shadow-lg transition-all duration-500 p-5">
                 <div className={`absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r ${m.accent}`} />
-                <span className="absolute -right-2 -bottom-4 text-[5.5rem] font-black text-white/[0.04] select-none leading-none pointer-events-none">
+                <span className="absolute -right-2 -bottom-4 text-[5.5rem] font-black text-slate-900/[0.04] select-none leading-none pointer-events-none">
                   {m.initials}
                 </span>
-                <span className="absolute top-4 right-4 text-[10px] font-black text-white/20 tracking-widest">#{m.n}</span>
+                <span className="absolute top-4 right-4 text-[10px] font-black text-slate-300 tracking-widest">#{m.n}</span>
                 {/* Photo space */}
                 <div className="relative w-14 h-14 mb-3">
-                  <div className={`w-full h-full rounded-full bg-gradient-to-br ${m.accent} flex items-center justify-center text-white font-black text-sm ring-2 ring-white/10 shadow-lg group-hover:ring-white/20 transition-all duration-300`}>
+                  <div className={`w-full h-full rounded-full bg-gradient-to-br ${m.accent} flex items-center justify-center text-white font-black text-sm ring-2 ring-slate-200/80 shadow-lg group-hover:ring-amber-200/50 transition-all duration-300`}>
                     {m.initials}
                   </div>
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-amber-950 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <Camera className="w-2 h-2 text-white/50" />
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <Camera className="w-2 h-2 text-slate-400" />
                   </div>
                 </div>
-                <h3 className="text-white font-extrabold text-base leading-tight mb-2">{m.name}</h3>
+                <h3 className="text-slate-900 font-extrabold text-base leading-tight mb-2">{m.name}</h3>
                 <span className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${m.pill}`}>
                   {m.role}
                 </span>
@@ -375,34 +380,34 @@ export default function AboutPage() {
 
           {/* ── Séparateur membres associés ── */}
           <div className="flex items-center gap-4 my-10">
-            <div className="flex-1 h-px bg-white/[0.06]" />
+            <div className="flex-1 h-px bg-slate-200" />
             <div className="flex items-center gap-2 shrink-0">
-              <span className="w-1 h-1 rounded-full bg-white/20" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/25">Membres associés</span>
-              <span className="w-1 h-1 rounded-full bg-white/20" />
+              <span className="w-1 h-1 rounded-full bg-slate-400/60" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Membres associés</span>
+              <span className="w-1 h-1 rounded-full bg-slate-400/60" />
             </div>
-            <div className="flex-1 h-px bg-white/[0.06]" />
+            <div className="flex-1 h-px bg-slate-200" />
           </div>
 
           {/* ── 2 membres secondaires ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl mx-auto">
             {[
-              { initials: "KA", name: "Fr Kenneth ASSOGBA", role: "Stagiaire CASF", accent: "from-orange-400 to-orange-500", border: "border-l-orange-500/50" },
-              { initials: "JH", name: "Sr Jarnelle HONTONNOU", role: "Stagiaire TG", accent: "from-teal-400 to-teal-500", border: "border-l-teal-500/50" },
+              { initials: "KA", name: "Fr Kenneth ASSOGBA", role: "Stagiaire CASF", accent: "from-orange-400 to-orange-500", border: "border-l-orange-400" },
+              { initials: "JH", name: "Sr Jarnelle HONTONNOU", role: "Stagiaire TG", accent: "from-teal-400 to-teal-500", border: "border-l-teal-500" },
             ].map((m, i) => (
-              <div key={i} className={`group flex items-center gap-4 bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] border-l-2 ${m.border} rounded-xl px-5 py-4 transition-all duration-300`}>
+              <div key={i} className={`group flex items-center gap-4 rounded-xl border border-slate-200/90 bg-white/80 shadow-sm backdrop-blur-sm hover:border-slate-300 hover:bg-white hover:shadow-md border-l-2 ${m.border} px-5 py-4 transition-all duration-300`}>
                 {/* Photo space */}
                 <div className="relative shrink-0">
-                  <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${m.accent} flex items-center justify-center text-white font-black text-xs ring-2 ring-white/10 group-hover:ring-white/20 transition-all duration-300`}>
+                  <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${m.accent} flex items-center justify-center text-white font-black text-xs ring-2 ring-slate-200/80 group-hover:ring-amber-200/50 transition-all duration-300`}>
                     {m.initials}
                   </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-amber-950 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <Camera className="w-2 h-2 text-white/50" />
+                  <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <Camera className="w-2 h-2 text-slate-400" />
                   </div>
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-white/80 font-bold text-sm leading-tight">{m.name}</h3>
-                  <span className="text-white/30 text-[10px] font-semibold uppercase tracking-wider">{m.role}</span>
+                  <h3 className="text-slate-800 font-bold text-sm leading-tight">{m.name}</h3>
+                  <span className="text-slate-500 text-[10px] font-semibold uppercase tracking-wider">{m.role}</span>
                 </div>
               </div>
             ))}
