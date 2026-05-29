@@ -23,6 +23,30 @@ const optionalUrl = z
     message: "URL ou chemin d’image invalide",
   });
 
+export const NIVEAU_SCOLAIRE_OPTIONS = [
+  "CI",
+  "CP",
+  "CE1",
+  "CE2",
+  "CM1",
+  "CM2",
+  "6ème",
+  "5ème",
+  "4ème",
+  "3ème",
+  "2nde",
+  "1ère",
+  "Terminale",
+  "Licence 1",
+  "Licence 2",
+  "Licence 3",
+  "Master 1",
+  "Master 2",
+  "Doctorat",
+] as const;
+
+export type NiveauScolaire = (typeof NIVEAU_SCOLAIRE_OPTIONS)[number];
+
 export const createLecteurSchema = z.object({
   nom: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
   prenoms: z.string().min(2, "Les prénoms doivent contenir au moins 2 caractères"),
@@ -33,7 +57,7 @@ export const createLecteurSchema = z.object({
     .optional()
     .transform((v) => (v && v.length >= 24 ? v : undefined)),
   anneeAdhesion: z.coerce.number().int().min(1900).max(new Date().getFullYear()),
-  niveau: z.string().min(1, "Le niveau est requis"),
+  niveau: z.enum(NIVEAU_SCOLAIRE_OPTIONS, { message: "Le niveau est requis" }),
   details: z.string().optional(),
   contact: z.string().min(8, "Numéro de contact invalide"),
   contactUrgence: z.string().min(8, "Numéro de contact d'urgence invalide"),

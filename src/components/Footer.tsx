@@ -4,89 +4,105 @@ import { Mail, MapPin, Phone } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="bg-white border-t border-slate-200/60 pt-16 pb-8 relative overflow-hidden">
-      {/* Subtle decorative background element */}
-      <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-bl from-amber-50/50 to-transparent pointer-events-none" />
+    <footer className="bg-white border-t border-slate-200/60 pt-10 sm:pt-12 md:pt-16 pb-6 sm:pb-8 relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-1/2 sm:w-1/3 h-full bg-gradient-to-bl from-amber-50/50 to-transparent pointer-events-none" />
 
-      <div className="container mx-auto px-8 md:px-16 lg:px-24 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-8 mb-16">
-          
-          {/* Brand Section */}
-          <div className="md:col-span-5 lg:col-span-4 space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="relative h-12 w-12 overflow-hidden rounded-full border border-amber-100 shadow-sm bg-white">
-                <Image 
-                  src="https://i.postimg.cc/BnnDpTc2/CDLJ.png" 
-                  alt="Logo CDLJ" 
-                  fill 
+      <div className="container mx-auto px-4 sm:px-6 md:px-8 lg:px-16 xl:px-24 relative z-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-8 sm:gap-10 lg:gap-8 mb-10 sm:mb-12 md:mb-16">
+
+          {/* Brand */}
+          <div className="sm:col-span-2 lg:col-span-4 space-y-4 sm:space-y-6 text-left">
+            <div className="flex items-center gap-3 justify-start">
+              <div className="relative h-10 w-10 sm:h-12 sm:w-12 overflow-hidden rounded-full border border-amber-100 shadow-sm bg-white shrink-0">
+                <Image
+                  src="https://i.postimg.cc/BnnDpTc2/CDLJ.png"
+                  alt="Logo CDLJ"
+                  fill
                   className="object-contain p-1"
                   unoptimized
                 />
               </div>
-              <span className="text-2xl font-black tracking-tight text-amber-900">
+              <span className="text-xl sm:text-2xl font-black tracking-tight text-amber-900">
                 CDLJ WEBAPP
               </span>
             </div>
-            <p className="text-slate-500 leading-relaxed max-w-sm">
-              Plateforme officielle de gestion des activités de la Communauté Diocésaine 
-              des Lecteurs Juniors de Cotonou. Construisons ensemble l'avenir de notre communauté.
+            <p className="text-sm sm:text-base text-slate-500 leading-relaxed max-w-sm">
+              Plateforme officielle de la Communauté Diocésaine
+              des Lecteurs Juniors de Cotonou. Lecteurs, Sel & Lumière nous sommes !!!
             </p>
           </div>
-          
-          {/* Quick Links */}
-          <div className="md:col-span-3 lg:col-span-2 lg:col-start-7">
-            <h3 className="text-slate-900 font-bold mb-6 tracking-wide uppercase text-sm">Navigation</h3>
-            <ul className="space-y-4 text-slate-500 font-medium">
+
+          {/* Explorer */}
+          <div className="lg:col-span-2 lg:col-start-5">
+            <h3 className="text-slate-900 font-bold mb-4 sm:mb-6 tracking-wide uppercase text-xs sm:text-sm text-left">
+              Explorer
+            </h3>
+            <ul className="space-y-3 sm:space-y-4 text-sm text-slate-500 font-medium text-left">
               <li>
-                <Link href="/" className="hover:text-amber-900 hover:translate-x-1 inline-block transition-all">Accueil</Link>
+                <Link href="/" className="hover:text-amber-900 inline-block transition-colors">Accueil</Link>
               </li>
               <li>
-                <Link href="/news" className="hover:text-amber-900 hover:translate-x-1 inline-block transition-all">Blog & Actualités</Link>
+                <Link href="/news" className="hover:text-amber-900 inline-block transition-colors">Blog & Actualités</Link>
               </li>
               <li>
-                <Link href="/about" className="hover:text-amber-900 hover:translate-x-1 inline-block transition-all">À Propos</Link>
+                <Link href="/mediatheque" className="hover:text-amber-900 inline-block transition-colors">Médiathèque</Link>
               </li>
               <li>
-                <Link href="/nos-vicariats" className="hover:text-amber-900 hover:translate-x-1 inline-block transition-all">Vicariats</Link>
-              </li>
-              <li>
-                <Link href="/forums" className="hover:text-amber-900 hover:translate-x-1 inline-block transition-all">Forums communautaires</Link>
-              </li>
-              <li>
-                <Link href="/auth/login" className="hover:text-amber-900 hover:translate-x-1 inline-block transition-all text-amber-700">Accès Portail</Link>
+                <Link href="/about" className="hover:text-amber-900 inline-block transition-colors">À Propos</Link>
               </li>
             </ul>
           </div>
 
-          {/* Contact Section */}
-          <div className="md:col-span-4 lg:col-span-3 lg:col-start-10">
-            <h3 className="text-slate-900 font-bold mb-6 tracking-wide uppercase text-sm">Contactez-nous</h3>
-            <ul className="space-y-4 text-slate-500">
-              <li className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-amber-900 shrink-0 mt-0.5" />
-                <span className="leading-snug">Archidiocèse de Cotonou<br/>Cotonou, Bénin</span>
+          {/* Communauté */}
+          <div className="lg:col-span-2 lg:col-start-7">
+            <h3 className="text-slate-900 font-bold mb-4 sm:mb-6 tracking-wide uppercase text-xs sm:text-sm text-left">
+              Communauté
+            </h3>
+            <ul className="space-y-3 sm:space-y-4 text-sm text-slate-500 font-medium text-left">
+              <li>
+                <Link href="/nos-vicariats" className="hover:text-amber-900 inline-block transition-colors">Vicariats</Link>
               </li>
-              <li className="flex items-center gap-3">
-                <Mail className="w-5 h-5 text-amber-900 shrink-0" />
-                <a href="mailto:contact@cdlj.com" className="hover:text-amber-900 transition-colors">contact@cdlj.com</a>
+              <li>
+                <Link href="/forums" className="hover:text-amber-900 inline-block transition-colors">Forums</Link>
               </li>
-              <li className="flex items-center gap-3">
-                <Phone className="w-5 h-5 text-amber-900 shrink-0" />
+              <li>
+                <Link href="/verifier" className="hover:text-amber-900 inline-block transition-colors">Vérifier</Link>
+              </li>
+              <li>
+                <Link href="/auth/login" className="hover:text-amber-900 inline-block transition-colors text-amber-700">Accès Portail</Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Contact */}
+          <div className="sm:col-span-2 lg:col-span-3 lg:col-start-10">
+            <h3 className="text-slate-900 font-bold mb-4 sm:mb-6 tracking-wide uppercase text-xs sm:text-sm text-left">
+              Contactez-nous
+            </h3>
+            <ul className="space-y-3 sm:space-y-4 text-sm text-slate-500">
+              <li className="flex items-start gap-3 justify-start">
+                <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-amber-900 shrink-0 mt-0.5" />
+                <span className="leading-snug text-left">Centre Paul VI<br />Cotonou, Bénin</span>
+              </li>
+              <li className="flex items-center gap-3 justify-start">
+                <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-amber-900 shrink-0" />
+                <a href="mailto:contact@cdlj-cotonou.com" className="hover:text-amber-900 transition-colors break-all">
+                  contact@cdlj-cotonou.com
+                </a>
+              </li>
+              <li className="flex items-center gap-3 justify-start">
+                <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-amber-900 shrink-0" />
                 <span>+229 00 00 00 00</span>
               </li>
             </ul>
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="border-t border-slate-200/60 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-slate-400 gap-4">
+        {/* Bottom bar */}
+        <div className="border-t border-slate-200/60 pt-6 sm:pt-8 flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs sm:text-sm text-slate-400 gap-3 sm:gap-4 text-left">
           <p className="font-medium text-slate-500">
             © {new Date().getFullYear()} <span className="text-amber-900">CDLJ</span>. Tous droits réservés.
           </p>
-          <div className="flex items-center gap-6 font-medium">
-            <Link href="#" className="hover:text-amber-900 transition-colors">Politique de confidentialité</Link>
-            <Link href="#" className="hover:text-amber-900 transition-colors">Mentions légales</Link>
-          </div>
         </div>
       </div>
     </footer>

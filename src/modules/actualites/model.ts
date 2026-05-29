@@ -10,6 +10,7 @@ export interface IActualite extends Document {
   author: string;
   authorRole?: string;
   readTime?: string;
+  tags: string[];
   featured: boolean;
   published: boolean;
   createdAt: Date;
@@ -27,6 +28,7 @@ const ActualiteSchema = new Schema<IActualite>(
     author:     { type: String, required: true },
     authorRole: { type: String },
     readTime:   { type: String },
+    tags:       { type: [String], default: [] },
     featured:   { type: Boolean, default: false },
     published:  { type: Boolean, default: false },
   },

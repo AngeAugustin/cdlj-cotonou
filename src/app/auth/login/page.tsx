@@ -217,7 +217,7 @@ export default function LoginPage() {
                 Portail <span className="text-amber-900">Intranet Diocésain</span>
               </h1>
               <p className="text-lg text-slate-600 leading-relaxed max-w-md">
-                Accès exclusif réservé aux bureaux vicarials, paroissiaux et aux administrateurs de la CDLJ de Cotonou.
+                Accès exclusif réservé aux diocésains, aux vicariaux et paroissiaux de la CDLJ de Cotonou.
               </p>
 
               {/* Animated Features Grid */}
@@ -246,7 +246,7 @@ export default function LoginPage() {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-slate-800">Réseau</span>
-                    <span className="text-xs text-slate-500 leading-snug mt-1">+10k Membres interconnectés.</span>
+                    <span className="text-xs text-slate-500 leading-snug mt-1">+3000 lecteurs gérés par la CDLJ.</span>
                   </div>
                 </div>
 

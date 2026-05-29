@@ -16,7 +16,7 @@ import {
   ChevronRight,
   Check,
 } from "lucide-react";
-import { createLecteurSchema } from "../schema";
+import { createLecteurSchema, NIVEAU_SCOLAIRE_OPTIONS } from "../schema";
 import {
   dateFromDateInputString,
   toDateInputValue,
@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { absolutePublicUrl } from "@/lib/mediaUrl";
+import { cn } from "@/lib/utils";
 
 /** Valeur interne pour « aucune sélection » (jamais affichée telle quelle à l’écran). */
 const SELECT_EMPTY = "__cdlj_empty__";
@@ -38,7 +39,11 @@ const lecteurFormInputSchema = z.object({
   sexe: z.enum(["M", "F"]),
   gradeId: z.string().optional(),
   anneeAdhesion: z.number().int().min(1900).max(new Date().getFullYear()),
-  niveau: z.string().min(1, "Le niveau est requis"),
+  niveau: z
+    .string()
+    .refine((v) => (NIVEAU_SCOLAIRE_OPTIONS as readonly string[]).includes(v), {
+      message: "Le niveau est requis",
+    }),
   details: z.string().optional(),
   contact: z.string().min(8, "Numéro de contact invalide"),
   contactUrgence: z.string().min(8, "Numéro de contact d'urgence invalide"),
@@ -141,6 +146,7 @@ function birthDateSource(initial: LecteurFormInitial | null | undefined): string
 
 export function LecteurForm({
   mode = "create",
+  variant = "default",
   lecteurId,
   initialData,
   lockParishVicariat,
@@ -151,6 +157,7 @@ export function LecteurForm({
   onCancel,
 }: {
   mode?: "create" | "edit";
+  variant?: "default" | "page";
   lecteurId?: string;
   initialData?: LecteurFormInitial | null;
   lockParishVicariat?: {
@@ -174,6 +181,9 @@ export function LecteurForm({
   const [uploadingId, setUploadingId] = useState(false);
 
   const lastStepIndex = STEPS_META.length - 1;
+  const isPage = variant === "page";
+  const activeStep = STEPS_META[step];
+  const ActiveStepIcon = activeStep.icon;
   const prevEditLecteurIdRef = useRef<string | undefined>(undefined);
   const lockParoisseId = lockParishVicariat?.paroisseId;
   const lockVicariatId = lockParishVicariat?.vicariatId;
@@ -367,15 +377,20 @@ export function LecteurForm({
   return (
     <Form {...form}>
       <form
-        className="space-y-8"
+        className={cn("space-y-6", isPage && "space-y-5")}
         onSubmit={(e) => {
           e.preventDefault();
           /* Ne pas enregistrer ici : Entrée dans un <input> déclenche submit et lancerait l’API sans clic sur le bouton. */
         }}
       >
-        {/* Stepper — icônes en tête */}
-        <div className="relative">
-          <div className="flex items-start justify-between gap-1 sm:gap-2 overflow-x-auto pb-2 scrollbar-thin -mx-1 px-1">
+        {/* Stepper */}
+        <div
+          className={cn(
+            "relative",
+            isPage && "rounded-3xl border border-slate-100 bg-gradient-to-br from-slate-50/90 via-white to-amber-50/20 p-4 shadow-sm sm:p-6"
+          )}
+        >
+          <div className="flex items-start justify-between gap-1 overflow-x-auto pb-2 scrollbar-thin -mx-1 px-1 sm:gap-2">
             {STEPS_META.map((meta, index) => {
               const Icon = meta.icon;
               const isActive = step === index;
@@ -383,50 +398,50 @@ export function LecteurForm({
               const showCheck = index < step;
 
               return (
-                <div key={meta.title} className="flex items-start min-w-0 flex-1">
+                <div key={meta.title} className="flex min-w-0 flex-1 items-start">
                   <button
                     type="button"
                     onClick={() => goToStep(index)}
                     disabled={!reachable && mode === "create"}
-                    className={`
-                      flex flex-col items-center gap-2 w-full min-w-[4.5rem] sm:min-w-[5.5rem] group transition-opacity
-                      ${reachable || mode === "edit" ? "opacity-100 cursor-pointer" : "opacity-40 cursor-not-allowed"}
-                    `}
+                    className={cn(
+                      "group flex w-full min-w-[4.5rem] flex-col items-center gap-2 transition-opacity sm:min-w-[5.5rem]",
+                      reachable || mode === "edit" ? "cursor-pointer opacity-100" : "cursor-not-allowed opacity-40"
+                    )}
                   >
                     <span
-                      className={`
-                        relative flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl border-2 transition-all duration-200
-                        ${
-                          isActive
-                            ? "border-amber-900 bg-amber-900 text-white shadow-lg shadow-amber-900/25 scale-105"
-                            : showCheck
-                              ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                              : "border-slate-200 bg-white text-slate-400 group-hover:border-amber-300 group-hover:text-amber-800"
-                        }
-                      `}
+                      className={cn(
+                        "relative flex h-12 w-12 items-center justify-center rounded-2xl border-2 transition-all duration-200 sm:h-14 sm:w-14",
+                        isActive
+                          ? "scale-105 border-amber-900 bg-amber-900 text-white shadow-lg shadow-amber-900/25"
+                          : showCheck
+                            ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                            : "border-slate-200 bg-white text-slate-400 group-hover:border-amber-300 group-hover:text-amber-800"
+                      )}
                     >
                       {showCheck && !isActive ? (
-                        <Check className="w-6 h-6 sm:w-7 sm:h-7" strokeWidth={2.5} />
+                        <Check className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={2.5} />
                       ) : (
-                        <Icon className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2} />
+                        <Icon className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2} />
                       )}
                     </span>
-                    <span className="text-center px-0.5">
+                    <span className="px-0.5 text-center">
                       <span
-                        className={`block text-[11px] sm:text-xs font-extrabold uppercase tracking-wide leading-tight ${
+                        className={cn(
+                          "block text-[11px] font-extrabold uppercase leading-tight tracking-wide sm:text-xs",
                           isActive ? "text-amber-950" : "text-slate-500"
-                        }`}
+                        )}
                       >
                         {meta.title}
                       </span>
-                      <span className="hidden sm:block text-[10px] text-slate-400 mt-0.5 leading-snug">{meta.subtitle}</span>
+                      <span className="mt-0.5 hidden text-[10px] leading-snug text-slate-400 sm:block">{meta.subtitle}</span>
                     </span>
                   </button>
                   {index < lastStepIndex ? (
                     <div
-                      className={`hidden sm:block flex-1 min-w-[8px] h-0.5 mt-6 sm:mt-7 mx-1 rounded-full transition-colors ${
+                      className={cn(
+                        "mx-1 mt-6 hidden h-0.5 min-w-[8px] flex-1 rounded-full transition-colors sm:mt-7 sm:block",
                         index < step ? "bg-emerald-400" : "bg-slate-200"
-                      }`}
+                      )}
                       aria-hidden
                     />
                   ) : null}
@@ -434,75 +449,101 @@ export function LecteurForm({
               );
             })}
           </div>
-          <p className="text-sm text-slate-500 mt-2 sm:hidden text-center">
+          <p className="mt-2 text-center text-sm text-slate-500 sm:hidden">
             Étape {step + 1}/{STEPS_META.length} · {STEPS_META[step].title}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Photo d’identité : toujours montée (sinon la valeur peut ne pas partir à l’enregistrement) */}
+        {isPage ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-amber-100/80 bg-amber-50/40 px-4 py-3 sm:px-5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200/60 bg-white shadow-sm">
+              <ActiveStepIcon className="h-5 w-5 text-amber-900" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-800/60">
+                Étape {step + 1} sur {STEPS_META.length}
+              </p>
+              <h3 className="text-base font-extrabold text-slate-900">{activeStep.title}</h3>
+              <p className="text-sm text-slate-500">{activeStep.subtitle}</p>
+            </div>
+          </div>
+        ) : null}
+
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-6",
+            isPage
+              ? cn(
+                  "rounded-3xl border border-slate-100 bg-white p-5 shadow-xl shadow-slate-200/20 sm:p-7 md:grid-cols-2",
+                  step === 0 && "lg:grid-cols-3"
+                )
+              : "md:grid-cols-2"
+          )}
+        >
+          {/* Photo d’identité : visible uniquement à l’étape Identité ; valeur conservée via input hidden */}
           <FormField
             control={form.control}
             name="photoIdentite"
             render={({ field }) => (
-              <FormItem className="md:col-span-2 rounded-2xl border border-amber-100/80 bg-amber-50/20 p-4">
-                <FormLabel>Photo d&apos;identité (max 3 Mo)</FormLabel>
+              <>
                 <input type="hidden" {...field} value={field.value ?? ""} />
                 {step === 0 ? (
-                  <div className="flex flex-col gap-3 mt-1">
-                    {field.value ? (
-                      <img
-                        src={absolutePublicUrl(field.value) ?? field.value}
-                        alt="Aperçu photo d’identité"
-                        className="h-36 w-auto max-w-full rounded-xl border border-slate-200 object-contain bg-white"
-                      />
-                    ) : null}
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <label className="flex items-center gap-2 cursor-pointer px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-amber-50 text-sm font-semibold text-slate-700">
-                        <Upload className="w-4 h-4" />
-                        {uploadingId ? "Envoi…" : field.value ? "Changer l’image" : "Choisir une image"}
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          className="hidden"
-                          onChange={(e) => void onIdFile(e, field.onChange)}
-                          disabled={uploadingId}
-                        />
-                      </label>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-2 flex flex-wrap items-center gap-4">
-                    {field.value ? (
-                      <img
-                        src={absolutePublicUrl(field.value) ?? field.value}
-                        alt=""
-                        className="h-24 w-auto max-w-[min(100%,280px)] rounded-xl border border-slate-200 object-contain bg-white"
-                      />
-                    ) : (
-                      <p className="text-sm text-slate-600">Aucune photo sélectionnée.</p>
+                  <FormItem
+                    className={cn(
+                      "md:col-span-2 rounded-2xl border border-amber-100/80 bg-amber-50/20 p-4",
+                      isPage && "lg:col-span-1 lg:row-span-2 lg:self-start lg:p-5 lg:bg-gradient-to-br lg:from-amber-50/70 lg:to-white"
                     )}
-                    <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => goToStep(0)}>
-                      Photo à l’étape Identité
-                    </Button>
-                  </div>
-                )}
-                <FormMessage />
-              </FormItem>
+                  >
+                    <FormLabel className={cn(isPage && "font-semibold text-slate-800")}>
+                      Photo d&apos;identité (max 3 Mo)
+                    </FormLabel>
+                    <div className="mt-1 flex flex-col gap-3">
+                      {field.value ? (
+                        <img
+                          src={absolutePublicUrl(field.value) ?? field.value}
+                          alt="Aperçu photo d’identité"
+                          className={cn(
+                            "h-36 w-auto max-w-full rounded-xl border border-slate-200 bg-white object-contain",
+                            isPage && "mx-auto lg:h-44 lg:w-full"
+                          )}
+                        />
+                      ) : isPage ? (
+                        <div className="flex h-36 items-center justify-center rounded-xl border-2 border-dashed border-amber-200/80 bg-white/80 px-4 text-center lg:h-44">
+                          <p className="text-xs font-medium text-slate-400">Aucune photo sélectionnée</p>
+                        </div>
+                      ) : null}
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-amber-50">
+                          <Upload className="w-4 h-4" />
+                          {uploadingId ? "Envoi…" : field.value ? "Changer l’image" : "Choisir une image"}
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={(e) => void onIdFile(e, field.onChange)}
+                            disabled={uploadingId}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                ) : null}
+              </>
             )}
           />
 
           {/* Étape 0 — Identité */}
           {step === 0 && (
-            <>
+            <div className={cn(isPage && "lg:col-span-2 lg:grid lg:grid-cols-2 lg:gap-5 lg:self-start")}>
               <FormField
                 control={form.control}
                 name="nom"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nom</FormLabel>
+                  <FormItem className={cn(isPage && "lg:col-span-1")}>
+                    <FormLabel className={cn(isPage && "font-semibold text-slate-700")}>Nom</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nom de famille" className="rounded-xl" {...field} />
+                      <Input placeholder="Nom de famille" className={cn("rounded-xl", isPage && "h-11 bg-slate-50/80 focus:bg-white")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -512,24 +553,24 @@ export function LecteurForm({
                 control={form.control}
                 name="prenoms"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Prénoms</FormLabel>
+                  <FormItem className={cn(isPage && "lg:col-span-1")}>
+                    <FormLabel className={cn(isPage && "font-semibold text-slate-700")}>Prénoms</FormLabel>
                     <FormControl>
-                      <Input placeholder="Prénoms" className="rounded-xl" {...field} />
+                      <Input placeholder="Prénoms" className={cn("rounded-xl", isPage && "h-11 bg-slate-50/80 focus:bg-white")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <div className="md:col-span-2 flex flex-col md:flex-row gap-6 md:items-end">
+              <div className={cn("flex flex-col gap-6 md:col-span-2 md:flex-row md:items-end", isPage && "lg:col-span-2 lg:flex-col lg:items-stretch")}>
                 <FormField
                   control={form.control}
                   name="dateNaissance"
                   render={({ field }) => (
-                    <FormItem className="w-full md:w-auto md:shrink-0 md:max-w-[14rem]">
-                      <FormLabel>Date de naissance</FormLabel>
+                    <FormItem className={cn("w-full md:w-auto md:shrink-0 md:max-w-[14rem]", isPage && "md:max-w-none lg:max-w-none")}>
+                      <FormLabel className={cn(isPage && "font-semibold text-slate-700")}>Date de naissance</FormLabel>
                       <FormControl>
-                        <Input type="date" className="rounded-xl w-full md:w-[min(100%,14rem)]" {...field} />
+                        <Input type="date" className={cn("rounded-xl w-full md:w-[min(100%,14rem)]", isPage && "h-11 bg-slate-50/80 focus:bg-white lg:w-full")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -540,10 +581,10 @@ export function LecteurForm({
                   name="sexe"
                   render={({ field }) => (
                     <FormItem className="w-full min-w-0 flex-1">
-                      <FormLabel>Sexe</FormLabel>
+                      <FormLabel className={cn(isPage && "font-semibold text-slate-700")}>Sexe</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="rounded-xl w-full">
+                          <SelectTrigger className={cn("rounded-xl w-full", isPage && "h-11 bg-slate-50/80")}>
                             <SelectValue placeholder="Sexe" />
                           </SelectTrigger>
                         </FormControl>
@@ -557,7 +598,7 @@ export function LecteurForm({
                   )}
                 />
               </div>
-            </>
+            </div>
           )}
 
           {/* Étape 1 — Parcours */}
@@ -621,26 +662,52 @@ export function LecteurForm({
               <FormField
                 control={form.control}
                 name="niveau"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Niveau scolaire ou professionnel</FormLabel>
-                    <FormControl>
-                      <Input placeholder="ex. 3ème, Terminale, Apprenti…" className="rounded-xl" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const options =
+                    field.value && !(NIVEAU_SCOLAIRE_OPTIONS as readonly string[]).includes(field.value)
+                      ? [field.value, ...NIVEAU_SCOLAIRE_OPTIONS]
+                      : [...NIVEAU_SCOLAIRE_OPTIONS];
+
+                  return (
+                    <FormItem>
+                      <FormLabel className={cn(isPage && "font-semibold text-slate-700")}>
+                        Niveau scolaire ou professionnel
+                      </FormLabel>
+                      <Select
+                        value={field.value || SELECT_EMPTY}
+                        onValueChange={(v) => field.onChange(v === SELECT_EMPTY ? "" : v)}
+                      >
+                        <FormControl>
+                          <SelectTrigger className={cn("rounded-xl w-full", isPage && "h-11 bg-slate-50/80")}>
+                            <SelectValue>{field.value || "Sélectionner un niveau"}</SelectValue>
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={SELECT_EMPTY}>Sélectionner un niveau</SelectItem>
+                          {options.map((n) => (
+                            <SelectItem key={n} value={n}>
+                              {n}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
               <FormField
                 control={form.control}
                 name="details"
                 render={({ field }) => (
                   <FormItem className="md:col-span-2">
-                    <FormLabel>Autres détails (facultatif)</FormLabel>
+                    <FormLabel className={cn(isPage && "font-semibold text-slate-700")}>
+                      Situation professionnelle (facultatif)
+                    </FormLabel>
                     <FormControl>
                       <textarea
                         className="flex min-h-[88px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-900/20 focus-visible:border-amber-900"
-                        placeholder="Précisions sur le parcours scolaire ou professionnel…"
+                        placeholder="Précisions sur la situation professionnelle…"
                         {...field}
                       />
                     </FormControl>
@@ -797,7 +864,12 @@ export function LecteurForm({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+        <div
+          className={cn(
+            "flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-2",
+            isPage && "rounded-2xl border border-slate-100 bg-slate-50/60 px-5 py-4 sm:px-6"
+          )}
+        >
           <div className="flex flex-wrap gap-2">
             {step > 0 ? (
               <Button type="button" variant="outline" className="rounded-xl gap-1" onClick={goPrev}>

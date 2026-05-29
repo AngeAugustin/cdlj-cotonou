@@ -16,6 +16,8 @@ interface RichTextEditorProps {
   content: string;
   onChange: (html: string) => void;
   placeholder?: string;
+  /** Étire l’éditeur pour remplir la hauteur disponible du conteneur parent. */
+  fillHeight?: boolean;
 }
 
 type ToolbarButtonProps = {
@@ -46,7 +48,7 @@ function Divider() {
   return <div className="w-px h-5 bg-slate-200 mx-1 shrink-0" />;
 }
 
-export default function RichTextEditor({ content, onChange, placeholder }: RichTextEditorProps) {
+export default function RichTextEditor({ content, onChange, placeholder, fillHeight = false }: RichTextEditorProps) {
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -65,7 +67,9 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
       : content) || "<p></p>",
     editorProps: {
       attributes: {
-        class: "outline-none min-h-[240px] px-5 py-4 text-slate-700 leading-relaxed prose prose-sm max-w-none prose-headings:text-slate-800 prose-headings:font-bold prose-p:my-1.5 prose-ul:my-1 prose-ol:my-1",
+        class: `outline-none px-5 py-4 text-slate-700 leading-relaxed prose prose-sm max-w-none prose-headings:text-slate-800 prose-headings:font-bold prose-p:my-1.5 prose-ul:my-1 prose-ol:my-1 ${
+          fillHeight ? "min-h-full h-full" : "min-h-[240px]"
+        }`,
       },
     },
     onUpdate({ editor }) {
@@ -88,7 +92,11 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
   if (!editor) return null;
 
   return (
-    <div className="border border-slate-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-amber-900/20 focus-within:border-amber-900/30 transition-all">
+    <div
+      className={`border border-slate-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-amber-900/20 focus-within:border-amber-900/30 transition-all${
+        fillHeight ? " flex h-full min-h-[280px] flex-col" : ""
+      }`}
+    >
 
       {/* ── Toolbar ───────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-0.5 px-3 py-2 bg-slate-50 border-b border-slate-200">
@@ -209,13 +217,20 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
       </div>
 
       {/* ── Editor area ───────────────────────────────────── */}
-      <div className="relative bg-white">
+      <div className={`relative bg-white${fillHeight ? " flex min-h-0 flex-1 flex-col" : ""}`}>
         {editor.isEmpty && placeholder && (
           <p className="absolute top-4 left-5 text-slate-400 text-sm pointer-events-none select-none">
             {placeholder}
           </p>
         )}
-        <EditorContent editor={editor} />
+        <EditorContent
+          editor={editor}
+          className={
+            fillHeight
+              ? "flex min-h-0 flex-1 flex-col [&_.tiptap]:flex [&_.tiptap]:min-h-0 [&_.tiptap]:flex-1 [&_.tiptap]:flex-col [&_.ProseMirror]:min-h-full [&_.ProseMirror]:flex-1"
+              : undefined
+          }
+        />
       </div>
     </div>
   );

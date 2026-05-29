@@ -11,7 +11,6 @@ import {
   Trash2,
   Eye,
   Loader2,
-  X,
   AlertCircle,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -25,12 +24,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LecteurForm, type LecteurFormInitial } from "@/modules/lecteurs/components/LecteurForm";
 import { DashboardPageShell, DashboardPanel } from "@/components/dashboard/page-shell";
 import {
   type ApiLecteur,
-  type ParishRef,
-  type VicariatRef,
   ageYearsForCsv,
   displayAvatarSrc,
   formatAgeLabel,
@@ -55,37 +51,10 @@ export default function LecteursPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [gradeFilter, setGradeFilter] = useState("");
 
-  const [editOpen, setEditOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<ApiLecteur | null>(null);
-  const [editGradeLocked, setEditGradeLocked] = useState(false);
-
   const [deleteTarget, setDeleteTarget] = useState<ApiLecteur | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const canCreate = roles.some((r) => ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"].includes(r));
-  const userIsParoissial = roles.includes("PAROISSIAL");
-  const userIsVicarial = roles.includes("VICARIAL");
-
-  const [vicariatsOpts, setVicariatsOpts] = useState<{ _id: string; name: string }[]>([]);
-  const [paroissesOpts, setParoissesOpts] = useState<{ _id: string; name: string; vicariatId: string }[]>([]);
-
-  /** Référence stable : évite de relancer `form.reset` dans LecteurForm à chaque rendu du parent. */
-  const lockParishVicariatForEdit = useMemo(() => {
-    if (!editTarget) return undefined;
-    if (!userIsParoissial && !userIsVicarial) return undefined;
-    return {
-      paroisseId: refId(editTarget.paroisseId),
-      vicariatId: refId(editTarget.vicariatId),
-      paroisseName:
-        editTarget.paroisseId && typeof editTarget.paroisseId === "object" && "name" in editTarget.paroisseId
-          ? (editTarget.paroisseId as ParishRef).name
-          : undefined,
-      vicariatName:
-        editTarget.vicariatId && typeof editTarget.vicariatId === "object" && "name" in editTarget.vicariatId
-          ? (editTarget.vicariatId as VicariatRef).name
-          : undefined,
-    };
-  }, [editTarget, userIsParoissial, userIsVicarial]);
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -115,54 +84,6 @@ export default function LecteursPage() {
       })
       .catch(() => setGrades([]));
   }, []);
-
-  useEffect(() => {
-    if (roles.includes("PAROISSIAL")) return;
-    Promise.all([fetch("/api/vicariats"), fetch("/api/paroisses")])
-      .then(async ([rv, rp]) => {
-        const vj = await rv.json().catch(() => []);
-        const pj = await rp.json().catch(() => []);
-        if (Array.isArray(vj)) setVicariatsOpts(vj.map((x: { _id: string; name: string }) => ({ _id: String(x._id), name: x.name })));
-        if (Array.isArray(pj))
-          setParoissesOpts(
-            pj.map((x: { _id: string; name: string; vicariatId?: string; vicariat?: { _id?: string } }) => ({
-              _id: String(x._id),
-              name: String(x.name),
-              vicariatId: x.vicariatId ? String(x.vicariatId) : x.vicariat?._id ? String(x.vicariat._id) : "",
-            }))
-          );
-      })
-      .catch(() => {
-        setVicariatsOpts([]);
-        setParoissesOpts([]);
-      });
-  }, [roles]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadConcernedFlag() {
-      if (!editOpen || !editTarget) {
-        setEditGradeLocked(false);
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/lecteurs/${editTarget._id}/evaluations/concerned`);
-        const data = await res.json().catch(() => ({}));
-        if (cancelled) return;
-        setEditGradeLocked(!!data?.hasEvaluations);
-      } catch {
-        if (cancelled) return;
-        setEditGradeLocked(false);
-      }
-    }
-
-    void loadConcernedFlag();
-    return () => {
-      cancelled = true;
-    };
-  }, [editOpen, editTarget?._id]);
 
   const filtered = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -389,25 +310,14 @@ export default function LecteursPage() {
                     </Link>
                     {canCreate ? (
                       <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="rounded-lg"
+                        <Link
+                          href={`/lecteurs/${l._id}/edit`}
+                          className={cn(buttonVariants({ variant: "outline", size: "icon" }), "rounded-lg")}
                           title="Modifier"
                           aria-label="Modifier le lecteur"
-                          onClick={() => {
-                            setEditTarget(l);
-                            setEditOpen(true);
-                            void fetch(`/api/lecteurs/${l._id}`)
-                              .then((r2) => r2.json().catch(() => ({})))
-                              .then((data: { lecteur?: ApiLecteur }) => {
-                                if (data.lecteur) setEditTarget(data.lecteur);
-                              });
-                          }}
                         >
                           <FileEdit className="w-4 h-4" />
-                        </Button>
+                        </Link>
                         <Button
                           type="button"
                           variant="outline"
@@ -499,24 +409,14 @@ export default function LecteursPage() {
                         </Link>
                         {canCreate ? (
                           <>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="rounded-xl text-slate-500 hover:text-amber-800 hover:bg-amber-50"
+                            <Link
+                              href={`/lecteurs/${l._id}/edit`}
+                              className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "rounded-xl text-slate-500 hover:text-amber-800 hover:bg-amber-50")}
                               title="Modifier"
-                              onClick={() => {
-                                setEditTarget(l);
-                                setEditOpen(true);
-                                void fetch(`/api/lecteurs/${l._id}`)
-                                  .then((r) => r.json().catch(() => ({})))
-                                  .then((data: { lecteur?: ApiLecteur }) => {
-                                    if (data.lecteur) setEditTarget(data.lecteur);
-                                  });
-                              }}
+                              aria-label="Modifier le lecteur"
                             >
                               <FileEdit className="w-5 h-5" />
-                            </Button>
+                            </Link>
                             <Button
                               type="button"
                               variant="ghost"
@@ -548,45 +448,6 @@ export default function LecteursPage() {
           </>
         )}
       </DashboardPanel>
-
-      {/* Édition */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent
-          showCloseButton={false}
-          className="w-full max-w-[calc(100%-2rem)] sm:max-w-6xl max-h-[92vh] overflow-y-auto rounded-3xl"
-        >
-          <DialogHeader className="flex flex-row items-center justify-between space-y-0">
-            <div>
-              <DialogTitle className="text-xl text-amber-900">Modifier le lecteur</DialogTitle>
-              <DialogDescription>Mettez à jour les informations du lecteur.</DialogDescription>
-            </div>
-            <Button type="button" variant="ghost" size="icon" className="shrink-0 rounded-full" onClick={() => setEditOpen(false)}>
-              <X className="w-5 h-5" />
-            </Button>
-          </DialogHeader>
-          {editTarget ? (
-            <LecteurForm
-              key={editTarget._id}
-              mode="edit"
-              lecteurId={editTarget._id}
-              initialData={editTarget as LecteurFormInitial}
-              lockParishVicariat={lockParishVicariatForEdit}
-              lockGradeId={editGradeLocked}
-              vicariats={lockParishVicariatForEdit ? [] : vicariatsOpts}
-              paroisses={lockParishVicariatForEdit ? [] : paroissesOpts}
-              onSuccess={() => {
-                setEditOpen(false);
-                setEditTarget(null);
-                loadList();
-              }}
-              onCancel={() => {
-                setEditOpen(false);
-                setEditTarget(null);
-              }}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
 
       {/* Suppression */}
       <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>

@@ -9,6 +9,7 @@ export const createActualiteSchema = z.object({
   author:     z.string().min(1),
   authorRole: z.string().optional(),
   readTime:   z.string().optional(),
+  tags:       z.array(z.string()).optional().default([]),
   featured:   z.boolean().default(false),
   published:  z.boolean().default(false),
 });

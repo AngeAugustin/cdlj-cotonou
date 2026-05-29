@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MapPin, Church, Users, ChevronRight, ArrowDown } from "lucide-react";
+import { MapPin, ChevronRight, ArrowDown } from "lucide-react";
 import { VICARIATS } from "@/lib/vicariats-data";
 import VicariatsMapWrapper from "@/components/VicariatsMapWrapper";
 
@@ -111,49 +111,69 @@ export default function VicariatsPage() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
+        <div className="relative rounded-3xl p-px overflow-hidden bg-gradient-to-br from-amber-200/50 via-slate-200/40 to-blue-200/40 shadow-sm">
+          <div className="absolute inset-0 bg-gradient-to-tr from-amber-100/30 via-transparent to-blue-100/30 pointer-events-none" />
+          <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px rounded-[calc(1.5rem-1px)] overflow-hidden">
           {VICARIATS.map((v) => (
-            <div
+            <Link
               key={v.id}
-              className="group bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              href={`/nos-vicariats/${v.slug}`}
+              className="group relative bg-white/75 backdrop-blur-sm p-6 flex flex-col transition-colors duration-300 hover:bg-white"
             >
-              {/* Header coloré */}
-              <div className={`bg-gradient-to-br ${v.color} p-5 relative overflow-hidden`}>
-                <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-white/10" />
-                <span className="text-white/60 text-xs font-black uppercase tracking-widest">
+              {/* Chiffre romain en filigrane */}
+              <span className="pointer-events-none absolute top-3 right-4 text-5xl font-black text-slate-100 select-none transition-colors duration-300 group-hover:text-slate-200/80">
+                {v.id}
+              </span>
+
+              {/* Pastille d'identité + label */}
+              <div className="flex items-center gap-2 mb-4 relative z-10">
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: v.hexColor }}
+                />
+                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
                   Vicariat {v.id}
                 </span>
-                <h3 className="text-white font-extrabold text-base leading-tight mt-1">{v.name}</h3>
-                <p className="text-white/70 text-xs mt-0.5">{v.zone}</p>
               </div>
 
-              {/* Stats */}
-              <div className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Church className="w-4 h-4 text-amber-700" />
-                    <span className="text-sm font-medium">Paroisses</span>
-                  </div>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${v.light}`}>
-                    {v.paroisses}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Users className="w-4 h-4 text-amber-700" />
-                    <span className="text-sm font-medium">Lecteurs</span>
-                  </div>
-                  <span className="text-sm font-bold text-slate-800">{v.lecteurs.toLocaleString()}</span>
-                </div>
-                <Link
-                  href={`/nos-vicariats/${v.slug}`}
-                  className="w-full mt-1 flex items-center justify-center gap-1.5 text-xs font-bold text-amber-900 hover:text-amber-700 transition-colors group-hover:gap-2.5 duration-200 pt-2 border-t border-slate-100"
-                >
-                  Voir le vicariat <ChevronRight className="w-3.5 h-3.5" />
-                </Link>
+              {/* Nom + zone */}
+              <div className="relative z-10 mb-5">
+                <h3 className="text-slate-900 font-bold text-lg leading-tight tracking-tight">
+                  {v.name}
+                </h3>
+                <p className="text-slate-400 text-sm mt-1 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 shrink-0" />
+                  {v.zone}
+                </p>
               </div>
-            </div>
+
+              {/* Stats discrètes */}
+              <div className="relative z-10 mt-auto flex items-center gap-5 text-sm">
+                <span className="flex items-baseline gap-1.5">
+                  <span className="font-bold text-slate-800">{v.paroisses}</span>
+                  <span className="text-slate-400 text-xs">paroisses</span>
+                </span>
+                <span className="w-px h-4 bg-slate-200" />
+                <span className="flex items-baseline gap-1.5">
+                  <span className="font-bold text-slate-800">{v.lecteurs.toLocaleString()}</span>
+                  <span className="text-slate-400 text-xs">lecteurs</span>
+                </span>
+              </div>
+
+              {/* Lien discret */}
+              <div className="relative z-10 mt-5 pt-4 border-t border-slate-100 flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition-colors group-hover:text-amber-900">
+                Découvrir
+                <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+              </div>
+
+              {/* Liseré bas animé */}
+              <span
+                className="absolute bottom-0 left-0 h-0.5 w-0 transition-all duration-300 group-hover:w-full"
+                style={{ backgroundColor: v.hexColor }}
+              />
+            </Link>
           ))}
+          </div>
         </div>
       </section>
 

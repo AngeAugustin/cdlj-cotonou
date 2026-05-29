@@ -5,103 +5,99 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
+import type { PublicNavLink } from "@/config/public-nav";
 
-const navLinks = [
-  { href: "/", label: "Accueil" },
-  { href: "/about", label: "À Propos" },
-  { href: "/nos-vicariats", label: "Vicariats" },
-  { href: "/forums", label: "Forums" },
-  { href: "/news", label: "Blog & Actualités" },
-  { href: "/verifier", label: "Vérifier" },
-];
+type NavbarProps = {
+  links: PublicNavLink[];
+};
 
-export function Navbar() {
+export function Navbar({ links }: NavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md transition-all shadow-sm">
-      <div className="container mx-auto flex h-20 items-center justify-between px-4 md:px-8">
+      <div className="container mx-auto flex h-14 sm:h-16 md:h-20 items-center justify-between gap-2 px-3 sm:px-4 md:px-8">
 
         {/* Logo */}
-        <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-4 group">
-            <div className="flex items-center gap-4 hover:opacity-90 transition-opacity">
-              <div className="relative h-20 w-20 overflow-hidden shrink-0">
-                <Image
-                  src="https://i.postimg.cc/zGGW7CSV/EM.png"
-                  alt="Aumônerie de Cotonou"
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
-              </div>
-              <div className="relative h-12 w-12 overflow-hidden shrink-0">
-                <Image
-                  src="https://i.postimg.cc/BnnDpTc2/CDLJ.png"
-                  alt="Logo CDLJ"
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
-              </div>
+        <Link href="/" className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
+          <div className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity shrink-0">
+            <div className="relative h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 lg:h-20 lg:w-20 overflow-hidden">
+              <Image
+                src="https://i.postimg.cc/zGGW7CSV/EM.png"
+                alt="Aumônerie de Cotonou"
+                fill
+                className="object-contain"
+                unoptimized
+              />
             </div>
-
-            <div className="hidden lg:flex flex-col justify-center shrink-0">
-              <span className="text-sm font-medium text-slate-700 leading-snug">
-                Aumônerie de l'Enfance Missionnaire de Cotonou
-              </span>
-              <span className="text-base font-bold text-amber-900 leading-snug">
-                Communauté Diocésaine des Lecteurs Juniors (CDLJ)
-              </span>
+            <div className="relative h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 overflow-hidden">
+              <Image
+                src="https://i.postimg.cc/BnnDpTc2/CDLJ.png"
+                alt="Logo CDLJ"
+                fill
+                className="object-contain"
+                unoptimized
+              />
             </div>
-          </Link>
-        </div>
+          </div>
 
-        {/* Navigation desktop */}
-        <div className="hidden md:flex gap-8 items-center text-sm font-medium text-slate-600">
-          {navLinks.map((link) => (
+          <div className="hidden xl:flex flex-col justify-center min-w-0">
+            <span className="text-sm font-medium text-slate-700 leading-snug truncate">
+              Aumônerie de l&apos;Enfance Missionnaire de Cotonou
+            </span>
+            <span className="text-base font-bold text-amber-900 leading-snug truncate">
+              Communauté Diocésaine des Lecteurs Juniors (CDLJ)
+            </span>
+          </div>
+        </Link>
+
+        {/* Navigation desktop / tablette */}
+        <div className="hidden md:flex gap-3 lg:gap-6 xl:gap-8 items-center text-xs lg:text-sm font-medium text-slate-600 shrink-0">
+          {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="hover:text-amber-900 transition-colors"
+              className="hover:text-amber-900 transition-colors whitespace-nowrap"
             >
-              {link.label}
+              <span className="lg:hidden">{link.shortLabel ?? link.label}</span>
+              <span className="hidden lg:inline">{link.label}</span>
             </Link>
           ))}
         </div>
 
-        {/* Droite : Espace Membre + hamburger */}
-        <div className="flex items-center gap-3">
+        {/* CTA + hamburger */}
+        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
           <Link href="/auth/login">
-            <Button className="bg-amber-900 hover:bg-amber-800 text-white rounded-full px-6 shadow-md hover:shadow-lg transition-all">
-              Espace Membre
+            <Button className="bg-amber-900 hover:bg-amber-800 text-white rounded-full px-3 sm:px-4 md:px-6 h-9 sm:h-10 text-xs sm:text-sm shadow-md hover:shadow-lg transition-all">
+              <span className="hidden sm:inline">Espace Membre</span>
+              <span className="sm:hidden">Membre</span>
             </Button>
           </Link>
 
           <button
-            className="md:hidden flex items-center justify-center w-10 h-10 rounded-full text-slate-600 hover:bg-amber-50 hover:text-amber-900 transition-colors"
+            className="md:hidden flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full text-slate-600 hover:bg-amber-50 hover:text-amber-900 transition-colors"
             onClick={() => setMenuOpen((prev) => !prev)}
             aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
             aria-expanded={menuOpen}
           >
-            {menuOpen ? <X size={22} strokeWidth={2} /> : <Menu size={22} strokeWidth={2} />}
+            {menuOpen ? <X size={20} strokeWidth={2} /> : <Menu size={20} strokeWidth={2} />}
           </button>
         </div>
       </div>
 
-      {/* Menu mobile déroulant */}
+      {/* Menu mobile */}
       <div
         className={`md:hidden overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${
-          menuOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
+          menuOpen ? "max-h-[28rem] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <div className="border-t border-slate-100 bg-white/95 backdrop-blur-md px-4 py-2">
-          {navLinks.map((link) => (
+        <div className="border-t border-slate-100 bg-white/95 backdrop-blur-md px-3 sm:px-4 py-2 max-h-[70vh] overflow-y-auto">
+          {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               onClick={() => setMenuOpen(false)}
-              className="flex items-center py-3 px-4 text-sm font-medium text-slate-600 hover:text-amber-900 hover:bg-amber-50 rounded-lg transition-colors"
+              className="flex items-center py-3 px-3 sm:px-4 text-sm font-medium text-slate-600 hover:text-amber-900 hover:bg-amber-50 rounded-lg transition-colors"
             >
               {link.label}
             </Link>

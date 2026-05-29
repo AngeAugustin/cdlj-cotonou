@@ -41,6 +41,8 @@ export const config = {
     "/cotisations/:path*",
     "/grades/:path*",
     "/evaluations/:path*",
+    "/actualites/:path*",
+    "/gestion-mediatheque/:path*",
     "/utilisateurs/:path*",
     "/profil/:path*",
   ],

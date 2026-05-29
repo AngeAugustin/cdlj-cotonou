@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import {
   ArrowLeft, Loader2, Calendar, MapPin, Phone, Hash,
   Church, Activity, User, ShieldCheck, HeartPulse,
-  GraduationCap, PhoneCall, Map, BadgeCheck,
+  GraduationCap, PhoneCall, Map, BadgeCheck, Briefcase,
   Clock, CheckCircle2, Hourglass, AlertTriangle, Download,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,7 +15,11 @@ import {
   displayAvatarSrc, displayIdPhotoSrc,
   formatDateFr, gradeLabel, lecteurInitials, rattachementLines,
 } from "@/modules/lecteurs/lecteurViewUtils";
-import { LecteurCarteMembre } from "@/modules/lecteurs/components/LecteurCarteMembre";
+import {
+  LecteurCarteProvider,
+  LecteurCarteDownloadIcon,
+  LecteurCarteInlinePreview,
+} from "@/modules/lecteurs/components/LecteurCarteMembre";
 
 // ─────────────────────────────────────────────────────────
 // Helpers
@@ -57,27 +61,6 @@ type LecteurEvaluationPublished = {
 // ─────────────────────────────────────────────────────────
 // Sub-components
 // ─────────────────────────────────────────────────────────
-function StatChip({
-  label, value, icon: Icon, accent = false,
-}: {
-  label: string; value: string | number; icon: React.ComponentType<{ className?: string }>; accent?: boolean;
-}) {
-  return (
-    <div className={`flex flex-col items-center justify-center gap-0.5 px-4 py-3 rounded-2xl min-w-[80px] shadow-sm
-      ${accent
-        ? "bg-amber-900 border border-amber-800"
-        : "bg-white border border-slate-200"}`}>
-      <Icon className={`w-4 h-4 mb-0.5 ${accent ? "text-amber-300" : "text-amber-700"}`} />
-      <span className={`text-xl font-extrabold leading-none ${accent ? "text-white" : "text-slate-800"}`}>
-        {value}
-      </span>
-      <span className={`text-[10px] font-semibold uppercase tracking-widest mt-0.5 ${accent ? "text-amber-300/80" : "text-slate-400"}`}>
-        {label}
-      </span>
-    </div>
-  );
-}
-
 function InfoCard({
   icon: Icon, label, children, className = "", color = "amber",
 }: {
@@ -283,6 +266,7 @@ export default function LecteurDetailPage() {
     <div className="min-h-screen pb-16">
 
       {/* ── HERO BANNER ─────────────────────────────────────────── */}
+      <LecteurCarteProvider lecteur={lecteur}>
       <div className="relative overflow-hidden rounded-3xl mb-8
                       bg-gradient-to-br from-amber-50/80 via-white/60 to-slate-50/40
                       border border-slate-200/60 shadow-sm">
@@ -296,7 +280,7 @@ export default function LecteurDetailPage() {
 
         <div className="relative z-10 px-6 py-8 sm:px-10 sm:py-10">
 
-          {/* Retour (gauche) · Carte (droite) */}
+          {/* Retour + téléchargement carte */}
           <div className="mb-8 flex items-center justify-between gap-3">
             <Link
               href="/lecteurs"
@@ -307,12 +291,10 @@ export default function LecteurDetailPage() {
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
               <span className="hidden lg:inline">Retour à la liste</span>
             </Link>
-            <div className="flex justify-end">
-              <LecteurCarteMembre lecteur={lecteur} showHelperText={false} />
-            </div>
+            <LecteurCarteDownloadIcon />
           </div>
 
-          <div className="flex flex-col lg:flex-row lg:items-center gap-8">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
 
             {/* Avatar + Identity */}
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 flex-1 min-w-0">
@@ -345,14 +327,8 @@ export default function LecteurDetailPage() {
                   <span className="font-mono text-sm font-bold text-amber-800 tracking-widest">{lecteur.uniqueId}</span>
                 </div>
 
-                {/* Grade + Paroisse pills */}
+                {/* Paroisse & vicariat */}
                 <div className="mt-3 flex flex-wrap gap-2 justify-center sm:justify-start">
-                  {grade !== "—" && (
-                    <span className="inline-flex items-center gap-1.5 bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold px-3 py-1 rounded-full">
-                      <BadgeCheck className="w-3.5 h-3.5" />
-                      {grade}
-                    </span>
-                  )}
                   <span className="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-medium px-3 py-1 rounded-full shadow-sm">
                     <Church className="w-3.5 h-3.5 text-amber-700" />
                     {paroisse}
@@ -365,21 +341,15 @@ export default function LecteurDetailPage() {
               </div>
             </div>
 
-            {/* Stats chips */}
-            <div className="flex flex-wrap justify-center lg:justify-end gap-3 shrink-0">
-              {age !== null && (
-                <StatChip icon={User} label="Âge" value={`${age} ans`} accent />
-              )}
-              <StatChip icon={Calendar} label="Adhésion" value={lecteur.anneeAdhesion} />
-              <StatChip icon={Activity} label="Activités" value={history.length} />
-              <StatChip icon={GraduationCap} label="Niveau" value={lecteur.niveau.length > 8 ? lecteur.niveau.slice(0, 7) + "…" : lecteur.niveau} />
-            </div>
+            {/* Carte lecteur — aperçu */}
+            <LecteurCarteInlinePreview lecteur={lecteur} />
           </div>
         </div>
 
         {/* Bottom fade */}
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
       </div>
+      </LecteurCarteProvider>
 
       {/* ── TABS ──────────────────────────────────────────────────── */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl w-fit mb-8">
@@ -431,6 +401,26 @@ export default function LecteurDetailPage() {
                   </span>
                 </InfoCard>
 
+              </div>
+            </div>
+
+            {/* Section: Parcours scolaire & professionnel */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm shadow-slate-100/80 p-6">
+              <SectionTitle icon={GraduationCap}>Parcours scolaire & professionnel</SectionTitle>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <InfoCard icon={GraduationCap} label="Niveau scolaire ou professionnel">
+                  {lecteur.niveau || "—"}
+                </InfoCard>
+                <InfoCard icon={Calendar} label="Année d'adhésion au groupe" color="blue">
+                  {lecteur.anneeAdhesion}
+                </InfoCard>
+                <InfoCard icon={Briefcase} label="Situation professionnelle" className="sm:col-span-2" color="green">
+                  {lecteur.details?.trim() ? (
+                    <span className="whitespace-pre-wrap">{lecteur.details}</span>
+                  ) : (
+                    <span className="text-slate-400 font-medium italic">Non renseigné</span>
+                  )}
+                </InfoCard>
               </div>
             </div>
 
