@@ -17,7 +17,7 @@ import {
 import { fadeUp, staggerContainer } from "./motion";
 
 const HERO_IMAGE = {
-  src: "https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&q=80&w=900",
+  src: "/images/20240630_110241 (1).jpg",
   alt: "Communauté des lecteurs juniors — CDLJ Cotonou",
   caption: "Session Diocésaine",
 };
@@ -102,13 +102,12 @@ function HeroVisual() {
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
         >
           <div className="group p-3 sm:p-3.5 bg-white rounded-2xl shadow-2xl shadow-amber-900/15 border border-amber-100 ring-1 ring-black/[0.04]">
-            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-slate-100">
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100">
               <Image
                 src={HERO_IMAGE.src}
                 alt={HERO_IMAGE.alt}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-700"
-                unoptimized
                 priority
               />
             </div>
