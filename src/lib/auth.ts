@@ -1,7 +1,8 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import connectToDatabase from "./mongoose";
-import { User, IUser } from "@/modules/users/model";
+import { User } from "@/modules/users/model";
+import { Paroisse } from "@/modules/paroisses/model";
 import bcryptjs from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
@@ -18,11 +19,17 @@ export const authOptions: NextAuthOptions = {
 
         await connectToDatabase();
         const user = await User.findOne({ email: credentials.email }).lean();
-        
+
         if (!user || !user.password) return null;
 
         const isPasswordValid = await bcryptjs.compare(credentials.password, user.password);
         if (!isPasswordValid) return null;
+
+        let paroisseName: string | null = null;
+        if (user.parishId) {
+          const parish = await Paroisse.findById(user.parishId).select({ name: 1 }).lean<{ name?: string } | null>();
+          paroisseName = parish?.name ?? null;
+        }
 
         return {
           id: user._id.toString(),
@@ -31,6 +38,7 @@ export const authOptions: NextAuthOptions = {
           roles: user.roles,
           parishId: user.parishId?.toString() || null,
           vicariatId: user.vicariatId?.toString() || null,
+          paroisseName,
         } as any;
       }
     })
@@ -43,6 +51,7 @@ export const authOptions: NextAuthOptions = {
         token.roles = user.roles;
         token.parishId = user.parishId;
         token.vicariatId = user.vicariatId;
+        token.paroisseName = user.paroisseName ?? null;
       }
       return token;
     },
@@ -52,6 +61,7 @@ export const authOptions: NextAuthOptions = {
         session.user.roles = token.roles;
         session.user.parishId = token.parishId;
         session.user.vicariatId = token.vicariatId;
+        session.user.paroisseName = token.paroisseName ?? null;
       }
       return session;
     }

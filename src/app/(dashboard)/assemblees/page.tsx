@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ListPagination } from "@/components/ui/list-pagination";
+import { usePaginatedList } from "@/lib/pagination";
 
 type Role = string;
 
@@ -119,6 +121,18 @@ export default function AssembleesPage() {
   }, [loadAssemblies, status]);
 
   const filtered = useMemo(() => list.filter((a) => (tab === "encours" ? !a.terminee : a.terminee)), [list, tab]);
+
+  const {
+    paginatedItems,
+    currentPage,
+    totalPages,
+    pageStart,
+    pageEnd,
+    totalItems,
+    showPagination,
+    goToPreviousPage,
+    goToNextPage,
+  } = usePaginatedList(filtered, tab);
 
   // ─────────────────────────────────────────────
   // Create / Edit (manager)
@@ -444,8 +458,9 @@ export default function AssembleesPage() {
           </p>
         </div>
       ) : (
+        <>
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
-          {filtered.map((a) => (
+          {paginatedItems.map((a) => (
             <div
               key={a._id}
               className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/25 overflow-hidden flex flex-col"
@@ -568,6 +583,19 @@ export default function AssembleesPage() {
             </div>
           ))}
         </div>
+        <ListPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageStart={pageStart}
+          pageEnd={pageEnd}
+          totalItems={totalItems}
+          show={showPagination}
+          itemLabel="assemblée"
+          onPrevious={goToPreviousPage}
+          onNext={goToNextPage}
+          className="mt-4 rounded-3xl border border-slate-100 bg-white shadow-xl shadow-slate-200/20"
+        />
+        </>
       )}
 
       {/* ── Create / Edit ───────────────────────────── */}

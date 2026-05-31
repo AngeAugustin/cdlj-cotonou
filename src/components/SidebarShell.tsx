@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import SidebarUserMenu from "@/components/SidebarUserMenu";
+import { SidebarNavScroll } from "@/components/SidebarNavScroll";
 import LiveClock from "@/components/LiveClock";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -121,10 +122,11 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-24 space-y-0.5 custom-scrollbar">
+          <SidebarNavScroll className="px-2 pb-24">
             <p className="px-4 text-xs font-bold text-amber-400/50 uppercase tracking-widest mb-3 mt-4">
               Menu Principal
             </p>
+            <div className="space-y-0.5">
             {navigation.map((item) => (
               <Link
                 key={item.href}
@@ -136,7 +138,8 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
                 <span className="truncate">{item.name}</span>
               </Link>
             ))}
-          </div>
+            </div>
+          </SidebarNavScroll>
 
         </div>
       </aside>
@@ -189,13 +192,14 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
           </div>
 
           {/* ── Navigation ── */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-4 space-y-0.5 custom-scrollbar">
+          <SidebarNavScroll className="px-2 pb-4">
             {!collapsed && (
               <p className="px-4 text-xs font-bold text-amber-400/50 uppercase tracking-widest mb-3 mt-2">
                 Menu Principal
               </p>
             )}
 
+            <div className="space-y-0.5">
             {navigation.map((item) => (
               <div key={item.href} className="relative group/nav">
                 <Link
@@ -221,7 +225,8 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
                 )}
               </div>
             ))}
-          </div>
+            </div>
+          </SidebarNavScroll>
 
           {/* ── User menu ── */}
           <div className="p-2 mt-auto">

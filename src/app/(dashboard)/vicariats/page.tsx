@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Map, Plus, Edit2, Trash2, X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ListPagination } from "@/components/ui/list-pagination";
+import { usePaginatedList } from "@/lib/pagination";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +62,18 @@ export default function VicariatsPage() {
   useEffect(() => {
     fetchVicariats();
   }, []);
+
+  const {
+    paginatedItems: paginatedVicariats,
+    currentPage,
+    totalPages,
+    pageStart,
+    pageEnd,
+    totalItems,
+    showPagination,
+    goToPreviousPage,
+    goToNextPage,
+  } = usePaginatedList(vicariats);
 
   const openModalForCreate = () => {
     setEditVicariatId(null);
@@ -201,7 +215,7 @@ export default function VicariatsPage() {
         ) : (
           <>
             <div className="divide-y divide-slate-100 lg:hidden">
-              {vicariats.map((vic) => (
+              {paginatedVicariats.map((vic) => (
                 <div key={`card-${vic._id}`} className="p-4 space-y-3">
                   <div className="flex items-start gap-3">
                     <div className="w-11 h-11 rounded-xl border-2 border-slate-100 shadow-sm flex items-center justify-center bg-slate-50 overflow-hidden text-amber-900 shrink-0">
@@ -246,7 +260,7 @@ export default function VicariatsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/80">
-                  {vicariats.map((vic) => (
+                  {paginatedVicariats.map((vic) => (
                     <tr key={vic._id} className="hover:bg-amber-50/30 transition-colors group">
                       <td className="p-6">
                         <div className="w-12 h-12 rounded-xl border-2 border-slate-100 shadow-sm flex items-center justify-center bg-slate-50 overflow-hidden text-amber-900 shrink-0">
@@ -279,6 +293,17 @@ export default function VicariatsPage() {
                 </tbody>
               </table>
             </div>
+            <ListPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageStart={pageStart}
+              pageEnd={pageEnd}
+              totalItems={totalItems}
+              show={showPagination}
+              itemLabel="vicariat"
+              onPrevious={goToPreviousPage}
+              onNext={goToNextPage}
+            />
           </>
         )}
       </div>

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Award, Plus, Edit2, Trash2, X, Users, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ListPagination } from "@/components/ui/list-pagination";
+import { usePaginatedList } from "@/lib/pagination";
 import {
   Dialog,
   DialogContent,
@@ -155,7 +157,22 @@ export default function GradesPage() {
   };
 
   // Sort grades by level
-  const sortedGrades = [...grades].sort((a, b) => a.level - b.level);
+  const sortedGrades = useMemo(
+    () => [...grades].sort((a, b) => a.level - b.level),
+    [grades]
+  );
+
+  const {
+    paginatedItems: paginatedGrades,
+    currentPage,
+    totalPages,
+    pageStart,
+    pageEnd,
+    totalItems,
+    showPagination,
+    goToPreviousPage,
+    goToNextPage,
+  } = usePaginatedList(sortedGrades);
 
   return (
     <div className="w-full space-y-8 relative">
@@ -205,6 +222,7 @@ export default function GradesPage() {
             </Button>
           </div>
         ) : (
+          <>
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-100 uppercase text-[10px] font-extrabold tracking-widest text-slate-500">
@@ -216,7 +234,7 @@ export default function GradesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100/80">
-              {sortedGrades.map((grade) => (
+              {paginatedGrades.map((grade) => (
                 <tr key={grade._id} className="hover:bg-amber-50/30 transition-colors group">
                   <td className="p-6 text-center">
                     <div className="w-10 h-10 mx-auto rounded-xl flex items-center justify-center font-bold text-amber-900 bg-amber-100 ring-4 ring-white shadow-sm border border-amber-200/50">
@@ -288,6 +306,18 @@ export default function GradesPage() {
               ))}
             </tbody>
           </table>
+          <ListPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageStart={pageStart}
+            pageEnd={pageEnd}
+            totalItems={totalItems}
+            show={showPagination}
+            itemLabel="grade"
+            onPrevious={goToPreviousPage}
+            onNext={goToNextPage}
+          />
+          </>
         )}
       </div>
 

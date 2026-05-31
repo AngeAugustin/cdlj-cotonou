@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { LecteurService } from "@/modules/lecteurs/service";
 import { createLecteurSchema } from "@/modules/lecteurs/schema";
 import { serializeLecteur } from "@/modules/lecteurs/serializeApi";
+import { assertParoisseInVicariat } from "@/lib/activiteEnrollmentScope";
 
 export async function GET(request: Request) {
   try {
@@ -27,15 +28,19 @@ export async function GET(request: Request) {
       else if (vicariatId) result = await service.getLecteursByVicariat(vicariatId);
       else result = await service.getLecteurs();
     } else if (roles.includes("VICARIAL")) {
-      // VICARIAL can filter by paroisseId (within their vicariat scope)
-      if (paroisseId) result = await service.getLecteursByParish(paroisseId);
-      else {
-        if (!session.user?.vicariatId) {
-          return NextResponse.json(
-            { error: "Compte vicarial sans vicariat associé. Reconnectez-vous ou contactez un administrateur." },
-            { status: 400 }
-          );
+      if (!session.user?.vicariatId) {
+        return NextResponse.json(
+          { error: "Compte vicarial sans vicariat associé. Reconnectez-vous ou contactez un administrateur." },
+          { status: 400 }
+        );
+      }
+      if (paroisseId) {
+        const inScope = await assertParoisseInVicariat(paroisseId, session.user.vicariatId);
+        if (!inScope) {
+          return NextResponse.json({ error: "Cette paroisse n'appartient pas à votre vicariat" }, { status: 403 });
         }
+        result = await service.getLecteursByParish(paroisseId);
+      } else {
         result = await service.getLecteursByVicariat(session.user.vicariatId);
       }
     } else if (roles.includes("PAROISSIAL")) {

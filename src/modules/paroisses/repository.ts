@@ -46,6 +46,15 @@ export class ParoisseRepository {
     ]);
   }
 
+  async count(filters?: { vicariatId?: string }): Promise<number> {
+    await connectToDatabase();
+    const match: Record<string, unknown> = {};
+    if (filters?.vicariatId) {
+      match.vicariatId = new mongoose.Types.ObjectId(filters.vicariatId);
+    }
+    return Paroisse.countDocuments(match);
+  }
+
   async findById(id: string): Promise<IParoisse | null> {
     await connectToDatabase();
     return Paroisse.findById(id).lean() as Promise<IParoisse | null>;

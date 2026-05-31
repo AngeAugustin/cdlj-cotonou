@@ -281,7 +281,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       .catch(() => {});
   }, [isParoissial]);
 
-  const canSeeParticipants = isParoissial || isManager;
+  const canSeeParticipants = isParoissial || isManager || isVicarial;
   const canSeePresence = isManager;
 
   const vicariatOptions = useMemo(
@@ -383,7 +383,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
     }
   }, [activite, tab, isManager, isVicarial, isParoissial]);
 
-  /** Liste des participants payés : paroisse courante pour PAROISSIAL, activité entière pour manager. */
+  /** Liste des participants payés : paroisse pour PAROISSIAL, vicariat pour VICARIAL, activité entière pour manager. */
   useEffect(() => {
     if (!activite || !canSeeParticipants) return;
     void refreshParticipants();
@@ -1536,6 +1536,23 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                       </Select>
                     </div>
                   </div>
+                ) : isVicarial && participants.length > 0 ? (
+                  <div className="mb-4 max-w-md">
+                    <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-400">Paroisse</p>
+                    <Select value={selectedParoisse} onValueChange={(value) => setSelectedParoisse(value ?? PARTICIPANT_FILTER_ALL)}>
+                      <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 justify-between">
+                        <SelectValue>{selectedParoisse === PARTICIPANT_FILTER_ALL ? "Toutes les paroisses" : selectedParoisse}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={PARTICIPANT_FILTER_ALL}>Toutes les paroisses</SelectItem>
+                        {paroisseOptions.map((paroisse) => (
+                          <SelectItem key={paroisse} value={paroisse}>
+                            {paroisse}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 ) : null}
                 {participantsLoading ? (
                   <Loader2 className="w-6 h-6 animate-spin text-amber-900" />
@@ -1543,7 +1560,9 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                   <p className="text-sm text-slate-500">
                     {isManager
                       ? "Aucune participation payée sur cette activité pour le moment."
-                      : "Aucune participation payée pour votre paroisse sur cette activité pour le moment."}
+                      : isVicarial
+                        ? "Aucune participation payée dans votre vicariat sur cette activité pour le moment."
+                        : "Aucune participation payée pour votre paroisse sur cette activité pour le moment."}
                   </p>
                 ) : filteredParticipants.length === 0 ? (
                   <p className="text-sm text-slate-500">Aucun participant ne correspond aux filtres sélectionnés.</p>
@@ -1555,10 +1574,10 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                           <p className="font-medium text-slate-900">
                           {p.lecteur.nom} {p.lecteur.prenoms}
                           </p>
-                          {isManager && (p.paroisseName || p.vicariatName) ? (
+                          {(isManager || isVicarial) && (p.paroisseName || p.vicariatName) ? (
                             <p className="text-xs text-slate-500">
                               {p.paroisseName ?? "—"}
-                              {p.vicariatName ? ` • ${p.vicariatName}` : ""}
+                              {isManager && p.vicariatName ? ` • ${p.vicariatName}` : ""}
                             </p>
                           ) : null}
                         </div>

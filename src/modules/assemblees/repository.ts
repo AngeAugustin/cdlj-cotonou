@@ -15,6 +15,11 @@ export class AssembleeGeneraleRepository {
     return AssembleeGenerale.find().sort({ date: -1 }).lean();
   }
 
+  async countOpen(): Promise<number> {
+    await connectToDatabase();
+    return AssembleeGenerale.countDocuments({ terminee: false });
+  }
+
   async findById(id: string): Promise<IAssembleeGenerale | null> {
     await connectToDatabase();
     return AssembleeGenerale.findById(id).lean();

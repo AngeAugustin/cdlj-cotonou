@@ -80,6 +80,18 @@ export class LecteurService {
     return this.repository.findByVicariatId(vicariatId);
   }
 
+  countLecteurs() {
+    return this.repository.countAll();
+  }
+
+  countLecteursByParish(parishId: string) {
+    return this.repository.countByParishId(parishId);
+  }
+
+  countLecteursByVicariat(vicariatId: string) {
+    return this.repository.countByVicariatId(vicariatId);
+  }
+
   async updateLecteur(id: string, data: UpdateLecteurInput) {
     return this.repository.update(id, data);
   }

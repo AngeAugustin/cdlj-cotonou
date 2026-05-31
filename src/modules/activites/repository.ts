@@ -21,6 +21,20 @@ export class ActiviteRepository {
     return Activite.find().sort({ dateDebut: -1 }).lean();
   }
 
+  async countOpen() {
+    await connectToDatabase();
+    return Activite.countDocuments({ terminee: false });
+  }
+
+  async findRecent(limit: number) {
+    await connectToDatabase();
+    return Activite.find()
+      .select("nom lieu image terminee dateDebut dateFin montant")
+      .sort({ dateDebut: -1 })
+      .limit(limit)
+      .lean();
+  }
+
   async listOpenForPresence() {
     await connectToDatabase();
     return Activite.find({ terminee: false })
@@ -363,14 +377,23 @@ export class ActiviteRepository {
    * Participants dont la participation est liée à un paiement **approuvé** (ou gratuit enregistré comme tel) —
    * même périmètre que l’onglet « Participants » sur la page Participer.
    */
-  async listParticipantsWithLecteur(activiteId: string, paroisseId?: string) {
+  async listParticipantsWithLecteur(
+    activiteId: string,
+    scope?: { paroisseId?: string; paroisseIds?: string[] }
+  ) {
     await connectToDatabase();
     const match: Record<string, unknown> = {
       activiteId: new mongoose.Types.ObjectId(activiteId),
       status: ACTIVE_PARTICIPATION_MATCH,
       paiementId: { $exists: true, $ne: null },
     };
-    if (paroisseId) match.paroisseId = new mongoose.Types.ObjectId(paroisseId);
+    if (scope?.paroisseId) {
+      match.paroisseId = new mongoose.Types.ObjectId(scope.paroisseId);
+    } else if (scope?.paroisseIds?.length) {
+      match.paroisseId = {
+        $in: scope.paroisseIds.map((id) => new mongoose.Types.ObjectId(id)),
+      };
+    }
 
     const paiementsColl = ActivitePaiement.collection.name;
 

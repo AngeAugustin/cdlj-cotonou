@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ListPagination } from "@/components/ui/list-pagination";
+import { usePaginatedList } from "@/lib/pagination";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -74,6 +76,18 @@ export default function GestionMediathequePage() {
         item.categorie.toLowerCase().includes(q)
     );
   }, [items, search]);
+
+  const {
+    paginatedItems,
+    currentPage,
+    totalPages,
+    pageStart,
+    pageEnd,
+    totalItems,
+    showPagination,
+    goToPreviousPage,
+    goToNextPage,
+  } = usePaginatedList(filtered, search);
 
   const togglePublish = async (item: MediathequeItem) => {
     try {
@@ -188,8 +202,9 @@ export default function GestionMediathequePage() {
           </Link>
         </div>
       ) : (
+        <>
         <div className={MEDIATHEQUE_COMPACT_GRID}>
-          {filtered.map((item) => (
+          {paginatedItems.map((item) => (
             <MediathequeCard
               key={item._id}
               item={item}
@@ -201,6 +216,19 @@ export default function GestionMediathequePage() {
             />
           ))}
         </div>
+        <ListPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageStart={pageStart}
+          pageEnd={pageEnd}
+          totalItems={totalItems}
+          show={showPagination}
+          itemLabel="élément"
+          onPrevious={goToPreviousPage}
+          onNext={goToNextPage}
+          className="rounded-3xl border border-slate-100 bg-white shadow-xl shadow-slate-200/20"
+        />
+        </>
       )}
 
       <Dialog open={!!deleteId} onOpenChange={(v) => { if (!v) setDeleteId(null); }}>

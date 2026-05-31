@@ -1,60 +1,112 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { ArrowLeft, Hash, UserPlus } from "lucide-react";
-import { authOptions } from "@/lib/auth";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Hash, UserPlus, Loader2, AlertCircle } from "lucide-react";
 import { LecteurForm } from "@/modules/lecteurs/components/LecteurForm";
-import connectToDatabase from "@/lib/mongoose";
-import { Vicariat } from "@/modules/vicariats/model";
-import { Paroisse } from "@/modules/paroisses/model";
+import type { LecteurFormContext } from "@/modules/lecteurs/formContext";
 import { DashboardPageShell } from "@/components/dashboard/page-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const HERO_AMBER_BG = (
-  <>
-    <div className="absolute inset-0 bg-gradient-to-br from-amber-900 via-amber-950 to-amber-950" />
-    <div className="absolute inset-0 bg-gradient-to-tr from-amber-700/20 via-transparent to-amber-500/10 pointer-events-none" />
-    <div className="absolute -top-24 -right-16 h-64 w-64 rounded-full bg-amber-500/15 blur-[80px] pointer-events-none" />
-    <div className="absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-amber-800/30 blur-[70px] pointer-events-none" />
-  </>
-);
+const CREATE_ROLES = ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"];
 
-export default async function NewLecteurPage() {
-  const session = await getServerSession(authOptions);
-  const user = session?.user as { roles?: string[]; parishId?: string; vicariatId?: string } | undefined;
-  const roles: string[] = user?.roles ?? [];
-  const isParoissial = roles.includes("PAROISSIAL");
+export default function NewLecteurPage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const roles: string[] = (session?.user as { roles?: string[] })?.roles ?? [];
+  const canCreate = roles.some((r) => CREATE_ROLES.includes(r));
 
-  await connectToDatabase();
+  const [formContext, setFormContext] = useState<LecteurFormContext | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadingContext, setLoadingContext] = useState(true);
 
-  let vicariats: { _id: string; name: string }[] = [];
-  let paroisses: { _id: string; name: string; vicariatId: string }[] = [];
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    if (!canCreate) {
+      setLoadingContext(false);
+      return;
+    }
 
-  if (isParoissial && user?.vicariatId && user?.parishId) {
-    const [vList, pList] = await Promise.all([
-      Vicariat.find({ _id: user.vicariatId }).sort({ name: 1 }).lean(),
-      Paroisse.find({ _id: user.parishId }).sort({ name: 1 }).lean(),
-    ]);
-    vicariats = vList.map((v) => ({ _id: v._id.toString(), name: v.name }));
-    paroisses = pList.map((p) => ({ _id: p._id.toString(), name: p.name, vicariatId: String(p.vicariatId) }));
-  } else {
-    const [vList, pList] = await Promise.all([
-      Vicariat.find().sort({ name: 1 }).lean(),
-      Paroisse.find().sort({ name: 1 }).lean(),
-    ]);
-    vicariats = vList.map((v) => ({ _id: v._id.toString(), name: v.name }));
-    paroisses = pList.map((p) => ({ _id: p._id.toString(), name: p.name, vicariatId: String(p.vicariatId) }));
+    let cancelled = false;
+    setLoadingContext(true);
+    setLoadError(null);
+
+    fetch("/api/lecteurs/form-context")
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error ?? "Impossible de charger le formulaire");
+        return data as LecteurFormContext;
+      })
+      .then((data) => {
+        if (!cancelled) setFormContext(data);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setLoadError(err instanceof Error ? err.message : "Erreur de chargement");
+          setFormContext(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingContext(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status, canCreate]);
+
+  if (status === "loading" || loadingContext) {
+    return (
+      <div className="flex h-64 items-center justify-center text-slate-400">
+        <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+        Chargement…
+      </div>
+    );
   }
 
-  const lockParishVicariat =
-    isParoissial && user?.parishId && user?.vicariatId
-      ? {
-          paroisseId: String(user.parishId),
-          vicariatId: String(user.vicariatId),
-          paroisseName: paroisses[0]?.name,
-          vicariatName: vicariats[0]?.name,
+  if (!canCreate) {
+    return (
+      <div className="flex h-64 items-center justify-center text-slate-400">
+        Vous n&apos;avez pas l&apos;autorisation d&apos;inscrire un lecteur.
+      </div>
+    );
+  }
+
+  if (loadError || !formContext) {
+    return (
+      <DashboardPageShell
+        title="Enregistrer un lecteur"
+        actions={
+          <Link
+            href="/lecteurs"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "icon" }),
+              "rounded-xl border-slate-200 hover:bg-amber-50 hover:text-amber-900 hover:border-amber-200"
+            )}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
         }
-      : undefined;
+      >
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-red-100 bg-red-50/80 px-6 py-12 text-center">
+          <AlertCircle className="h-10 w-10 text-red-500" />
+          <p className="max-w-md text-sm font-medium text-red-800">
+            {loadError ?? "Impossible de préparer le formulaire."}
+          </p>
+          <button
+            type="button"
+            onClick={() => router.refresh()}
+            className={cn(buttonVariants({ variant: "outline" }), "rounded-xl")}
+          >
+            Réessayer
+          </button>
+        </div>
+      </DashboardPageShell>
+    );
+  }
 
   return (
     <DashboardPageShell
@@ -70,13 +122,16 @@ export default async function NewLecteurPage() {
             "rounded-xl border-slate-200 hover:bg-amber-50 hover:text-amber-900 hover:border-amber-200"
           )}
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="h-4 w-4" />
         </Link>
       }
     >
       <div className="space-y-6">
         <div className="relative overflow-hidden rounded-3xl border border-amber-800/20 shadow-xl shadow-amber-900/10">
-          {HERO_AMBER_BG}
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-900 via-amber-950 to-amber-950" />
+          <div className="absolute inset-0 bg-gradient-to-tr from-amber-700/20 via-transparent to-amber-500/10 pointer-events-none" />
+          <div className="absolute -top-24 -right-16 h-64 w-64 rounded-full bg-amber-500/15 blur-[80px] pointer-events-none" />
+          <div className="absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-amber-800/30 blur-[70px] pointer-events-none" />
           <div className="relative flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:gap-6 sm:px-8 sm:py-7">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-400/20 bg-amber-400/10">
               <UserPlus className="h-7 w-7 text-amber-200" />
@@ -99,9 +154,9 @@ export default async function NewLecteurPage() {
         <LecteurForm
           mode="create"
           variant="page"
-          vicariats={vicariats}
-          paroisses={paroisses}
-          lockParishVicariat={lockParishVicariat}
+          vicariats={formContext.vicariats}
+          paroisses={formContext.paroisses}
+          lockParishVicariat={formContext.lockParishVicariat}
         />
       </div>
     </DashboardPageShell>

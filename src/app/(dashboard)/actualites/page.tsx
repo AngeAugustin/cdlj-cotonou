@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ListPagination } from "@/components/ui/list-pagination";
+import { usePaginatedList } from "@/lib/pagination";
 import {
   Dialog, DialogContent, DialogHeader,
   DialogTitle, DialogDescription, DialogFooter,
@@ -99,6 +101,18 @@ export default function ActualitesPage() {
         a.author.toLowerCase().includes(q)
     );
   }, [actualites, search]);
+
+  const {
+    paginatedItems,
+    currentPage,
+    totalPages,
+    pageStart,
+    pageEnd,
+    totalItems,
+    showPagination,
+    goToPreviousPage,
+    goToNextPage,
+  } = usePaginatedList(filtered, search);
 
   const quickUpdate = async (id: string, patch: Partial<Actualite>) => {
     try {
@@ -256,8 +270,9 @@ export default function ActualitesPage() {
           </Link>
         </div>
       ) : (
+          <>
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {filtered.map((a) => (
+            {paginatedItems.map((a) => (
               <article
                 key={a._id}
                 className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20 p-4 space-y-3"
@@ -378,6 +393,19 @@ export default function ActualitesPage() {
               </article>
             ))}
           </div>
+          <ListPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageStart={pageStart}
+            pageEnd={pageEnd}
+            totalItems={totalItems}
+            show={showPagination}
+            itemLabel="article"
+            onPrevious={goToPreviousPage}
+            onNext={goToNextPage}
+            className="rounded-3xl border border-slate-100 bg-white shadow-xl shadow-slate-200/20"
+          />
+          </>
       )}
 
       {/* ── Confirm Action Dialog ─────────────────────────── */}

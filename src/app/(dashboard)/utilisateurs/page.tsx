@@ -33,6 +33,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { DashboardPageShell, DashboardPanel } from "@/components/dashboard/page-shell";
+import { ListPagination } from "@/components/ui/list-pagination";
+import { usePaginatedList } from "@/lib/pagination";
 
 const AVAILABLE_ROLES = ["SUPERADMIN", "DIOCESAIN", "VICARIAL", "PAROISSIAL"] as const;
 
@@ -118,6 +120,7 @@ export default function UtilisateursPage() {
   const [password, setPassword] = useState("");
   const [displayNumero, setDisplayNumero] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [vicariatId, setVicariatId] = useState("");
   const [paroisseId, setParoisseId] = useState("");
 
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
@@ -163,20 +166,48 @@ export default function UtilisateursPage() {
     () => [...paroisses].sort((a, b) => a.name.localeCompare(b.name, "fr")),
     [paroisses]
   );
-  const selectedParoisse = useMemo(
-    () => sortedParoisses.find((p) => p._id === paroisseId),
-    [sortedParoisses, paroisseId]
+  const sortedVicariats = useMemo(
+    () => [...vicariats].sort((a, b) => a.name.localeCompare(b.name, "fr")),
+    [vicariats]
   );
-  const derivedVicariatLabel = useMemo(() => {
-    if (!selectedParoisse) return "—";
-    if (selectedParoisse.vicariat?.name) return selectedParoisse.vicariat.name;
-    const vid = selectedParoisse.vicariatId;
-    if (vid) {
-      const v = vicariats.find((x) => String(x._id) === String(vid));
-      if (v) return `${v.name} (${v.abbreviation})`;
-    }
-    return "—";
-  }, [selectedParoisse, vicariats]);
+  const paroissesForVicariat = useMemo(() => {
+    if (!vicariatId) return [];
+    return sortedParoisses.filter((p) => String(p.vicariatId) === String(vicariatId));
+  }, [sortedParoisses, vicariatId]);
+
+  const buildUserFromForm = useCallback(
+    (data: { _id: string; firstName?: string; lastName?: string; email?: string; phone?: string; numero?: string; roles?: string[] }): ApiUser => {
+      const parish = sortedParoisses.find((p) => p._id === paroisseId);
+      const vicariat = sortedVicariats.find((v) => v._id === vicariatId);
+      return {
+        _id: String(data._id),
+        firstName: data.firstName ?? prenom.trim(),
+        lastName: data.lastName ?? nom.trim().toUpperCase(),
+        email: data.email ?? email.trim().toLowerCase(),
+        phone: data.phone ?? (phone.trim() || undefined),
+        numero: data.numero,
+        roles: data.roles ?? selectedRoles,
+        parishId: parish
+          ? {
+              _id: parish._id,
+              name: parish.name,
+              vicariatId: vicariat
+                ? { _id: vicariat._id, name: vicariat.name, abbreviation: vicariat.abbreviation }
+                : parish.vicariatId,
+            }
+          : null,
+        vicariatId: vicariat
+          ? { _id: vicariat._id, name: vicariat.name, abbreviation: vicariat.abbreviation }
+          : null,
+      };
+    },
+    [sortedParoisses, sortedVicariats, paroisseId, vicariatId, prenom, nom, email, phone, selectedRoles]
+  );
+
+  const handleVicariatChange = (nextVicariatId: string) => {
+    setVicariatId(nextVicariatId);
+    setParoisseId("");
+  };
 
   const handleRoleToggle = (role: string) => {
     if (selectedRoles.includes(role)) {
@@ -204,11 +235,17 @@ export default function UtilisateursPage() {
     setPassword("");
     setDisplayNumero("Attribué à l’enregistrement");
     setSelectedRoles(["PAROISSIAL"]);
-    setParoisseId(sortedParoisses[0]?._id ?? "");
+    setVicariatId("");
+    setParoisseId("");
     setIsModalOpen(true);
   };
 
   const openModalForEdit = (user: ApiUser) => {
+    const parishIdValue = refId(user.parishId);
+    const parish = sortedParoisses.find((p) => p._id === parishIdValue);
+    const vicariatFromParish = parish ? String(parish.vicariatId) : "";
+    const vicariatFromUser = refId(user.vicariatId);
+
     setEditUserId(user._id);
     setDisplayNumero(user.numero || "—");
     setNom(user.lastName);
@@ -217,7 +254,8 @@ export default function UtilisateursPage() {
     setPhone(user.phone ?? "");
     setPassword("");
     setSelectedRoles([...user.roles]);
-    setParoisseId(refId(user.parishId));
+    setVicariatId(vicariatFromParish || vicariatFromUser);
+    setParoisseId(parishIdValue);
     setIsModalOpen(true);
   };
 
@@ -233,6 +271,10 @@ export default function UtilisateursPage() {
     }
     if (editUserId && password.trim() && password.length < 8) {
       showToast("Le mot de passe doit faire au moins 8 caractères.", "error");
+      return;
+    }
+    if (!vicariatId.trim()) {
+      showToast("Choisissez d’abord un vicariat de rattachement.", "error");
       return;
     }
     if (!paroisseId.trim()) {
@@ -262,14 +304,22 @@ export default function UtilisateursPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const err = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showToast(err.error ?? "Erreur", "error");
+        showToast((data as { error?: string }).error ?? "Erreur", "error");
         return;
       }
-      showToast(editUserId ? "Utilisateur mis à jour" : "Utilisateur créé et email envoyé");
+      const saved = data as ApiUser & { _id: string };
+      if (editUserId) {
+        setUsersList((prev) =>
+          prev.map((u) => (u._id === editUserId ? buildUserFromForm({ ...saved, _id: editUserId }) : u))
+        );
+        showToast("Utilisateur mis à jour");
+      } else {
+        setUsersList((prev) => [buildUserFromForm(saved), ...prev]);
+        showToast("Utilisateur créé et email envoyé");
+      }
       setIsModalOpen(false);
-      loadAll();
     } catch {
       showToast("Erreur inattendue", "error");
     } finally {
@@ -289,7 +339,7 @@ export default function UtilisateursPage() {
       }
       showToast("Utilisateur supprimé");
       setDeleteUserId(null);
-      loadAll();
+      setUsersList((prev) => prev.filter((u) => u._id !== deleteUserId));
     } catch {
       showToast("Erreur inattendue", "error");
     } finally {
@@ -297,7 +347,7 @@ export default function UtilisateursPage() {
     }
   };
 
-  const filteredUsers = usersList.filter((u) => {
+  const filteredUsers = useMemo(() => usersList.filter((u) => {
     const q = searchTerm.toLowerCase();
     return (
       `${u.lastName} ${u.firstName}`.toLowerCase().includes(q) ||
@@ -305,7 +355,19 @@ export default function UtilisateursPage() {
       u.email.toLowerCase().includes(q) ||
       (u.phone ?? "").includes(q)
     );
-  });
+  }), [usersList, searchTerm]);
+
+  const {
+    paginatedItems: paginatedUsers,
+    currentPage,
+    totalPages,
+    pageStart,
+    pageEnd,
+    totalItems,
+    showPagination,
+    goToPreviousPage,
+    goToNextPage,
+  } = usePaginatedList(filteredUsers, searchTerm);
 
   if (status === "loading" || (loading && usersList.length === 0 && isSuperAdmin)) {
     return (
@@ -379,7 +441,7 @@ export default function UtilisateursPage() {
         ) : (
           <>
           <div className="divide-y divide-slate-100 md:hidden">
-            {filteredUsers.map((user) => (
+            {paginatedUsers.map((user) => (
               <div key={`card-${user._id}`} className="p-4 space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-amber-900 bg-amber-100 shrink-0">
@@ -452,7 +514,7 @@ export default function UtilisateursPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">
-                {filteredUsers.map((user) => (
+                {paginatedUsers.map((user) => (
                   <tr key={user._id} className="hover:bg-amber-50/30 transition-colors group">
                     <td className="p-5">
                       <div className="flex items-center gap-4">
@@ -537,6 +599,17 @@ export default function UtilisateursPage() {
               </tbody>
             </table>
           </div>
+          <ListPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageStart={pageStart}
+            pageEnd={pageEnd}
+            totalItems={totalItems}
+            show={showPagination}
+            itemLabel="utilisateur"
+            onPrevious={goToPreviousPage}
+            onNext={goToNextPage}
+          />
           </>
         )}
       </DashboardPanel>
@@ -656,7 +729,25 @@ export default function UtilisateursPage() {
                 </div>
               )}
 
-              <div className="space-y-3 pt-2 border-t border-slate-100">
+              <div className="space-y-4 pt-2 border-t border-slate-100">
+                <div>
+                  <Label>
+                    Vicariat de rattachement <span className="text-red-600">*</span>
+                  </Label>
+                  <select
+                    required
+                    value={vicariatId}
+                    onChange={(e) => handleVicariatChange(e.target.value)}
+                    className="w-full h-12 mt-1.5 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 font-medium focus:ring-2 focus:ring-amber-900/20 focus:border-amber-900 outline-none"
+                  >
+                    <option value="">— Choisir un vicariat —</option>
+                    {sortedVicariats.map((v) => (
+                      <option key={v._id} value={v._id}>
+                        {v.name} ({v.abbreviation})
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div>
                   <Label>
                     Paroisse de rattachement <span className="text-red-600">*</span>
@@ -665,20 +756,23 @@ export default function UtilisateursPage() {
                     required
                     value={paroisseId}
                     onChange={(e) => setParoisseId(e.target.value)}
-                    className="w-full h-12 mt-1.5 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 font-medium focus:ring-2 focus:ring-amber-900/20 focus:border-amber-900 outline-none"
+                    disabled={!vicariatId}
+                    className="w-full h-12 mt-1.5 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 font-medium focus:ring-2 focus:ring-amber-900/20 focus:border-amber-900 outline-none disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <option value="">— Choisir une paroisse —</option>
-                    {sortedParoisses.map((p) => (
+                    <option value="">
+                      {vicariatId ? "— Choisir une paroisse —" : "— Sélectionnez d’abord un vicariat —"}
+                    </option>
+                    {paroissesForVicariat.map((p) => (
                       <option key={p._id} value={p._id}>
                         {p.name}
-                        {p.vicariat?.name ? ` — ${p.vicariat.name}` : ""}
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm">
-                  <span className="font-bold text-slate-800">Vicariat enregistré : </span>
-                  <span className="text-slate-700">{derivedVicariatLabel}</span>
+                  {vicariatId && paroissesForVicariat.length === 0 ? (
+                    <p className="mt-2 text-xs text-amber-800 font-medium">
+                      Aucune paroisse enregistrée pour ce vicariat.
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -731,7 +825,16 @@ export default function UtilisateursPage() {
                 disabled={saving || selectedRoles.length === 0}
                 className="h-12 px-8 rounded-xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-lg shadow-amber-900/20 disabled:opacity-50"
               >
-                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : editUserId ? "Enregistrer" : "Créer"}
+                {saving ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    {editUserId ? "Enregistrement…" : "Création et envoi de l’email…"}
+                  </>
+                ) : editUserId ? (
+                  "Enregistrer"
+                ) : (
+                  "Créer"
+                )}
               </Button>
             </div>
           </form>

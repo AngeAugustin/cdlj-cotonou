@@ -33,6 +33,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DashboardPageShell, DashboardPanel } from "@/components/dashboard/page-shell";
+import { ListPagination } from "@/components/ui/list-pagination";
+import { usePaginatedList } from "@/lib/pagination";
 
 // ── Types ─────────────────────────────────────────────────
 type Activite = {
@@ -128,6 +130,18 @@ export default function ActivitesPage() {
   const filtered = useMemo(() => {
     return activites.filter((a) => (mainTab === "encours" ? !a.terminee : a.terminee));
   }, [activites, mainTab]);
+
+  const {
+    paginatedItems,
+    currentPage,
+    totalPages,
+    pageStart,
+    pageEnd,
+    totalItems,
+    showPagination,
+    goToPreviousPage,
+    goToNextPage,
+  } = usePaginatedList(filtered, mainTab);
 
   const openCreate = () => {
     setEditId(null);
@@ -386,7 +400,7 @@ export default function ActivitesPage() {
               )}
             </>
           )}
-          {isParoissial && !a.terminee && (
+          {(isParoissial || isVicarial) && !a.terminee && (
             <Link
               href={`/activites/${a._id}/participer`}
               className={cn(buttonVariants({ size: "icon-sm" }), "rounded-xl bg-amber-900 hover:bg-amber-800 text-white border-0")}
@@ -407,7 +421,7 @@ export default function ActivitesPage() {
         isManager
           ? "Créez et pilotez les activités diocésaines."
           : isVicarial
-            ? "Suivez les activités et la participation des paroisses de votre vicariat."
+            ? "Suivez les activités et inscrivez les lecteurs des paroisses de votre vicariat."
             : "Consultez les activités et enregistrez la participation de vos lecteurs."
       }
       actions={
@@ -471,10 +485,21 @@ export default function ActivitesPage() {
       ) : (
         <DashboardPanel className="overflow-hidden">
           <div className="divide-y divide-slate-50">
-            {filtered.map((a) => (
+            {paginatedItems.map((a) => (
               <ActivityRow key={a._id} a={a} />
             ))}
           </div>
+          <ListPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageStart={pageStart}
+            pageEnd={pageEnd}
+            totalItems={totalItems}
+            show={showPagination}
+            itemLabel="activité"
+            onPrevious={goToPreviousPage}
+            onNext={goToNextPage}
+          />
         </DashboardPanel>
       )}
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Mail, MapPin, Phone } from "lucide-react";
+import { SocialIconLinks } from "@/components/SocialFollowButtons";
 
 export function Footer() {
   return (
@@ -30,6 +31,7 @@ export function Footer() {
               Plateforme officielle de la Communauté Diocésaine
               des Lecteurs Juniors de Cotonou. Lecteurs, Sel & Lumière nous sommes !!!
             </p>
+            <SocialIconLinks />
           </div>
 
           {/* Explorer */}
@@ -39,16 +41,16 @@ export function Footer() {
             </h3>
             <ul className="space-y-3 sm:space-y-4 text-sm text-slate-500 font-medium text-left">
               <li>
-                <Link href="/" className="hover:text-amber-900 inline-block transition-colors">Accueil</Link>
+                <Link href="/" prefetch className="hover:text-amber-900 inline-block transition-colors">Accueil</Link>
               </li>
               <li>
-                <Link href="/news" className="hover:text-amber-900 inline-block transition-colors">Blog & Actualités</Link>
+                <Link href="/news" prefetch className="hover:text-amber-900 inline-block transition-colors">Blog & Actualités</Link>
               </li>
               <li>
-                <Link href="/mediatheque" className="hover:text-amber-900 inline-block transition-colors">Médiathèque</Link>
+                <Link href="/mediatheque" prefetch className="hover:text-amber-900 inline-block transition-colors">Médiathèque</Link>
               </li>
               <li>
-                <Link href="/about" className="hover:text-amber-900 inline-block transition-colors">À Propos</Link>
+                <Link href="/about" prefetch className="hover:text-amber-900 inline-block transition-colors">À Propos</Link>
               </li>
             </ul>
           </div>
@@ -60,16 +62,13 @@ export function Footer() {
             </h3>
             <ul className="space-y-3 sm:space-y-4 text-sm text-slate-500 font-medium text-left">
               <li>
-                <Link href="/nos-vicariats" className="hover:text-amber-900 inline-block transition-colors">Vicariats</Link>
+                <Link href="/nos-vicariats" prefetch className="hover:text-amber-900 inline-block transition-colors">Vicariats</Link>
               </li>
               <li>
-                <Link href="/forums" className="hover:text-amber-900 inline-block transition-colors">Forums</Link>
+                <Link href="/forums" prefetch className="hover:text-amber-900 inline-block transition-colors">Forums</Link>
               </li>
               <li>
-                <Link href="/verifier" className="hover:text-amber-900 inline-block transition-colors">Vérifier</Link>
-              </li>
-              <li>
-                <Link href="/auth/login" className="hover:text-amber-900 inline-block transition-colors text-amber-700">Accès Portail</Link>
+                <Link href="/auth/login" prefetch className="hover:text-amber-900 inline-block transition-colors text-amber-700">Accès Portail</Link>
               </li>
             </ul>
           </div>

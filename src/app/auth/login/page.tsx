@@ -63,8 +63,7 @@ export default function LoginPage() {
       setError("Identifiants incorrects. Veuillez réessayer.");
       setLoading(false);
     } else {
-      router.push("/dashboard");
-      router.refresh();
+      router.replace("/dashboard");
     }
   };
 

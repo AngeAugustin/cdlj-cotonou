@@ -1,25 +1,10 @@
-import { MediathequeService } from "@/modules/mediatheque/service";
-import { MediathequePublicGrid, type PublicMediathequeItem } from "@/components/mediatheque/MediathequePublicGrid";
+import { Suspense } from "react";
+import { MediathequePageAsync } from "@/components/mediatheque/MediathequePageAsync";
+import { MediathequeGridSkeleton } from "@/components/public/PublicPageSkeleton";
 
-export default async function MediathequePage() {
-  let items: PublicMediathequeItem[] = [];
+export const revalidate = 120;
 
-  try {
-    const service = new MediathequeService();
-    const data = await service.getMediatheques(true);
-    items = data.map((d) => ({
-      _id: String(d._id),
-      nom: d.nom,
-      categorie: d.categorie,
-      mois: d.mois,
-      annee: d.annee,
-      coverImage: d.coverImage,
-      hostingLink: d.hostingLink,
-    }));
-  } catch {
-    items = [];
-  }
-
+export default function MediathequePage() {
   return (
     <div className="bg-slate-50 min-h-screen py-12 sm:py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto w-full">
@@ -35,7 +20,9 @@ export default async function MediathequePage() {
           </p>
         </div>
 
-        <MediathequePublicGrid items={items} compact />
+        <Suspense fallback={<MediathequeGridSkeleton compact />}>
+          <MediathequePageAsync />
+        </Suspense>
       </div>
     </div>
   );

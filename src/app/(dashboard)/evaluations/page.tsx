@@ -17,6 +17,8 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ListPagination } from "@/components/ui/list-pagination";
+import { usePaginatedList } from "@/lib/pagination";
 import {
   Dialog,
   DialogContent,
@@ -67,6 +69,18 @@ export default function EvaluationsPage() {
       return blob.includes(q);
     });
   }, [evaluations, searchTerm]);
+
+  const {
+    paginatedItems,
+    currentPage,
+    totalPages,
+    pageStart,
+    pageEnd,
+    totalItems,
+    showPagination,
+    goToPreviousPage,
+    goToNextPage,
+  } = usePaginatedList(filtered, searchTerm);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -328,6 +342,7 @@ export default function EvaluationsPage() {
             {searchTerm ? "Aucun résultat." : "Aucune évaluation enregistrée."}
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[860px]">
               <thead>
@@ -340,7 +355,7 @@ export default function EvaluationsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">
-                {filtered.map((ev) => (
+                {paginatedItems.map((ev) => (
                   <tr key={ev._id} className="hover:bg-amber-50/30 transition-colors group">
                     <td className="p-5">
                       <div className="min-w-0">
@@ -416,6 +431,18 @@ export default function EvaluationsPage() {
               </tbody>
             </table>
           </div>
+          <ListPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageStart={pageStart}
+            pageEnd={pageEnd}
+            totalItems={totalItems}
+            show={showPagination}
+            itemLabel="évaluation"
+            onPrevious={goToPreviousPage}
+            onNext={goToNextPage}
+          />
+          </>
         )}
       </div>
 

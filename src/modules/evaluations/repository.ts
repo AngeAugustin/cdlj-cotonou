@@ -69,6 +69,20 @@ export class EvaluationRepository {
     return rows;
   }
 
+  async countOpenEvaluations(): Promise<number> {
+    await connectToDatabase();
+    return Evaluation.countDocuments({ terminee: false });
+  }
+
+  async findFirstOpenEvaluation() {
+    await connectToDatabase();
+    return Evaluation.findOne({ terminee: false })
+      .populate("gradeId", "name abbreviation")
+      .select("nom annee gradeId")
+      .sort({ annee: -1, createdAt: -1 })
+      .lean();
+  }
+
   async getEvaluationById(id: string): Promise<IEvaluation | null> {
     if (!mongoose.Types.ObjectId.isValid(id)) return null;
     await connectToDatabase();

@@ -1,7 +1,7 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { ChevronDown, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -35,12 +35,12 @@ export default function SidebarUserMenu({ name, initial, subtitle, collapsed = f
   return (
     <>
       {collapsed ? (
-        /* Mode réduit : avatar seul centré, tooltip au survol */
         <div className="relative group/user flex justify-center">
           <button
+            type="button"
             onClick={() => setOpen(true)}
             className="p-1 rounded-xl hover:bg-amber-800/45 transition-colors"
-            aria-label="Déconnexion"
+            aria-label="Ouvrir le menu de déconnexion"
           >
             {avatar}
           </button>
@@ -54,32 +54,22 @@ export default function SidebarUserMenu({ name, initial, subtitle, collapsed = f
           </span>
         </div>
       ) : (
-        /* Mode étendu : carte complète */
-        <div className="bg-amber-800/30 border border-amber-700/35 rounded-xl p-2.5 space-y-2 backdrop-blur-sm">
-          <div
-            className="flex items-center justify-between cursor-pointer hover:bg-amber-800/35 rounded-lg px-1 py-1 transition-colors"
-            onClick={() => setOpen(true)}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              {avatar}
-              <div className="flex flex-col leading-tight min-w-0">
-                <span className="text-sm font-bold text-amber-50 truncate max-w-[140px]">{name}</span>
-                <span className="text-xs text-amber-300/80 truncate max-w-[140px]">
-                  {subtitle || "Sans paroisse"}
-                </span>
-              </div>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="w-full text-left bg-amber-800/30 border border-amber-700/35 rounded-xl p-2.5 backdrop-blur-sm
+                     hover:bg-amber-800/40 transition-colors"
+        >
+          <div className="flex items-center gap-2 min-w-0 px-1 py-1">
+            {avatar}
+            <div className="flex flex-col leading-tight min-w-0">
+              <span className="text-sm font-bold text-amber-50 truncate max-w-[140px]">{name}</span>
+              <span className="text-xs text-amber-300/80 truncate max-w-[140px]">
+                {subtitle || "Sans paroisse"}
+              </span>
             </div>
-            <ChevronDown className="w-4 h-4 text-amber-300/70 shrink-0" />
           </div>
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-amber-600/40 bg-amber-950/40 px-3 py-2 text-xs font-bold text-amber-100/90 hover:bg-amber-800/50 hover:text-amber-50 transition-colors"
-          >
-            <LogOut className="w-3.5 h-3.5 text-amber-300/80" />
-            Déconnexion
-          </button>
-        </div>
+        </button>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>

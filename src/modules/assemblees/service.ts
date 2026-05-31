@@ -8,6 +8,10 @@ export class AssembleeGeneraleService {
     return this.repo.findAll();
   }
 
+  countOpenAssemblees() {
+    return this.repo.countOpen();
+  }
+
   getAssemblee(id: string) {
     return this.repo.findById(id);
   }

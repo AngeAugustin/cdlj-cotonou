@@ -8,6 +8,14 @@ export class EvaluationService {
     return this.repo.getEvaluations();
   }
 
+  countOpenEvaluations() {
+    return this.repo.countOpenEvaluations();
+  }
+
+  findFirstOpenEvaluation() {
+    return this.repo.findFirstOpenEvaluation();
+  }
+
   getEvaluationDetails(evaluationId: string) {
     return this.repo.getEvaluationFull(evaluationId);
   }

@@ -2,12 +2,17 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { ActiviteService } from "@/modules/activites/service";
+import {
+  assertPaymentParoisseAccessible,
+  canEnrollLecteurs,
+} from "@/lib/activiteEnrollmentScope";
 import { syncPaymentFromFedapayTransactionId } from "@/lib/activitePaymentFinalize";
 
 type SessionShape = {
   user?: {
     roles?: string[];
     parishId?: string;
+    vicariatId?: string;
     email?: string | null;
     id?: string;
   };
@@ -18,13 +23,8 @@ async function getScopedPayment(request: Request, params: Promise<{ id: string }
   if (!session?.user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
 
   const roles: string[] = session.user.roles ?? [];
-  if (!roles.includes("PAROISSIAL")) {
+  if (!canEnrollLecteurs(roles)) {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-  }
-
-  const paroisseId = session.user.parishId;
-  if (!paroisseId) {
-    return { error: NextResponse.json({ error: "Paroisse non définie pour ce compte" }, { status: 400 }) };
   }
 
   const userEmail = session.user.email?.trim();
@@ -45,8 +45,10 @@ async function getScopedPayment(request: Request, params: Promise<{ id: string }
   if (String(payment.activiteId) !== activiteId) {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
-  if (String(payment.paroisseId) !== paroisseId) {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+
+  const paroisseAccess = await assertPaymentParoisseAccessible(session.user, String(payment.paroisseId));
+  if (!paroisseAccess.ok) {
+    return { error: NextResponse.json({ error: paroisseAccess.error }, { status: paroisseAccess.status }) };
   }
 
   const sameUser =
@@ -61,7 +63,7 @@ async function getScopedPayment(request: Request, params: Promise<{ id: string }
 
 /**
  * GET /api/activites/:id/pay/status?pid=...&paymentId=...
- * Pour le rôle PAROISSIAL : retourne le statut du paiement et, si encore en attente,
+ * Pour PAROISSIAL et VICARIAL : retourne le statut du paiement et, si encore en attente,
  * synchronise avec FedaPay (comme le webhook) pour refléter le paiement réel.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {

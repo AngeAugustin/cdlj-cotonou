@@ -8,6 +8,7 @@ import { buildActivitePaymentFingerprint } from "@/lib/activitePayments";
 import { fedapayFindOrCreateCustomer, fedapayCreateTransactionAndPaymentUrl } from "@/lib/fedapay";
 import { sendActivitePaymentConfirmationEmail } from "@/lib/resendMail";
 import { syncPaymentFromFedapayTransactionId } from "@/lib/activitePaymentFinalize";
+import { canEnrollLecteurs, resolveEnrollmentParoisseId } from "@/lib/activiteEnrollmentScope";
 import mongoose from "mongoose";
 import { ZodError } from "zod";
 
@@ -27,6 +28,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       user?: {
         roles?: string[];
         parishId?: string;
+        vicariatId?: string;
         email?: string | null;
         name?: string | null;
         id?: string;
@@ -35,13 +37,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const roles: string[] = session.user.roles ?? [];
-    if (!roles.includes("PAROISSIAL")) {
+    if (!canEnrollLecteurs(roles)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const paroisseId = session.user.parishId;
-    if (!paroisseId) {
-      return NextResponse.json({ error: "Paroisse non définie pour ce compte" }, { status: 400 });
     }
 
     const userEmail = session.user.email?.trim();
@@ -51,7 +48,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const { id: activiteId } = await params;
     const body = await request.json();
-    const { lecteurIds } = payerParticipationSchema.parse(body);
+    const parsed = payerParticipationSchema.parse(body);
+    const { lecteurIds, paroisseId: requestedParoisseId } = parsed;
+
+    const enrollmentScope = await resolveEnrollmentParoisseId(session.user, requestedParoisseId);
+    if (!enrollmentScope.ok) {
+      return NextResponse.json({ error: enrollmentScope.error }, { status: enrollmentScope.status });
+    }
+    const paroisseId = enrollmentScope.paroisseId;
 
     const service = new ActiviteService();
     const activite = await service.getActivite(activiteId);
@@ -75,7 +79,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const montantTotal = montantUnitaire * n;
 
     const baseUrl = getAppBaseUrl();
-    const callbackUrlBase = `${baseUrl}/activites/${encodeURIComponent(activiteId)}/participer?payment=return`;
+    const callbackUrlBase = `${baseUrl}/activites/${encodeURIComponent(activiteId)}/participer?payment=return&paroisseId=${encodeURIComponent(paroisseId)}`;
 
     const userId = session.user.id ?? userEmail;
     const { first, last } = splitName(session.user.name);
@@ -156,6 +160,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       metadata: {
         activiteNom: activite.nom,
         source: "cdlj-activite",
+        ...(enrollmentScope.role === "VICARIAL"
+          ? { enrolledByRole: "VICARIAL", enrolledByUserId: userId }
+          : {}),
       } as Record<string, unknown>,
     };
 

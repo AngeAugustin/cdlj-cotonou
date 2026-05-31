@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { ActiviteService } from "@/modules/activites/service";
+import {
+  assertParoisseInVicariat,
+  listParoisseIdsForVicariat,
+} from "@/lib/activiteEnrollmentScope";
 
 function isActiviteManager(roles: string[]) {
   return roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
@@ -12,8 +16,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session: any = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = (await getServerSession(authOptions)) as {
+      user?: {
+        roles?: string[];
+        parishId?: string;
+        vicariatId?: string;
+      };
+    } | null;
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const roles: string[] = session.user.roles ?? [];
     const { id } = await params;
@@ -27,12 +37,30 @@ export async function GET(
     if (roles.includes("PAROISSIAL")) {
       const pid = session.user.parishId;
       if (!pid) return NextResponse.json({ error: "Paroisse non définie pour ce compte" }, { status: 400 });
-      const rows = await service.listParticipantsDetail(id, pid);
+      const rows = await service.listParticipantsDetail(id, { paroisseId: pid });
+      return NextResponse.json(rows);
+    }
+
+    if (roles.includes("VICARIAL")) {
+      const vid = session.user.vicariatId;
+      if (!vid) return NextResponse.json({ error: "Vicariat non défini pour ce compte" }, { status: 400 });
+
+      if (paroisseIdParam) {
+        const inScope = await assertParoisseInVicariat(paroisseIdParam, vid);
+        if (!inScope) {
+          return NextResponse.json({ error: "Cette paroisse n'appartient pas à votre vicariat" }, { status: 403 });
+        }
+        const rows = await service.listParticipantsDetail(id, { paroisseId: paroisseIdParam });
+        return NextResponse.json(rows);
+      }
+
+      const paroisseIds = await listParoisseIdsForVicariat(vid);
+      const rows = await service.listParticipantsDetail(id, { paroisseIds });
       return NextResponse.json(rows);
     }
 
     if (isActiviteManager(roles) && paroisseIdParam) {
-      const rows = await service.listParticipantsDetail(id, paroisseIdParam);
+      const rows = await service.listParticipantsDetail(id, { paroisseId: paroisseIdParam });
       return NextResponse.json(rows);
     }
 
@@ -42,8 +70,9 @@ export async function GET(
     }
 
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Erreur";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 

@@ -3,58 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Calendar, User, Clock, Tag, ArrowRight, Facebook } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { ActualiteService } from "@/modules/actualites/service";
+import { getNewsBySlug, getPublishedNews, type PublicNewsDetail } from "@/lib/public-cache";
 
-type NormalizedPost = {
-  slug: string;
-  title: string;
-  excerpt: string;
-  body: string;           // HTML string
-  date: string;
-  author: string;
-  authorRole: string;
-  category: string;
-  readTime: string;
-  image: string;
-  featured: boolean;
-};
-
-function normalizeDb(p: any): NormalizedPost {
-  return {
-    slug:       p.slug,
-    title:      p.title,
-    excerpt:    p.excerpt,
-    body:       typeof p.body === "string" ? p.body : (p.body ?? []).map((t: string) => `<p>${t}</p>`).join(""),
-    date:       new Date(p.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }),
-    author:     p.author,
-    authorRole: p.authorRole ?? "",
-    category:   p.category,
-    readTime:   p.readTime ?? "",
-    image:      p.image || "https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&q=80&w=1600",
-    featured:   p.featured,
-  };
-}
-
-async function getPost(slug: string): Promise<NormalizedPost | null> {
-  try {
-    const service = new ActualiteService();
-    const dbPost  = await service.getActualiteBySlug(slug);
-    if (dbPost) return normalizeDb(dbPost);
-  } catch {
-    return null;
-  }
-  return null;
-}
-
-async function getRelated(slug: string): Promise<NormalizedPost[]> {
-  try {
-    const service = new ActualiteService();
-    const all     = await service.getActualites(true);
-    return all.filter((p: any) => p.slug !== slug).slice(0, 2).map(normalizeDb);
-  } catch {
-    return [];
-  }
-}
+export const revalidate = 120;
 
 export default async function NewsDetailPage({
   params,
@@ -62,10 +13,16 @@ export default async function NewsDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post     = await getPost(slug);
+  const post = await getNewsBySlug(slug);
   if (!post) notFound();
 
-  const related = await getRelated(slug);
+  let related: PublicNewsDetail[] = [];
+  try {
+    const all = await getPublishedNews();
+    related = all.filter((p) => p.slug !== slug).slice(0, 2);
+  } catch {
+    related = [];
+  }
 
   return (
     <div className="bg-white min-h-screen">
@@ -77,7 +34,7 @@ export default async function NewsDetailPage({
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
         <div className="absolute top-8 left-6 md:left-12 z-10">
-          <Link href="/news"
+          <Link href="/news" prefetch
             className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-semibold px-4 py-2 rounded-full hover:bg-white/20 transition-all">
             <ArrowLeft className="w-4 h-4" />
             Retour aux actualités
@@ -172,7 +129,7 @@ export default async function NewsDetailPage({
             <h2 className="text-2xl font-extrabold text-slate-900 mb-8">À lire aussi</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {related.map((r) => (
-                <Link key={r.slug} href={`/news/${r.slug}`}
+                <Link key={r.slug} href={`/news/${r.slug}`} prefetch
                   className="group flex flex-col bg-slate-50 border border-slate-100 rounded-2xl overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
                   <div className="relative h-44 overflow-hidden">
                     <Image src={r.image} alt={r.title} fill

@@ -8,6 +8,10 @@ export class ParoisseService {
     return this.repo.findAll(filters);
   }
 
+  countParoisses(filters?: { vicariatId?: string }) {
+    return this.repo.count(filters);
+  }
+
   async createParoisse(data: CreateParoisseInput) {
     return this.repo.create(data);
   }

@@ -21,7 +21,7 @@ const aptosFont = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "CDLJ WEBAPP",
+  title: "CDLJ - Cotonou",
   description: "Plateforme de gestion de la communauté diocésaine des lecteurs",
 };
 

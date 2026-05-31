@@ -1,5 +1,6 @@
-import Link from "next/link";
 import { MessageSquare, Users, BookOpen, Award, ChevronRight, Lock } from "lucide-react";
+import { SocialFollowButtons } from "@/components/SocialFollowButtons";
+import { FACEBOOK_URL } from "@/config/social-links";
 
 export default function ForumsPage() {
   const FORUMS = [
@@ -12,7 +13,7 @@ export default function ForumsPage() {
       icon: <Users className="w-8 h-8 text-amber-900" />,
       iconColor: "bg-amber-100",
       badge: "bg-amber-100 text-amber-800",
-      link: "#"
+      link: FACEBOOK_URL
     },
     {
       id: 2,
@@ -92,9 +93,14 @@ export default function ForumsPage() {
                     <MessageSquare className="w-3.5 h-3.5" />
                     {forum.members}
                   </span>
-                  <Link href={forum.link} className="flex items-center gap-1.5 text-sm font-bold text-amber-900 hover:gap-2.5 transition-all">
+                  <a
+                    href={forum.link}
+                    target={forum.link.startsWith("http") ? "_blank" : undefined}
+                    rel={forum.link.startsWith("http") ? "noopener noreferrer" : undefined}
+                    className="flex items-center gap-1.5 text-sm font-bold text-amber-900 hover:gap-2.5 transition-all"
+                  >
                     Rejoindre <ChevronRight className="w-4 h-4" />
-                  </Link>
+                  </a>
                 </div>
               </div>
             </div>
@@ -102,15 +108,15 @@ export default function ForumsPage() {
         </div>
 
         {/* Call to action at bottom */}
-        <div className="mt-20 p-10 bg-gradient-to-r from-amber-900 to-amber-800 rounded-3xl text-white text-center flex flex-col md:flex-row items-center justify-between shadow-2xl overflow-hidden relative">
+        <div className="mt-10 p-10 bg-gradient-to-r from-amber-900 to-amber-800 rounded-3xl text-white text-center flex flex-col md:flex-row items-center justify-between shadow-2xl overflow-hidden relative">
           <div className="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
           <div className="text-left mb-6 md:mb-0 relative z-10 w-full md:w-2/3">
             <h4 className="text-3xl font-bold mb-2">CDLJ COTONOU</h4>
-            <p className="text-amber-100/80 text-lg">Retrouvez-nous aussi en live sur notre serveur vocal communautaire pour les temps de prière en ligne.</p>
+            <p className="text-amber-100/80 text-lg">
+              Rejoignez la communauté sur Facebook et TikTok pour les actualités, les échanges et la vie de la CDLJ.
+            </p>
           </div>
-          <Link href="#" className="whitespace-nowrap bg-white text-amber-900 px-8 py-4 rounded-full font-bold shadow-lg hover:shadow-white/20 hover:scale-105 transition-all text-lg z-10">
-            Rejoindre la communauté
-          </Link>
+          <SocialFollowButtons />
         </div>
       </div>
     </div>

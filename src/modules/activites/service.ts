@@ -8,6 +8,14 @@ export class ActiviteService {
     return this.repo.findAll();
   }
 
+  countOpenActivites() {
+    return this.repo.countOpen();
+  }
+
+  findRecentActivites(limit: number) {
+    return this.repo.findRecent(limit);
+  }
+
   listOpenActivitesForPresence() {
     return this.repo.listOpenForPresence();
   }
@@ -74,8 +82,11 @@ export class ActiviteService {
     return this.repo.listPaiementsForActivite(activiteId, opts);
   }
 
-  listParticipantsDetail(activiteId: string, paroisseId?: string) {
-    return this.repo.listParticipantsWithLecteur(activiteId, paroisseId);
+  listParticipantsDetail(
+    activiteId: string,
+    scope?: { paroisseId?: string; paroisseIds?: string[] }
+  ) {
+    return this.repo.listParticipantsWithLecteur(activiteId, scope);
   }
 
   findParticipantByUniqueId(activiteId: string, uniqueId: string) {
@@ -99,5 +110,9 @@ export class ActiviteService {
 
   countParticipantsForParoisse(activiteId: string, paroisseId: string) {
     return this.repo.countParticipantsForActiviteParoisse(activiteId, paroisseId);
+  }
+
+  countParticipantsForActivite(activiteId: string, vicariatId?: string | null) {
+    return this.repo.countParticipantsForActivite(activiteId, vicariatId);
   }
 }

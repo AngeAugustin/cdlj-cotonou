@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DashboardPageShell, DashboardPanel } from "@/components/dashboard/page-shell";
+import { ListPagination } from "@/components/ui/list-pagination";
+import { usePaginatedList } from "@/lib/pagination";
 import {
   type ApiLecteur,
   ageYearsForCsv,
@@ -95,6 +97,18 @@ export default function LecteursPage() {
       return blob.includes(q);
     });
   }, [list, searchTerm, gradeFilter]);
+
+  const {
+    paginatedItems,
+    currentPage,
+    totalPages,
+    pageStart,
+    pageEnd,
+    totalItems,
+    showPagination,
+    goToPreviousPage,
+    goToNextPage,
+  } = usePaginatedList(filtered, `${searchTerm}-${gradeFilter}`);
 
   const stats = useMemo(() => {
     const uniqueGrades = new Set(list.map((l) => refId(l.gradeId)).filter(Boolean));
@@ -275,7 +289,7 @@ export default function LecteursPage() {
         ) : (
           <>
           <div className="divide-y divide-slate-100 md:hidden">
-            {filtered.map((l) => {
+            {paginatedItems.map((l) => {
               const rowAvatar = displayAvatarSrc(l);
               const r = rattachementLines(l);
               return (
@@ -349,7 +363,7 @@ export default function LecteursPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">
-                {filtered.map((l) => {
+                {paginatedItems.map((l) => {
                   const rowAvatar = displayAvatarSrc(l);
                   const r = rattachementLines(l);
                   return (
@@ -445,6 +459,17 @@ export default function LecteursPage() {
               </tbody>
             </table>
           </div>
+          <ListPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageStart={pageStart}
+            pageEnd={pageEnd}
+            totalItems={totalItems}
+            show={showPagination}
+            itemLabel="lecteur"
+            onPrevious={goToPreviousPage}
+            onNext={goToNextPage}
+          />
           </>
         )}
       </DashboardPanel>

@@ -58,6 +58,21 @@ export class LecteurRepository {
     return Lecteur.countDocuments({ uniqueId: { $regex: `^${abbrPattern}` } });
   }
 
+  async countAll(): Promise<number> {
+    await connectToDatabase();
+    return Lecteur.countDocuments({});
+  }
+
+  async countByParishId(parishId: string): Promise<number> {
+    await connectToDatabase();
+    return Lecteur.countDocuments({ paroisseId: parishId });
+  }
+
+  async countByVicariatId(vicariatId: string): Promise<number> {
+    await connectToDatabase();
+    return Lecteur.countDocuments({ vicariatId });
+  }
+
   async findParticipationHistory(lecteurId: string) {
     await connectToDatabase();
     if (!mongoose.Types.ObjectId.isValid(lecteurId)) return [];

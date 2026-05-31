@@ -8,6 +8,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ListPagination } from "@/components/ui/list-pagination";
+import { usePaginatedList } from "@/lib/pagination";
 import {
   Dialog, DialogContent, DialogHeader,
   DialogTitle, DialogDescription, DialogFooter,
@@ -219,6 +221,18 @@ export default function ParoissesPage() {
     );
   }, [paroisses, paroisseSearch]);
 
+  const {
+    paginatedItems: paginatedParoisses,
+    currentPage,
+    totalPages,
+    pageStart,
+    pageEnd,
+    totalItems,
+    showPagination,
+    goToPreviousPage,
+    goToNextPage,
+  } = usePaginatedList(filteredParoisses, paroisseSearch);
+
   // ── Helpers ───────────────────────────────────────────
   const getAge = (dob?: string) => {
     if (!dob) return "—";
@@ -332,7 +346,7 @@ export default function ParoissesPage() {
         ) : (
           <>
             <div className="divide-y divide-slate-100 lg:hidden">
-              {filteredParoisses.map((p) => (
+              {paginatedParoisses.map((p) => (
                 <div key={`card-${p._id}`} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
@@ -405,7 +419,7 @@ export default function ParoissesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/80">
-                  {filteredParoisses.map((p) => (
+                  {paginatedParoisses.map((p) => (
                     <tr key={p._id} className="hover:bg-amber-50/20 transition-colors group">
                       <td className="p-5">
                         <div className="w-11 h-11 rounded-xl border-2 border-slate-100 shadow-sm flex items-center justify-center bg-slate-50 overflow-hidden text-amber-900 shrink-0">
@@ -463,6 +477,18 @@ export default function ParoissesPage() {
                 </tbody>
               </table>
             </div>
+
+            <ListPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageStart={pageStart}
+              pageEnd={pageEnd}
+              totalItems={totalItems}
+              show={showPagination}
+              itemLabel="paroisse"
+              onPrevious={goToPreviousPage}
+              onNext={goToNextPage}
+            />
           </>
         )}
       </div>

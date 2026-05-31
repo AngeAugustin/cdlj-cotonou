@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import type { PublicNavLink } from "@/config/public-nav";
+import { CDLJ_LOGO_SRC, EM_LOGO_SRC } from "@/config/brand";
 
 type NavbarProps = {
   links: PublicNavLink[];
@@ -19,11 +20,11 @@ export function Navbar({ links }: NavbarProps) {
       <div className="container mx-auto flex h-14 sm:h-16 md:h-20 items-center justify-between gap-2 px-3 sm:px-4 md:px-8">
 
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
+        <Link href="/" prefetch className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
           <div className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity shrink-0">
             <div className="relative h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 lg:h-20 lg:w-20 overflow-hidden">
               <Image
-                src="https://i.postimg.cc/zGGW7CSV/EM.png"
+                src={EM_LOGO_SRC}
                 alt="Aumônerie de Cotonou"
                 fill
                 className="object-contain"
@@ -32,7 +33,7 @@ export function Navbar({ links }: NavbarProps) {
             </div>
             <div className="relative h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 overflow-hidden">
               <Image
-                src="https://i.postimg.cc/BnnDpTc2/CDLJ.png"
+                src={CDLJ_LOGO_SRC}
                 alt="Logo CDLJ"
                 fill
                 className="object-contain"
@@ -57,6 +58,7 @@ export function Navbar({ links }: NavbarProps) {
             <Link
               key={link.href}
               href={link.href}
+              prefetch
               className="hover:text-amber-900 transition-colors whitespace-nowrap"
             >
               <span className="lg:hidden">{link.shortLabel ?? link.label}</span>
@@ -67,7 +69,7 @@ export function Navbar({ links }: NavbarProps) {
 
         {/* CTA + hamburger */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
-          <Link href="/auth/login">
+          <Link href="/auth/login" prefetch>
             <Button className="bg-amber-900 hover:bg-amber-800 text-white rounded-full px-3 sm:px-4 md:px-6 h-9 sm:h-10 text-xs sm:text-sm shadow-md hover:shadow-lg transition-all">
               <span className="hidden sm:inline">Espace Membre</span>
               <span className="sm:hidden">Membre</span>
@@ -96,6 +98,7 @@ export function Navbar({ links }: NavbarProps) {
             <Link
               key={link.href}
               href={link.href}
+              prefetch
               onClick={() => setMenuOpen(false)}
               className="flex items-center py-3 px-3 sm:px-4 text-sm font-medium text-slate-600 hover:text-amber-900 hover:bg-amber-50 rounded-lg transition-colors"
             >
