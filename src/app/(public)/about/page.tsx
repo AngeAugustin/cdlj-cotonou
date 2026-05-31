@@ -48,7 +48,7 @@ export default function AboutPage() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-700 to-amber-900">Inspirer la Jeunesse.</span>
             </h1>
             <p className="text-xl text-slate-600 leading-relaxed max-w-lg mb-8">
-              La Communauté Diocésaine des Lecteurs Juniors (CDLJ) est le cœur battant de la proclamation de la Parole pour l'Enfance Missionnaire de Cotonou.
+              La Communauté Diocésaine des Lecteurs Juniors (CDLJ) encadre, forme et responsabilise les jeunes lecteurs de l&apos;Archidiocèse de Cotonou depuis 2013.
             </p>
             <Link href="/news">
               <button className="group relative inline-flex items-center justify-center gap-2 bg-amber-900 hover:bg-amber-800 text-white px-8 py-4 rounded-full font-bold shadow-xl shadow-amber-900/20 transition-all hover:-translate-y-1 overflow-hidden">
@@ -76,7 +76,7 @@ export default function AboutPage() {
               </div>
               <div>
                 <p className="text-sm text-slate-500 font-medium">Communauté</p>
-                <p className="text-2xl font-black text-slate-800">+10k Membres</p>
+                <p className="text-2xl font-black text-slate-800">~1 500 lecteurs</p>
               </div>
             </div>
           </div>
@@ -116,62 +116,74 @@ export default function AboutPage() {
           <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
             Historique de vie
           </h2>
-          <p className="mt-4 text-lg text-slate-500 max-w-xl mx-auto">
-            De nos origines modestes à une communauté structurée et rayonnante — retour sur les grandes étapes de la CDLJ.
+          <p className="mt-4 text-lg text-slate-500 max-w-2xl mx-auto">
+            Née en 2012 du besoin de mieux encadrer les lecteurs juniors de l&apos;Archidiocèse de Cotonou, la CDLJ est aujourd&apos;hui une communauté structurée d&apos;environ 1&nbsp;500 membres, dédiée à la formation, à la liturgie et à la croissance spirituelle des jeunes lecteurs.
           </p>
         </div>
 
         {/* Timeline */}
         <div className="relative">
-          {/* Vertical line */}
           <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-amber-200 via-amber-400 to-amber-200 hidden md:block" />
 
           {[
             {
-              year: "1998",
-              side: "left",
-              title: "Fondation de la CDLJ",
-              desc: "Création officielle de la Communauté Diocésaine des Lecteurs Juniors sous l'impulsion de l'Aumônerie de l'Enfance Missionnaire de Cotonou. Les premières réunions se tiennent dans trois paroisses pionnières.",
+              year: "Origines",
+              side: "left" as const,
+              title: "Naissance d'un projet",
+              desc: "Les lecteurs juniors faisaient partie de l'Union des Lecteurs de l'Archidiocèse de Cotonou (ULAC), qui regroupait enfants, jeunes et adultes. Peu représentés et rarement impliqués dans les activités diocésaines, les enfants lecteurs ont suscité une réflexion menée par le frère Wilfried KOUTOUKLOUI, chargé de la liturgie de l'enfance missionnaire, pour créer une structure propre aux lecteurs juniors.",
+              color: "bg-slate-700",
+            },
+            {
+              year: "2012",
+              side: "right" as const,
+              title: "Mise en place du projet",
+              desc: "Une rencontre est organisée au Centre Paul VI avec environ 16 animateurs lecteurs juniors représentant cinq doyennés : Allada, Akpakpa, Bakhita, Cocotomey et Mènontin. Un comité de cinq membres est constitué pour rédiger les statuts et règlements de la future communauté.",
               color: "bg-amber-900",
             },
             {
-              year: "2003",
-              side: "right",
-              title: "Extension aux 8 Vicariats",
-              desc: "La CDLJ s'étend progressivement à l'ensemble des vicariats du diocèse. Chaque vicariat se dote d'un bureau local chargé de coordonner les activités des paroisses membres.",
+              year: "2013",
+              side: "left" as const,
+              title: "Création officielle de la CDLJ",
+              desc: "Après adoption des textes par les responsables lecteurs juniors, ceux-ci sont transmis à l'Aumônier diocésain puis à Monseigneur Antoine GANYE, Archevêque de Cotonou. Après étude, l'Archevêque donne son autorisation pour la création officielle de la Communauté Diocésaine des Lecteurs Juniors (CDLJ).",
               color: "bg-blue-800",
             },
             {
-              year: "2008",
-              side: "left",
-              title: "Premier Pèlerinage Diocésain",
-              desc: "Organisation du premier grand pèlerinage réunissant plus de 500 lecteurs juniors au Sanctuaire Marial d'Allada. Un événement fondateur qui devient une tradition annuelle.",
+              year: "Avr. 2013",
+              side: "right" as const,
+              title: "Première Assemblée Générale et premier bureau",
+              desc: "Le 21 avril 2013, une Assemblée Générale élective se tient au Centre Paul VI sous la présidence du Père Léandre DEGBEGNON. Elle met en place le premier bureau directeur de la CDLJ :",
               color: "bg-emerald-800",
+              list: [
+                "Coordonnatrice : Sœur Maximilienne DOSSOU",
+                "Secrétaire : Frère Romaric ASSOGBA",
+                "Trésorière : Sœur Doloresse EKPINSE",
+                "Organisateur : Frère Franck KPEDJO",
+                "Chargé des affaires spirituelles et de la formation : Frère Gérard SETONDJI",
+              ],
             },
             {
-              year: "2013",
-              side: "right",
-              title: "Création du Système de Grades",
-              desc: "Mise en place d'un parcours de formation structuré en grades progressifs : Aspirant, Junior, Ancien et Sénior. Ce système valorise l'engagement et l'excellence liturgique de chaque membre.",
+              year: "Août 2013",
+              side: "left" as const,
+              title: "Lancement officiel des activités",
+              desc: "Le 31 août 2013, à la paroisse Sainte Thérèse de l'Enfant Jésus de Godomey, ont lieu l'installation du premier bureau directeur et le lancement officiel des activités de la CDLJ.",
               color: "bg-purple-800",
             },
             {
-              year: "2019",
-              side: "left",
-              title: "Cap des 10 000 membres",
-              desc: "La CDLJ franchit le seuil symbolique des dix mille lecteurs actifs répartis dans les 42 paroisses du diocèse, confirmant son rayonnement exceptionnel auprès de la jeunesse catholique.",
+              year: "2014",
+              side: "right" as const,
+              title: "Premières grandes activités",
+              desc: "Se tiennent les premières éditions du weekend de formation des animateurs et de la session diocésaine, à la Chapelle Sainte Famille de Missèssinto, avec 29 animateurs et 102 lecteurs juniors.",
               color: "bg-rose-800",
             },
             {
-              year: "2025",
-              side: "right",
-              title: "Lancement du Portail Numérique",
-              desc: "Déploiement du portail intranet diocésain permettant la gestion centralisée des lecteurs, des activités, des cotisations et des évaluations. La CDLJ entre dans l'ère de la transformation digitale.",
+              year: "Aujourd'hui",
+              side: "left" as const,
+              title: "Une communauté en croissance",
+              desc: "Fort de plus de dix ans d'existence, la CDLJ organise notamment la Journée d'amitié vicariale, le Weekend de formation des animateurs, la Session diocésaine et la Fête diocésaine, en mettant l'accent sur la formation, la liturgie et le développement spirituel des lecteurs.",
               color: "bg-amber-700",
             },
           ].map((item, i) => (
             <div key={i} className={`relative flex items-center mb-12 md:mb-16 ${item.side === "right" ? "md:flex-row-reverse" : "md:flex-row"} flex-col md:gap-0 gap-4`}>
-              {/* Card */}
               <div className={`w-full md:w-[calc(50%-2rem)] ${item.side === "left" ? "md:pr-10 md:text-right" : "md:pl-10 md:text-left"}`}>
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-lg shadow-slate-200/40 p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group text-left">
                   <span className={`inline-block text-xs font-black uppercase tracking-widest text-white px-3 py-1 rounded-full mb-3 ${item.color}`}>
@@ -181,16 +193,52 @@ export default function AboutPage() {
                     {item.title}
                   </h3>
                   <p className="text-slate-500 text-sm leading-relaxed">{item.desc}</p>
+                  {"list" in item && item.list ? (
+                    <ul className="mt-3 space-y-1 text-sm text-slate-600 text-left">
+                      {item.list.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </div>
               </div>
 
-              {/* Dot on the line */}
               <div className={`hidden md:flex absolute left-1/2 -translate-x-1/2 w-5 h-5 rounded-full border-4 border-white shadow-md z-10 ${item.color}`} />
-
-              {/* Spacer */}
               <div className="hidden md:block w-[calc(50%-2rem)]" />
             </div>
           ))}
+        </div>
+
+        {/* Ressources & acquis */}
+        <div className="mt-8 bg-white rounded-3xl border border-slate-100 shadow-lg shadow-slate-200/40 p-8 md:p-10">
+          <h3 className="text-2xl font-extrabold text-slate-900 mb-2">Ressources et acquis</h3>
+          <p className="text-slate-500 text-sm mb-6">Au fil des années, la CDLJ s&apos;est dotée d&apos;outils et de moyens pour encadrer ses membres.</p>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700">
+            {[
+              "Un uniforme officiel",
+              "Une carte d'appartenance",
+              "Le Manuel du Lecteur",
+              "Un drapeau",
+              "Un parrain et une marraine",
+              "Une cinquantaine de formateurs",
+              "Environ 1 500 lecteurs juniors",
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-2">
+                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-600 shrink-0" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Vision */}
+        <div className="mt-8 bg-gradient-to-br from-amber-900 to-amber-950 rounded-3xl p-8 md:p-10 text-white shadow-xl shadow-amber-900/20">
+          <h3 className="text-2xl font-extrabold mb-4">Vision et objectifs</h3>
+          <ul className="space-y-3 text-amber-100/90 text-sm leading-relaxed">
+            <li>Étendre la présence de la CDLJ à toutes les paroisses de l&apos;archidiocèse.</li>
+            <li>Favoriser l&apos;épanouissement spirituel et social de tous les adhérents.</li>
+            <li>Renforcer davantage le rayonnement de la communauté.</li>
+          </ul>
         </div>
       </section>
 
