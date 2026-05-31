@@ -27,6 +27,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "exceljs": "^4.4.0",
     "fedapay": "^1.2.5",
     "framer-motion": "^12.40.0",
     "html-to-image": "^1.11.13",

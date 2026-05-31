@@ -33,17 +33,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
     const { id } = await params;
     const service = new LecteurService();
-    const bundle = await service.getLecteurWithHistory(id);
-    if (!bundle) return NextResponse.json({ error: "Lecteur introuvable" }, { status: 404 });
+    const lecteur = await service.getLecteurById(id);
+    if (!lecteur) return NextResponse.json({ error: "Lecteur introuvable" }, { status: 404 });
 
-    if (!canAccessLecteur(session, bundle.lecteur as unknown as Record<string, unknown>)) {
+    if (!canAccessLecteur(session, lecteur as unknown as Record<string, unknown>)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return NextResponse.json({
-      lecteur: serializeLecteur(bundle.lecteur),
-      history: bundle.history,
-    });
+    return NextResponse.json({ lecteur: serializeLecteur(lecteur) });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Erreur serveur";
     return NextResponse.json({ error: message }, { status: 500 });

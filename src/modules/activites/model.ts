@@ -67,6 +67,7 @@ const participationSchema = new Schema<IActiviteParticipation>(
 );
 
 participationSchema.index({ activiteId: 1, lecteurId: 1 }, { unique: true });
+participationSchema.index({ lecteurId: 1, paidAt: -1 });
 
 // Meme protection que pour les autres modeles: en hot reload, on force la reconstruction
 // du schema pour que Mongoose ne continue pas a ignorer les nouveaux champs.

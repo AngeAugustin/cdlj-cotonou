@@ -63,13 +63,13 @@ export default async function EditLecteurPage({ params }: { params: Promise<{ id
   await connectToDatabase();
 
   const lecteurService = new LecteurService();
-  const bundle = await lecteurService.getLecteurWithHistory(id);
-  if (!bundle) notFound();
+  const lecteurDoc = await lecteurService.getLecteurById(id);
+  if (!lecteurDoc) notFound();
 
-  const lecteurRaw = bundle.lecteur as unknown as Record<string, unknown>;
+  const lecteurRaw = lecteurDoc as unknown as Record<string, unknown>;
   if (!canAccessLecteur(user, lecteurRaw)) redirect("/lecteurs");
 
-  const lecteur = serializeLecteur(bundle.lecteur) as LecteurFormInitial & {
+  const lecteur = serializeLecteur(lecteurDoc) as LecteurFormInitial & {
     nom?: string;
     prenoms?: string;
     uniqueId?: string;

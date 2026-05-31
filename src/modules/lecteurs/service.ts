@@ -64,6 +64,10 @@ export class LecteurService {
     return { lecteur, history };
   }
 
+  async getParticipationHistory(id: string) {
+    return this.repository.findParticipationHistory(id);
+  }
+
   async getLecteurs() {
     return this.repository.findAll();
   }

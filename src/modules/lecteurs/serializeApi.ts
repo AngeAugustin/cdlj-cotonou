@@ -50,3 +50,37 @@ export function serializeLecteur(doc: unknown): unknown {
 
   return out;
 }
+
+function toIso(value: unknown): string | undefined {
+  if (value == null) return undefined;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
+  if (typeof value === "string" && value.trim()) return value.trim();
+  return String(value);
+}
+
+/** Normalise l’historique de participations pour la réponse JSON client. */
+export function serializeParticipationHistory(rows: unknown): unknown[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row) => {
+    if (!row || typeof row !== "object") return row;
+    const r = row as Record<string, unknown>;
+    const activiteRaw = r.activite;
+    let activite: Record<string, unknown> | null = null;
+    if (activiteRaw && typeof activiteRaw === "object") {
+      const a = activiteRaw as Record<string, unknown>;
+      activite = {
+        _id: a._id != null ? String(a._id) : undefined,
+        nom: a.nom,
+        dateDebut: toIso(a.dateDebut),
+        dateFin: toIso(a.dateFin),
+        lieu: a.lieu,
+        terminee: a.terminee,
+        montant: a.montant,
+      };
+    }
+    return {
+      paidAt: toIso(r.paidAt),
+      activite,
+    };
+  });
+}

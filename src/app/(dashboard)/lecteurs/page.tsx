@@ -12,6 +12,8 @@ import {
   Eye,
   Loader2,
   AlertCircle,
+  FileSpreadsheet,
+  Upload,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -37,6 +39,8 @@ import {
   rattachementLines,
   refId,
 } from "@/modules/lecteurs/lecteurViewUtils";
+import { downloadLecteurImportTemplate } from "@/modules/lecteurs/importExcel";
+import { LecteurImportDialog } from "@/modules/lecteurs/components/LecteurImportDialog";
 
 export type { ApiLecteur } from "@/modules/lecteurs/lecteurViewUtils";
 
@@ -46,7 +50,7 @@ export default function LecteursPage() {
   const roles: string[] = user?.roles ?? [];
 
   const [list, setList] = useState<ApiLecteur[]>([]);
-  const [grades, setGrades] = useState<{ _id: string; name: string }[]>([]);
+  const [grades, setGrades] = useState<{ _id: string; name: string; abbreviation?: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -55,8 +59,11 @@ export default function LecteursPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<ApiLecteur | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
 
   const canCreate = roles.some((r) => ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"].includes(r));
+  const canBulkImport = roles.some((r) => ["VICARIAL", "DIOCESAIN", "SUPERADMIN"].includes(r));
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -82,7 +89,15 @@ export default function LecteursPage() {
     fetch("/api/grades")
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data)) setGrades(data.map((g: { _id: string; name: string }) => ({ _id: String(g._id), name: g.name })));
+        if (Array.isArray(data)) {
+          setGrades(
+            data.map((g: { _id: string; name: string; abbreviation?: string }) => ({
+              _id: String(g._id),
+              name: g.name,
+              abbreviation: g.abbreviation,
+            }))
+          );
+        }
       })
       .catch(() => setGrades([]));
   }, []);
@@ -121,6 +136,34 @@ export default function LecteursPage() {
       { label: "Paroisses", value: uniqueParishes.size, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
     ];
   }, [list, filtered]);
+
+  const downloadTemplate = async () => {
+    setTemplateLoading(true);
+    try {
+      let gradeList = grades;
+      if (!gradeList.length) {
+        const res = await fetch("/api/grades");
+        const data = await res.json().catch(() => []);
+        if (Array.isArray(data)) {
+          gradeList = data.map((g: { _id: string; name: string; abbreviation?: string }) => ({
+            _id: String(g._id),
+            name: g.name,
+            abbreviation: g.abbreviation,
+          }));
+        }
+      }
+      await downloadLecteurImportTemplate(
+        gradeList.map((g) => ({
+          name: g.name,
+          abbreviation: g.abbreviation ?? g.name.slice(0, 3).toUpperCase(),
+        }))
+      );
+    } catch {
+      alert("Impossible de générer le template.");
+    } finally {
+      setTemplateLoading(false);
+    }
+  };
 
   const exportCsv = () => {
     const headers = [
@@ -201,6 +244,59 @@ export default function LecteursPage() {
       description="Créez et Gérez vos lecteurs"
       actions={
         <>
+          {canBulkImport ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="xl:hidden h-12 w-12 rounded-2xl border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm"
+                onClick={() => void downloadTemplate()}
+                disabled={templateLoading}
+                title="Template Excel"
+                aria-label="Télécharger le template Excel"
+              >
+                {templateLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="w-5 h-5" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="xl:hidden h-12 w-12 rounded-2xl border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm"
+                onClick={() => setImportOpen(true)}
+                title="Importer"
+                aria-label="Importer des lecteurs"
+              >
+                <Upload className="w-5 h-5" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="hidden xl:inline-flex h-12 px-5 rounded-2xl border-slate-200 text-slate-700 font-bold gap-2 shadow-sm hover:bg-slate-50"
+                onClick={() => void downloadTemplate()}
+                disabled={templateLoading}
+              >
+                {templateLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="w-5 h-5" />
+                )}
+                Template
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="hidden xl:inline-flex h-12 px-5 rounded-2xl border-slate-200 text-slate-700 font-bold gap-2 shadow-sm hover:bg-slate-50"
+                onClick={() => setImportOpen(true)}
+              >
+                <Upload className="w-5 h-5" /> Importer
+              </Button>
+            </>
+          ) : null}
           <Button
             type="button"
             variant="outline"
@@ -498,6 +594,16 @@ export default function LecteursPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {canBulkImport ? (
+        <LecteurImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onImported={() => void loadList()}
+          userRoles={roles}
+          userVicariatId={user?.vicariatId}
+        />
+      ) : null}
     </DashboardPageShell>
   );
 }
