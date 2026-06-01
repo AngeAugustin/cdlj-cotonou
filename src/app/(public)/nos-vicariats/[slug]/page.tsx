@@ -1,13 +1,50 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import {
   ArrowLeft, MapPin, Church, Users, Mail,
   Phone, Calendar, ChevronRight
 } from "lucide-react";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { VICARIATS, VICARIATS_DETAILS } from "@/lib/vicariats-data";
+import { createPageMetadata, truncateDescription } from "@/lib/seo";
+import { breadcrumbSchema, placeSchema } from "@/lib/seo-schemas";
 
 export function generateStaticParams() {
   return VICARIATS.map((v) => ({ slug: v.slug }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const vicariat = VICARIATS.find((v) => v.slug === slug);
+  const details = VICARIATS_DETAILS[slug];
+
+  if (!vicariat || !details) {
+    return createPageMetadata({
+      title: "Vicariat introuvable",
+      description: "Ce vicariat n'existe pas dans l'Archidiocèse de Cotonou.",
+      path: `/nos-vicariats/${slug}`,
+      noIndex: true,
+    });
+  }
+
+  return createPageMetadata({
+    title: vicariat.fullName,
+    description: truncateDescription(
+      `${details.description} Zone : ${vicariat.zone}. ${vicariat.paroisses} paroisses, ${vicariat.lecteurs.toLocaleString("fr-FR")} lecteurs CDLJ.`
+    ),
+    path: `/nos-vicariats/${vicariat.slug}`,
+    keywords: [
+      vicariat.name,
+      vicariat.zone,
+      "vicariat forain Cotonou",
+      "paroisses CDLJ",
+    ],
+  });
 }
 
 export default async function VicariatDetailPage({
@@ -25,6 +62,24 @@ export default async function VicariatDetailPage({
 
   return (
     <div className="bg-slate-50 min-h-screen">
+      <JsonLd
+        data={[
+          breadcrumbSchema([
+            { name: "Accueil", path: "/" },
+            { name: "Nos vicariats", path: "/nos-vicariats" },
+            { name: vicariat.fullName, path: `/nos-vicariats/${vicariat.slug}` },
+          ]),
+          placeSchema({
+            name: vicariat.fullName,
+            description: details.description,
+            path: `/nos-vicariats/${vicariat.slug}`,
+            address: details.adresse,
+            latitude: details.lat,
+            longitude: details.lon,
+            zone: vicariat.zone,
+          }),
+        ]}
+      />
 
       {/* ── HERO ──────────────────────────────────────────────── */}
       <div className={`relative bg-gradient-to-br ${vicariat.color} py-20 px-4 md:px-8 overflow-hidden`}>

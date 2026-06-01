@@ -1,6 +1,22 @@
 import { MessageSquare, Users, BookOpen, Award, ChevronRight, Lock } from "lucide-react";
 import { SocialFollowButtons } from "@/components/SocialFollowButtons";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { FACEBOOK_URL } from "@/config/social-links";
+import { createPageMetadata } from "@/lib/seo";
+import { breadcrumbSchema } from "@/lib/seo-schemas";
+
+export const metadata = createPageMetadata({
+  title: "Forums",
+  description:
+    "Espaces d'échange de la CDLJ : forum général, forums vicariaux et communautés de formateurs. Rejoignez la vie numérique de la communauté diocésaine.",
+  path: "/forums",
+  keywords: [
+    "forum CDLJ",
+    "communauté lecteurs juniors",
+    "échanges vicariats",
+    "formateurs liturgiques",
+  ],
+});
 
 export default function ForumsPage() {
   const FORUMS = [
@@ -52,6 +68,12 @@ export default function ForumsPage() {
 
   return (
     <div className="bg-slate-50 min-h-screen py-16 relative overflow-hidden">
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Accueil", path: "/" },
+          { name: "Forums", path: "/forums" },
+        ])}
+      />
       {/* Background Decor */}
       <div className="absolute top-0 right-0 -mr-32 -mt-32 w-96 h-96 rounded-full bg-amber-500/5 blur-[100px] pointer-events-none" />
 

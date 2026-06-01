@@ -15,6 +15,11 @@ import {
   Cross,
 } from "lucide-react";
 import { fadeUp, staggerContainer } from "./motion";
+import {
+  lecteursLabel,
+  PAROISHES_TOTAL,
+  VICARIATS_TOTAL,
+} from "@/config/community-stats";
 
 const HERO_IMAGE = {
   src: "/images/20240630_110241 (1).jpg",
@@ -25,7 +30,7 @@ const HERO_IMAGE = {
 const ORBIT_ITEMS = [
   {
     icon: Church,
-    label: "124 Paroisses",
+    label: `${PAROISHES_TOTAL} Paroisses`,
     sub: "Archidiocèse de Cotonou",
     iconBg: "bg-amber-100 text-amber-800",
     position: "left-0 sm:-left-4 top-[18%]",
@@ -218,8 +223,8 @@ export function HeroSection() {
           >
             {[
               { icon: ShieldCheck, label: "Données sécurisées" },
-              { icon: Users, label: "+3000 lecteurs" },
-              { icon: MapPin, label: "15 vicariats" },
+              { icon: Users, label: lecteursLabel({ prefix: "" }) },
+              { icon: MapPin, label: `${VICARIATS_TOTAL} vicariats` },
             ].map(({ icon: Icon, label }) => (
               <span key={label} className="inline-flex items-center gap-1.5 sm:gap-2">
                 <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-700 shrink-0" />

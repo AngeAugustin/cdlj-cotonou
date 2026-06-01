@@ -5,13 +5,18 @@ import { useRef } from "react";
 import { Users, Activity, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { fadeUp } from "./motion";
+import {
+  lecteursLabel,
+  PAROISHES_TOTAL,
+  VICARIATS_TOTAL,
+} from "@/config/community-stats";
 
 const FEATURES = [
   {
     icon: Users,
-    stat: "3000+ lecteurs",
+    stat: lecteursLabel({ prefix: "" }),
     title: "Un réseau diocésain unifié",
-    description: "124 paroisses et 15 vicariats connectés sur toute la ville de Cotonou.",
+    description: `${PAROISHES_TOTAL} paroisses et ${VICARIATS_TOTAL} vicariats connectés dans l'Archidiocèse de Cotonou.`,
     iconBg: "bg-amber-100 text-amber-800",
     statColor: "text-amber-700 bg-amber-50 border-amber-200/60",
   },

@@ -10,7 +10,8 @@ export interface Vicariat {
   fullName: string;  // Intitulé officiel complet
   zone: string;
   paroisses: number; // Nb officiel de paroisses (hors CC)
-  lecteurs: number;  // Estimation membres CDLJ
+  /** Estimation membres CDLJ — répartition proportionnelle (total ≈ 1 500, voir community-stats.ts). */
+  lecteurs: number;
   color: string;     // Classes Tailwind gradient (hero, carte)
   light: string;     // Classes Tailwind badge (liste)
   hexColor: string;  // Couleur hex (SVG schématique)
@@ -24,105 +25,105 @@ export const VICARIATS: Vicariat[] = [
   {
     id: "I",    slug: "notre-dame-cotonou",     name: "Notre-Dame Cotonou",
     fullName:   "Vicariat Forain Notre-Dame Cotonou",
-    zone: "Cotonou Centre",     paroisses: 10, lecteurs: 1450,
+    zone: "Cotonou Centre",     paroisses: 10, lecteurs: 168,
     color: "from-amber-500 to-amber-700",   light: "bg-amber-50 text-amber-800 border-amber-200",
     hexColor: "#b45309", x: 598, y: 356, isHub: true,
   },
   {
     id: "II",   slug: "sacre-coeur",             name: "Sacré-Cœur",
     fullName:   "Vicariat Forain Sacré-Cœur",
-    zone: "Cotonou Est",        paroisses: 10, lecteurs: 1280,
+    zone: "Cotonou Est",        paroisses: 10, lecteurs: 148,
     color: "from-blue-500 to-blue-700",     light: "bg-blue-50 text-blue-800 border-blue-200",
     hexColor: "#1d4ed8", x: 672, y: 340,
   },
   {
     id: "III",  slug: "bon-pasteur",             name: "Bon Pasteur",
     fullName:   "Vicariat Forain Bon Pasteur",
-    zone: "Cotonou Ouest",      paroisses: 10, lecteurs: 1180,
+    zone: "Cotonou Ouest",      paroisses: 10, lecteurs: 136,
     color: "from-emerald-500 to-emerald-700", light: "bg-emerald-50 text-emerald-800 border-emerald-200",
     hexColor: "#047857", x: 515, y: 356,
   },
   {
     id: "IV",   slug: "ste-therese-godomey",     name: "Ste Thérèse Godomey",
     fullName:   "Vicariat Forain Sainte Thérèse Godomey",
-    zone: "Godomey",            paroisses: 10, lecteurs: 1050,
+    zone: "Godomey",            paroisses: 10, lecteurs: 121,
     color: "from-rose-500 to-rose-700",     light: "bg-rose-50 text-rose-800 border-rose-200",
     hexColor: "#be123c", x: 445, y: 295,
   },
   {
     id: "V",    slug: "st-michel-togoudo",       name: "St Michel Togoudo",
     fullName:   "Vicariat Forain Saint Michel Togoudo",
-    zone: "Togoudo",            paroisses: 7,  lecteurs: 720,
+    zone: "Togoudo",            paroisses: 7,  lecteurs: 83,
     color: "from-purple-500 to-purple-700", light: "bg-purple-50 text-purple-800 border-purple-200",
     hexColor: "#7e22ce", x: 342, y: 218,
   },
   {
     id: "VI",   slug: "st-antoine-calavi",       name: "St Antoine Calavi",
     fullName:   "Vicariat Forain Saint Antoine de Padoue Calavi",
-    zone: "Abomey-Calavi",      paroisses: 10, lecteurs: 1350,
+    zone: "Abomey-Calavi",      paroisses: 10, lecteurs: 156,
     color: "from-orange-500 to-orange-700", light: "bg-orange-50 text-orange-800 border-orange-200",
     hexColor: "#c2410c", x: 392, y: 258,
   },
   {
     id: "VII",  slug: "saint-luc-ouedo",         name: "Saint Luc Ouédo",
     fullName:   "Vicariat Forain Saint Luc Ouédo",
-    zone: "Ouédo",              paroisses: 8,  lecteurs: 820,
+    zone: "Ouédo",              paroisses: 8,  lecteurs: 95,
     color: "from-teal-500 to-teal-700",     light: "bg-teal-50 text-teal-800 border-teal-200",
     hexColor: "#0f766e", x: 298, y: 178,
   },
   {
     id: "VIII", slug: "saint-jean-zinvie",       name: "Saint Jean Zinvié",
     fullName:   "Vicariat Forain Saint Jean l'Évangéliste Zinvié",
-    zone: "Zinvié",             paroisses: 10, lecteurs: 940,
+    zone: "Zinvié",             paroisses: 10, lecteurs: 109,
     color: "from-indigo-500 to-indigo-700", light: "bg-indigo-50 text-indigo-800 border-indigo-200",
     hexColor: "#3730a3", x: 418, y: 148,
   },
   {
     id: "IX",   slug: "saint-joseph-glo-yekon",  name: "St Joseph Glo-Yékon",
     fullName:   "Vicariat Forain Saint Joseph de Glo-Yékon",
-    zone: "Glo-Djigbé",         paroisses: 9,  lecteurs: 780,
+    zone: "Glo-Djigbé",         paroisses: 9,  lecteurs: 90,
     color: "from-green-500 to-green-700",   light: "bg-green-50 text-green-800 border-green-200",
     hexColor: "#15803d", x: 555, y: 143,
   },
   {
     id: "X",    slug: "notre-dame-lac-nokoue",   name: "N-D Lac Nokoué",
     fullName:   "Vicariat Forain Notre-Dame de l'Immaculée Conception du Lac Nokoué",
-    zone: "Lac Nokoué / Sô-Ava", paroisses: 5, lecteurs: 450,
+    zone: "Lac Nokoué / Sô-Ava", paroisses: 5, lecteurs: 52,
     color: "from-cyan-500 to-cyan-700",     light: "bg-cyan-50 text-cyan-800 border-cyan-200",
     hexColor: "#0e7490", x: 718, y: 252,
   },
   {
     id: "XI",   slug: "sainte-jeanne-arc-allada", name: "Ste Jeanne d'Arc Allada",
     fullName:   "Vicariat Forain Sainte Jeanne d'Arc d'Allada",
-    zone: "Allada",             paroisses: 10, lecteurs: 860,
+    zone: "Allada",             paroisses: 10, lecteurs: 99,
     color: "from-pink-500 to-pink-700",     light: "bg-pink-50 text-pink-800 border-pink-200",
     hexColor: "#be185d", x: 248, y: 140,
   },
   {
     id: "XII",  slug: "saint-antoine-houegbo",   name: "St Antoine Houégbo",
     fullName:   "Vicariat Forain Saint Antoine de Padoue de Houégbo",
-    zone: "Toffo / Houégbo",    paroisses: 7,  lecteurs: 580,
+    zone: "Toffo / Houégbo",    paroisses: 7,  lecteurs: 67,
     color: "from-violet-500 to-violet-700", light: "bg-violet-50 text-violet-800 border-violet-200",
     hexColor: "#6d28d9", x: 165, y: 262,
   },
   {
     id: "XIII", slug: "sainte-genevieve-pahou",  name: "Ste Geneviève Pahou",
     fullName:   "Vicariat Forain Sainte Geneviève de Pahou",
-    zone: "Pahou",              paroisses: 6,  lecteurs: 490,
+    zone: "Pahou",              paroisses: 6,  lecteurs: 57,
     color: "from-lime-500 to-lime-700",     light: "bg-lime-50 text-lime-800 border-lime-200",
     hexColor: "#4d7c0f", x: 390, y: 402,
   },
   {
     id: "XIV",  slug: "notre-dame-ouidah",       name: "N-D Ouidah",
     fullName:   "Vicariat Forain Notre-Dame de l'Immaculée Conception Ouidah",
-    zone: "Ouidah",             paroisses: 7,  lecteurs: 650,
+    zone: "Ouidah",             paroisses: 7,  lecteurs: 75,
     color: "from-sky-500 to-sky-700",       light: "bg-sky-50 text-sky-800 border-sky-200",
     hexColor: "#0369a1", x: 228, y: 408,
   },
   {
     id: "XV",   slug: "saint-antoine-lac-aheme", name: "St Antoine Lac Ahémé",
     fullName:   "Vicariat Forain Saint Antoine de Padoue du Lac Ahémé",
-    zone: "Lac Ahémé",          paroisses: 5,  lecteurs: 380,
+    zone: "Lac Ahémé",          paroisses: 5,  lecteurs: 44,
     color: "from-red-500 to-red-700",       light: "bg-red-50 text-red-800 border-red-200",
     hexColor: "#b91c1c", x: 112, y: 422,
   },

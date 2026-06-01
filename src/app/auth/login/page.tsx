@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { lecteursLabel } from "@/config/community-stats";
 import {
   ArrowLeft,
   Loader2,
@@ -245,7 +246,7 @@ export default function LoginPage() {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-slate-800">Réseau</span>
-                    <span className="text-xs text-slate-500 leading-snug mt-1">+3000 lecteurs gérés par la CDLJ.</span>
+                    <span className="text-xs text-slate-500 leading-snug mt-1">{lecteursLabel({ prefix: "" })} gérés par la CDLJ.</span>
                   </div>
                 </div>
 

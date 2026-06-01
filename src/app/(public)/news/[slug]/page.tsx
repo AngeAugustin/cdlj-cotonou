@@ -1,11 +1,50 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { ArrowLeft, Calendar, User, Clock, Tag, ArrowRight, Facebook } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { FACEBOOK_URL, TIKTOK_URL } from "@/config/social-links";
 import { getNewsBySlug, getPublishedNews, type PublicNewsDetail } from "@/lib/public-cache";
+import { createPageMetadata, stripHtml, truncateDescription } from "@/lib/seo";
+import { articleSchema, breadcrumbSchema } from "@/lib/seo-schemas";
 
 export const revalidate = 120;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await getNewsBySlug(slug);
+  if (!post) {
+    return createPageMetadata({
+      title: "Article introuvable",
+      description: "Cet article n'existe pas ou n'est plus disponible.",
+      path: `/news/${slug}`,
+      noIndex: true,
+    });
+  }
+
+  const description =
+    post.excerpt ||
+    truncateDescription(stripHtml(post.body)) ||
+    `Actualité de la CDLJ : ${post.title}`;
+
+  return createPageMetadata({
+    title: post.title,
+    description,
+    path: `/news/${post.slug}`,
+    ogImage: post.image,
+    ogType: "article",
+    publishedTime: post.publishedAt,
+    authors: [post.author],
+    section: post.category,
+    keywords: [post.category, "CDLJ actualités", "lecteurs juniors Cotonou"],
+  });
+}
 
 export default async function NewsDetailPage({
   params,
@@ -26,6 +65,24 @@ export default async function NewsDetailPage({
 
   return (
     <div className="bg-white min-h-screen">
+      <JsonLd
+        data={[
+          breadcrumbSchema([
+            { name: "Accueil", path: "/" },
+            { name: "Actualités", path: "/news" },
+            { name: post.title, path: `/news/${post.slug}` },
+          ]),
+          articleSchema({
+            title: post.title,
+            description: post.excerpt || truncateDescription(stripHtml(post.body)),
+            path: `/news/${post.slug}`,
+            image: post.image,
+            datePublished: post.publishedAt,
+            author: post.author,
+            section: post.category,
+          }),
+        ]}
+      />
 
       {/* ── HERO ──────────────────────────────────────────────── */}
       <div className="relative w-full h-[50vh] md:h-[60vh] overflow-hidden">
@@ -105,12 +162,12 @@ export default async function NewsDetailPage({
         <div className="mt-16 flex flex-col sm:flex-row items-center gap-5 bg-slate-50 border border-slate-100 rounded-2xl px-8 py-6">
           <span className="text-sm font-semibold text-slate-500 shrink-0">Suivez nous sur</span>
           <div className="flex items-center gap-3">
-            <a href="https://www.facebook.com/share/1Ja1wGpp8x/?mibextid=wwXIfr"
+            <a href={FACEBOOK_URL}
               target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 bg-[#1877F2] hover:bg-[#0e65d9] text-white text-sm font-bold px-4 py-2 rounded-full transition-all hover:-translate-y-0.5 shadow-md shadow-blue-500/20">
               <Facebook className="w-4 h-4" /> Facebook
             </a>
-            <a href="https://www.tiktok.com/@cdlj.officiel?_r=1&_t=ZS-94vo0WDU7s4"
+            <a href={TIKTOK_URL}
               target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 bg-slate-900 hover:bg-black text-white text-sm font-bold px-4 py-2 rounded-full transition-all hover:-translate-y-0.5 shadow-md shadow-slate-900/20">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

@@ -1,6 +1,27 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BookOpen, Users, Leaf, Shield, ChevronRight, Mail, Camera } from "lucide-react";
+import { JsonLd } from "@/components/seo/JsonLd";
+import {
+  formatLecteursCount,
+  FOUNDED_YEAR,
+  lecteursLabel,
+} from "@/config/community-stats";
+import { createPageMetadata } from "@/lib/seo";
+import { breadcrumbSchema } from "@/lib/seo-schemas";
+
+export const metadata = createPageMetadata({
+  title: "À propos",
+  description:
+    `Découvrez l'histoire, la mission et les valeurs de la CDLJ : Communauté Diocésaine des Lecteurs Juniors de l'Archidiocèse de Cotonou, au service de la jeunesse depuis ${FOUNDED_YEAR}.`,
+  path: "/about",
+  keywords: [
+    "CDLJ histoire",
+    "mission lecteurs juniors",
+    "Enfance Missionnaire Cotonou",
+    "formation jeunes lecteurs",
+  ],
+});
 
 export default function AboutPage() {
   const VALUES = [
@@ -32,6 +53,12 @@ export default function AboutPage() {
 
   return (
     <div className="bg-slate-50 min-h-screen relative overflow-hidden">
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Accueil", path: "/" },
+          { name: "À propos", path: "/about" },
+        ])}
+      />
       {/* Decorative Blur Backgrounds */}
       <div className="absolute top-0 right-[-10%] w-[40rem] h-[40rem] rounded-full bg-amber-500/10 blur-[100px] pointer-events-none" />
       <div className="absolute top-[40%] left-[-10%] w-[30rem] h-[30rem] rounded-full bg-blue-500/5 blur-[120px] pointer-events-none" />
@@ -48,7 +75,7 @@ export default function AboutPage() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-700 to-amber-900">Inspirer la Jeunesse.</span>
             </h1>
             <p className="text-xl text-slate-600 leading-relaxed max-w-lg mb-8">
-              La Communauté Diocésaine des Lecteurs Juniors (CDLJ) encadre, forme et responsabilise les jeunes lecteurs de l&apos;Archidiocèse de Cotonou depuis 2013.
+              La Communauté Diocésaine des Lecteurs Juniors (CDLJ) encadre, forme et responsabilise les jeunes lecteurs de l&apos;Archidiocèse de Cotonou depuis {FOUNDED_YEAR}.
             </p>
             <Link href="/news">
               <button className="group relative inline-flex items-center justify-center gap-2 bg-amber-900 hover:bg-amber-800 text-white px-8 py-4 rounded-full font-bold shadow-xl shadow-amber-900/20 transition-all hover:-translate-y-1 overflow-hidden">
@@ -76,7 +103,7 @@ export default function AboutPage() {
               </div>
               <div>
                 <p className="text-sm text-slate-500 font-medium">Communauté</p>
-                <p className="text-2xl font-black text-slate-800">~1 500 lecteurs</p>
+                <p className="text-2xl font-black text-slate-800">{lecteursLabel()}</p>
               </div>
             </div>
           </div>
@@ -117,7 +144,7 @@ export default function AboutPage() {
             Historique de vie
           </h2>
           <p className="mt-4 text-lg text-slate-500 max-w-2xl mx-auto">
-            Née en 2012 du besoin de mieux encadrer les lecteurs juniors de l&apos;Archidiocèse de Cotonou, la CDLJ est aujourd&apos;hui une communauté structurée d&apos;environ 1&nbsp;500 membres, dédiée à la formation, à la liturgie et à la croissance spirituelle des jeunes lecteurs.
+            Née en 2012 du besoin de mieux encadrer les lecteurs juniors de l&apos;Archidiocèse de Cotonou, la CDLJ est aujourd&apos;hui une communauté structurée d&apos;environ {formatLecteursCount()} membres, dédiée à la formation, à la liturgie et à la croissance spirituelle des jeunes lecteurs.
           </p>
         </div>
 
@@ -221,7 +248,7 @@ export default function AboutPage() {
               "Un drapeau",
               "Un parrain et une marraine",
               "Une cinquantaine de formateurs",
-              "Environ 1 500 lecteurs juniors",
+              `Environ ${formatLecteursCount()} lecteurs juniors`,
             ].map((item) => (
               <li key={item} className="flex items-start gap-2">
                 <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-600 shrink-0" />

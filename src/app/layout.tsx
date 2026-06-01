@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { createRootMetadata } from "@/lib/seo";
 
 const aptosFont = localFont({
   src: [
@@ -20,10 +20,7 @@ const aptosFont = localFont({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "CDLJ - Cotonou",
-  description: "Plateforme de gestion de la communauté diocésaine des lecteurs",
-};
+export const metadata = createRootMetadata();
 
 export default function RootLayout({
   children,

@@ -9,6 +9,7 @@ export type PublicNewsPost = {
   title: string;
   excerpt: string;
   date: string;
+  publishedAt: string;
   author: string;
   category: string;
   image: string;
@@ -51,6 +52,7 @@ function normalizeNewsPost(p: {
       month: "long",
       year: "numeric",
     }),
+    publishedAt: new Date(p.createdAt).toISOString(),
     author: p.author,
     authorRole: p.authorRole ?? "",
     category: p.category,

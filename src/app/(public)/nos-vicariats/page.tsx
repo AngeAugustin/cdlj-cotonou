@@ -2,17 +2,53 @@ import Link from "next/link";
 import { MapPin, ChevronRight, ArrowDown } from "lucide-react";
 import { VICARIATS } from "@/lib/vicariats-data";
 import VicariatsMapWrapper from "@/components/VicariatsMapWrapper";
+import { JsonLd } from "@/components/seo/JsonLd";
+import {
+  formatLecteursCount,
+  lecteursSeoPhrase,
+  PAROISHES_TOTAL,
+  VICARIATS_TOTAL,
+} from "@/config/community-stats";
+import { createPageMetadata } from "@/lib/seo";
+import { breadcrumbSchema, collectionPageSchema } from "@/lib/seo-schemas";
+
+export const metadata = createPageMetadata({
+  title: "Nos vicariats",
+  description:
+    `Carte et fiches des ${VICARIATS_TOTAL} vicariats forains de l'Archidiocèse de Cotonou. Paroisses affiliées, coordonnées et organisation territoriale de la CDLJ.`,
+  path: "/nos-vicariats",
+  keywords: [
+    "vicariats forains Cotonou",
+    "paroisses Archidiocèse de Cotonou",
+    "organisation diocésaine Bénin",
+    "carte vicariats CDLJ",
+  ],
+});
 
 const WORKFLOW = [
   { label: "Archidiocèse de Cotonou",  desc: "Autorité ecclésiastique suprême du diocèse",         count: "1",    unit: "diocèse",   color: "bg-amber-900 text-white"       },
-  { label: "Vicariats Forains",        desc: "15 zones géographiques structurant le territoire",    count: "15",   unit: "vicariats", color: "bg-amber-700 text-white"       },
-  { label: "Paroisses Affiliées",      desc: "124 paroisses réparties dans les vicariats",          count: "124",  unit: "paroisses", color: "bg-amber-500 text-white"       },
-  { label: "Lecteurs Juniors",         desc: "Plus de 12 000 membres actifs dans la CDLJ",         count: "+12k", unit: "lecteurs",  color: "bg-amber-300 text-amber-950"   },
+  { label: "Vicariats Forains",        desc: `${VICARIATS_TOTAL} zones géographiques structurant le territoire`, count: String(VICARIATS_TOTAL), unit: "vicariats", color: "bg-amber-700 text-white" },
+  { label: "Paroisses Affiliées",      desc: `${PAROISHES_TOTAL} paroisses réparties dans les vicariats`, count: String(PAROISHES_TOTAL), unit: "paroisses", color: "bg-amber-500 text-white" },
+  { label: "Lecteurs Juniors",         desc: `${lecteursSeoPhrase()} actifs dans la CDLJ`, count: formatLecteursCount(), unit: "lecteurs", color: "bg-amber-300 text-amber-950" },
 ];
 
 export default function VicariatsPage() {
   return (
     <div className="bg-slate-50 min-h-screen relative overflow-hidden">
+      <JsonLd
+        data={[
+          breadcrumbSchema([
+            { name: "Accueil", path: "/" },
+            { name: "Nos vicariats", path: "/nos-vicariats" },
+          ]),
+          collectionPageSchema({
+            name: "Les Vicariats Forains — CDLJ Cotonou",
+            description:
+              `${VICARIATS_TOTAL} vicariats forains, ${PAROISHES_TOTAL} paroisses et ${lecteursSeoPhrase()} dans l'Archidiocèse de Cotonou.`,
+            path: "/nos-vicariats",
+          }),
+        ]}
+      />
 
       {/* Decorative Blur Backgrounds */}
       <div className="absolute top-0 right-[-10%] w-[40rem] h-[40rem] rounded-full bg-amber-500/10 blur-[100px] pointer-events-none" />
