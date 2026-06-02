@@ -4,7 +4,7 @@ import { use as usePromise, useCallback, useEffect, useMemo, useRef, useState } 
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle, Download, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Banknote, CheckCircle, Download, Loader2, AlertCircle, CheckCircle2, MapPin } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Select,
@@ -582,60 +582,79 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
           <ArrowLeft className="w-4 h-4" />
           Retour aux activités
         </Link>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Participer</h1>
-        <p className="text-slate-600 mt-1 font-medium">{activite.nom}</p>
-        {needsParoissePicker ? (
-          <p className="text-sm text-slate-500 mt-2">
-            Inscrivez les lecteurs par paroisse. Chaque paroisse fait l'objet d'un paiement distinct.
-          </p>
-        ) : null}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Participer</h1>
+            <p className="mt-1 text-base font-bold text-amber-900 sm:text-lg">{activite.nom}</p>
+            {needsParoissePicker ? (
+              <p className="text-sm text-slate-500 mt-2">
+                Inscrivez les lecteurs par paroisse. Chaque paroisse fait l&apos;objet d&apos;un paiement distinct.
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex w-full shrink-0 flex-col gap-3 sm:w-auto sm:flex-row sm:items-stretch">
+            {needsParoissePicker ? (
+              <div className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:min-w-[18rem] lg:min-w-[22rem]">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Paroisse</p>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-900/10">
+                    <MapPin className="h-4 w-4 text-amber-900" />
+                  </div>
+                </div>
+                {paroissesLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Chargement…
+                  </div>
+                ) : paroisses.length === 0 ? (
+                  <p className="text-sm text-slate-500">Aucune paroisse disponible.</p>
+                ) : (
+                  <Select
+                    value={selectedParoisseId}
+                    onValueChange={(value) => setSelectedParoisseId(value ?? "")}
+                  >
+                    <SelectTrigger className="h-auto min-h-10 w-full max-w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm font-medium whitespace-normal [&_[data-slot=select-value]]:line-clamp-none [&_[data-slot=select-value]]:whitespace-normal">
+                      <SelectValue placeholder="Choisir une paroisse">
+                        {selectedParoisseName ?? ""}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent
+                      align="start"
+                      alignItemWithTrigger={false}
+                      className="max-h-72 w-max min-w-[var(--anchor-width)] max-w-[min(24rem,calc(100vw-2rem))]"
+                    >
+                      {paroisses.map((p) => (
+                        <SelectItem
+                          key={p._id}
+                          value={p._id}
+                          className="items-start py-2 [&_span]:whitespace-normal [&_span]:break-words"
+                        >
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            ) : null}
+
+            {activite.montant != null ? (
+              <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 shadow-sm sm:min-w-[11rem]">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800/80">Montant</p>
+                  <p className="text-lg font-extrabold tabular-nums text-amber-950 leading-tight">
+                    {activite.montant === 0 ? "Gratuit" : formatMoney(activite.montant)}
+                  </p>
+                </div>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-900/10">
+                  <Banknote className="h-5 w-5 text-amber-900" />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
       </div>
-
-      {needsParoissePicker ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm max-w-md">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Paroisse</p>
-          {paroissesLoading ? (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <Loader2 className="w-4 h-4 animate-spin" /> Chargement…
-            </div>
-          ) : paroisses.length === 0 ? (
-            <p className="text-sm text-slate-500">Aucune paroisse rattachée à votre vicariat.</p>
-          ) : (
-            <Select
-              value={selectedParoisseId}
-              onValueChange={(value) => setSelectedParoisseId(value ?? "")}
-            >
-              <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 justify-between">
-                <SelectValue>
-                  {selectedParoisseName || "Choisir une paroisse"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {paroisses.map((p) => (
-                  <SelectItem key={p._id} value={p._id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-      ) : null}
-
-      {(activite.numeroPaiement?.trim() || activite.montant != null) && (
-        <div className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 sm:px-6 sm:py-4 text-sm text-slate-800 grid gap-3 sm:grid-cols-2 sm:gap-8 sm:items-start w-full">
-          <p>
-            <span className="font-semibold text-slate-900">Montant : </span>
-            {formatMoney(activite.montant)}
-          </p>
-          {activite.numeroPaiement?.trim() ? (
-            <p className="min-w-0">
-              <span className="font-semibold text-slate-900">Numéro de paiement : </span>
-              <span className="font-mono break-all">{activite.numeroPaiement}</span>
-            </p>
-          ) : null}
-        </div>
-      )}
 
       {needsParoissePicker && !selectedParoisseId ? (
         <p className="text-sm text-slate-500 py-8 text-center rounded-2xl border border-dashed border-slate-200">
