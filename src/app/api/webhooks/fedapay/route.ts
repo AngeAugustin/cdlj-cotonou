@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { fedapayVerifyWebhook } from "@/lib/fedapay";
 import { syncPaymentFromFedapayTransactionId, syncPaymentFromInternalPaymentId } from "@/lib/activitePaymentFinalize";
 
+/** Webhook FedaPay — production : https://cdlj-cotonou.com/api/webhooks/fedapay */
 export const runtime = "nodejs";
 
 function extractFedapayTxId(event: Record<string, unknown>): number | null {

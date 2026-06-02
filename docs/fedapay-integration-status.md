@@ -11,6 +11,20 @@ Ce document fait le point sur l'integration FedaPay de l'application :
 
 Il sert de reference technique pour les futures evolutions du flux de paiement des activites.
 
+## URL webhook FedaPay (production)
+
+Configurer dans le tableau de bord FedaPay :
+
+- **URL** : `https://cdlj-cotonou.com/api/webhooks/fedapay`
+- **Methode** : `POST`
+- **Secret** : copier la valeur de signature FedaPay dans la variable d'environnement `FEDAPAY_WEBHOOK_SECRET` (Vercel / production)
+
+En local ou sur un autre domaine, l'URL derive de `NEXTAUTH_URL` ou `NEXT_PUBLIC_APP_URL` :
+
+- `{baseUrl}/api/webhooks/fedapay`
+
+La route applicative est `src/app/api/webhooks/fedapay/route.ts`. Elle n'est pas protegee par l'authentification du dashboard.
+
 ## Resume Executif
 
 Le flux a ete sensiblement durci par rapport a la version initiale.
