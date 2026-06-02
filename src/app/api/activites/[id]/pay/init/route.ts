@@ -6,7 +6,7 @@ import { payerParticipationSchema } from "@/modules/activites/schema";
 import { getAppBaseUrl } from "@/lib/appBaseUrl";
 import { buildActivitePaymentFingerprint } from "@/lib/activitePayments";
 import { fedapayFindOrCreateCustomer, fedapayCreateTransactionAndPaymentUrl } from "@/lib/fedapay";
-import { sendActivitePaymentConfirmationEmail } from "@/lib/resendMail";
+import { sendActivitePaymentNotifications } from "@/lib/activitePaymentNotifications";
 import { syncPaymentFromFedapayTransactionId } from "@/lib/activitePaymentFinalize";
 import { canEnrollLecteurs, resolveEnrollmentParoisseId } from "@/lib/activiteEnrollmentScope";
 import mongoose from "mongoose";
@@ -180,12 +180,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         lastWebhookEvent: "free_activity",
       });
       try {
-        await sendActivitePaymentConfirmationEmail(userEmail, {
+        await sendActivitePaymentNotifications({
+          paymentId: pid,
+          userEmail,
           activiteNom: activite.nom,
           montantTotal: 0,
           montantUnitaire,
           nombreLecteurs: n,
           reference: null,
+          fedapayTransactionId: null,
+          paroisseId,
+          lecteurIds: selectedLecteurIds,
+          channel: "gratuit",
+          processedAt: new Date(),
         });
         await service.updatePaiementById(pid, { emailSentAt: new Date() });
       } catch {

@@ -1,7 +1,7 @@
 import { ActiviteService } from "@/modules/activites/service";
 import { isPaymentPastPendingTimeout } from "@/lib/activitePayments";
 import { fedapayRetrieveTransaction } from "@/lib/fedapay";
-import { sendActivitePaymentConfirmationEmail } from "@/lib/resendMail";
+import { sendActivitePaymentNotifications } from "@/lib/activitePaymentNotifications";
 
 /** Statuts FedaPay considérés comme payés (hors remboursement) */
 const PAID = new Set([
@@ -195,12 +195,19 @@ async function syncKnownPayment(
     const activiteNom = activite?.nom ?? "Activité";
 
     try {
-      await sendActivitePaymentConfirmationEmail(payment.userEmail, {
+      await sendActivitePaymentNotifications({
+        paymentId,
+        userEmail: payment.userEmail,
         activiteNom,
         montantTotal: payment.montantTotal,
         montantUnitaire: payment.montantUnitaire,
         nombreLecteurs: payment.nombreLecteurs,
         reference: ref ?? null,
+        fedapayTransactionId: fedapayTxId,
+        paroisseId,
+        lecteurIds,
+        channel: payment.montantTotal < 1 ? "gratuit" : "fedapay",
+        processedAt: payment.processedAt ?? new Date(),
       });
       await service.updatePaiementById(paymentId, {
         emailSentAt: new Date(),

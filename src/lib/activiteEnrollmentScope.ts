@@ -11,59 +11,39 @@ export type EnrollmentSessionUser = {
 };
 
 export type EnrollmentScopeResult =
-  | { ok: true; paroisseId: string; role: "PAROISSIAL" | "VICARIAL" }
+  | { ok: true; paroisseId: string; role: "VICARIAL" }
   | { ok: false; status: number; error: string };
 
 export function canEnrollLecteurs(roles: string[]): boolean {
-  return roles.includes("PAROISSIAL") || roles.includes("VICARIAL");
+  return roles.includes("VICARIAL");
 }
 
 /**
- * Détermine la paroisse cible pour une inscription aux activités.
- * - PAROISSIAL : paroisse du compte (paroisseId du body ignoré ou doit correspondre).
- * - VICARIAL : paroisseId explicite obligatoire, validée contre le vicariat du compte.
+ * Détermine la paroisse cible pour une inscription aux activités (rôle VICARIAL uniquement).
+ * paroisseId explicite obligatoire, validé contre le vicariat du compte.
  */
 export async function resolveEnrollmentParoisseId(
   user: EnrollmentSessionUser,
   requestedParoisseId?: string | null
 ): Promise<EnrollmentScopeResult> {
   const roles = user.roles ?? [];
-  const isParoissial = roles.includes("PAROISSIAL");
-  const isVicarial = roles.includes("VICARIAL");
-
-  if (!isParoissial && !isVicarial) {
+  if (!roles.includes("VICARIAL")) {
     return { ok: false, status: 403, error: "Forbidden" };
   }
 
-  if (isParoissial && user.parishId) {
-    const paroisseId = user.parishId;
-    if (requestedParoisseId?.trim() && requestedParoisseId.trim() !== paroisseId) {
-      return { ok: false, status: 403, error: "Paroisse non autorisée pour ce compte" };
-    }
-    return { ok: true, paroisseId, role: "PAROISSIAL" };
+  const vicariatId = user.vicariatId;
+  if (!vicariatId) {
+    return { ok: false, status: 400, error: "Vicariat non défini pour ce compte" };
+  }
+  if (!requestedParoisseId?.trim()) {
+    return { ok: false, status: 400, error: "Sélectionnez une paroisse pour inscrire des lecteurs" };
   }
 
-  if (isVicarial) {
-    const vicariatId = user.vicariatId;
-    if (!vicariatId) {
-      return { ok: false, status: 400, error: "Vicariat non défini pour ce compte" };
-    }
-    if (!requestedParoisseId?.trim()) {
-      return { ok: false, status: 400, error: "Sélectionnez une paroisse pour inscrire des lecteurs" };
-    }
-
-    const inScope = await assertParoisseInVicariat(requestedParoisseId.trim(), vicariatId);
-    if (!inScope) {
-      return { ok: false, status: 403, error: "Cette paroisse n'appartient pas à votre vicariat" };
-    }
-    return { ok: true, paroisseId: requestedParoisseId.trim(), role: "VICARIAL" };
+  const inScope = await assertParoisseInVicariat(requestedParoisseId.trim(), vicariatId);
+  if (!inScope) {
+    return { ok: false, status: 403, error: "Cette paroisse n'appartient pas à votre vicariat" };
   }
-
-  if (isParoissial && !user.parishId) {
-    return { ok: false, status: 400, error: "Paroisse non définie pour ce compte" };
-  }
-
-  return { ok: false, status: 403, error: "Forbidden" };
+  return { ok: true, paroisseId: requestedParoisseId.trim(), role: "VICARIAL" };
 }
 
 export async function assertParoisseInVicariat(paroisseId: string, vicariatId: string): Promise<boolean> {
@@ -87,13 +67,6 @@ export async function assertPaymentParoisseAccessible(
   paymentParoisseId: string
 ): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   const roles = user.roles ?? [];
-
-  if (roles.includes("PAROISSIAL") && user.parishId) {
-    if (String(paymentParoisseId) !== user.parishId) {
-      return { ok: false, status: 403, error: "Forbidden" };
-    }
-    return { ok: true };
-  }
 
   if (roles.includes("VICARIAL") && user.vicariatId) {
     const inScope = await assertParoisseInVicariat(String(paymentParoisseId), user.vicariatId);

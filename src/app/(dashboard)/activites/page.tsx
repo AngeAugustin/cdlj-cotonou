@@ -400,7 +400,7 @@ export default function ActivitesPage() {
               )}
             </>
           )}
-          {(isParoissial || isVicarial) && !a.terminee && (
+          {isVicarial && !a.terminee && (
             <Link
               href={`/activites/${a._id}/participer`}
               className={cn(buttonVariants({ size: "icon-sm" }), "rounded-xl bg-amber-900 hover:bg-amber-800 text-white border-0")}
@@ -422,7 +422,7 @@ export default function ActivitesPage() {
           ? "Créez et pilotez les activités diocésaines."
           : isVicarial
             ? "Suivez les activités et inscrivez les lecteurs des paroisses de votre vicariat."
-            : "Consultez les activités et enregistrez la participation de vos lecteurs."
+            : "Consultez les activités et suivez la participation de vos lecteurs."
       }
       actions={
         isManager ? (

@@ -3,7 +3,12 @@ import {
   buildPasswordResetEmailHtml,
   buildPasswordResetEmailText,
 } from "@/lib/email/passwordResetTemplate";
-import { buildActivitePaymentEmailHtml } from "@/lib/email/activitePaymentTemplate";
+import {
+  buildActivitePaymentAdminEmailHtml,
+  buildActivitePaymentAdminEmailText,
+  buildActivitePaymentEmailHtml,
+  type ActivitePaymentAdminEmailParams,
+} from "@/lib/email/activitePaymentTemplate";
 import {
   buildUserWelcomeEmailHtml,
   buildUserWelcomeEmailText,
@@ -52,6 +57,27 @@ export async function sendActivitePaymentConfirmationEmail(
   });
   if (error) {
     throw new Error(error.message ?? "Échec d'envoi de l'e-mail");
+  }
+}
+
+export async function sendActivitePaymentAdminNotificationEmail(
+  to: string,
+  params: ActivitePaymentAdminEmailParams
+): Promise<void> {
+  const resend = getClient();
+  const isFree = params.montantTotal < 1;
+  const { error } = await resend.emails.send({
+    from: fromHeader(),
+    to: [to],
+    subject: isFree
+      ? `[CDLJ] Inscription activité — ${params.activiteNom.slice(0, 45)}`
+      : `[CDLJ] Paiement activité — ${params.activiteNom.slice(0, 45)} — ${params.montantTotal} FCFA`,
+    html: buildActivitePaymentAdminEmailHtml(params),
+    text: buildActivitePaymentAdminEmailText(params),
+    tags: [{ name: "cdlj_email", value: "activite-payment-admin" }],
+  });
+  if (error) {
+    throw new Error(error.message ?? "Échec d'envoi de la notification paiement");
   }
 }
 

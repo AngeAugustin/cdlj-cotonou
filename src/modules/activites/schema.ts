@@ -18,6 +18,5 @@ export type UpdateActiviteInput = z.infer<typeof updateActiviteSchema>;
 
 export const payerParticipationSchema = z.object({
   lecteurIds: z.array(z.string().min(1)).min(1, "Sélectionnez au moins un lecteur"),
-  /** Obligatoire pour le rôle VICARIAL ; ignoré pour PAROISSIAL (paroisse du compte). */
-  paroisseId: z.string().min(1).optional(),
+  paroisseId: z.string().min(1, "Sélectionnez une paroisse"),
 });

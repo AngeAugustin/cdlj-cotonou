@@ -112,10 +112,9 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
   const { data: session, status } = useSession();
   const router = useRouter();
   const roles: string[] = ((session?.user as { roles?: string[] })?.roles ?? []) as string[];
-  const isParoissial = roles.includes("PAROISSIAL");
   const isVicarial = roles.includes("VICARIAL");
-  const canEnroll = isParoissial || isVicarial;
-  const needsParoissePicker = isVicarial && !isParoissial;
+  const canEnroll = isVicarial;
+  const needsParoissePicker = isVicarial;
 
   const [activite, setActivite] = useState<Activite | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);

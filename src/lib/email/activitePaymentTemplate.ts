@@ -308,3 +308,125 @@ export function buildActivitePaymentEmailText(params: {
   );
   return lines.join("\n");
 }
+
+export type ActivitePaymentAdminEmailParams = {
+  activiteNom: string;
+  montantTotal: number;
+  montantUnitaire: number;
+  nombreLecteurs: number;
+  reference: string | null;
+  userEmail: string;
+  paroisseName: string;
+  paymentId: string;
+  fedapayTransactionId: number | null;
+  channel: "fedapay" | "gratuit";
+  processedAt: string;
+  lecteurs: { uniqueId?: string; nom: string; prenoms: string }[];
+};
+
+function adminDetailRow(label: string, value: string): string {
+  return `<tr>
+    <td style="padding:8px 12px;font-size:13px;font-weight:700;color:#64748b;white-space:nowrap;vertical-align:top;border-bottom:1px solid #e2e8f0;">${escapeHtml(label)}</td>
+    <td style="padding:8px 12px;font-size:13px;color:#0f172a;border-bottom:1px solid #e2e8f0;">${escapeHtml(value)}</td>
+  </tr>`;
+}
+
+export function buildActivitePaymentAdminEmailHtml(params: ActivitePaymentAdminEmailParams): string {
+  const orgName = process.env.SMTP_FROM_NAME ?? "CDLJ Cotonou";
+  const isFree = params.montantTotal < 1;
+  const lecteursList =
+    params.lecteurs.length > 0
+      ? params.lecteurs
+          .map((l) => {
+            const id = l.uniqueId ? `[${l.uniqueId}] ` : "";
+            return `${id}${l.nom} ${l.prenoms}`.trim();
+          })
+          .join("\n")
+      : "—";
+
+  const rows = [
+    adminDetailRow("Activité", params.activiteNom),
+    adminDetailRow("Paroisse", params.paroisseName),
+    adminDetailRow("Compte payeur", params.userEmail),
+    adminDetailRow("Canal", isFree ? "Inscription gratuite" : "FedaPay"),
+    adminDetailRow("Tarif unitaire", fmtMoney(params.montantUnitaire)),
+    adminDetailRow("Nombre de lecteurs", String(params.nombreLecteurs)),
+    adminDetailRow("Montant total", isFree ? "Gratuit" : fmtMoney(params.montantTotal)),
+    adminDetailRow("Référence FedaPay", params.reference ?? "—"),
+    adminDetailRow("ID transaction FedaPay", params.fedapayTransactionId != null ? String(params.fedapayTransactionId) : "—"),
+    adminDetailRow("ID paiement interne", params.paymentId),
+    adminDetailRow("Date de traitement", params.processedAt),
+    adminDetailRow(
+      "Lecteurs inscrits",
+      params.lecteurs.length > 0
+        ? params.lecteurs
+            .map((l) => {
+              const id = l.uniqueId ? `[${l.uniqueId}] ` : "";
+              return `${id}${l.nom} ${l.prenoms}`.trim();
+            })
+            .join(", ")
+        : "—"
+    ),
+  ].join("");
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;margin:0 auto;">
+    <tr>
+      <td style="background:#78350f;color:#fff;padding:20px 24px;border-radius:16px 16px 0 0;">
+        <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;opacity:0.75;">Notification interne</p>
+        <p style="margin:0;font-size:20px;font-weight:800;">${isFree ? "Inscription activité enregistrée" : "Nouveau paiement activité"}</p>
+        <p style="margin:8px 0 0;font-size:13px;opacity:0.9;">${escapeHtml(orgName)}</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#fff;padding:0;border:1px solid #e2e8f0;border-top:0;border-radius:0 0 16px 16px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">${rows}</table>
+        ${
+          params.lecteurs.length > 0
+            ? `<div style="padding:16px 24px 24px;">
+          <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;">Liste des lecteurs</p>
+          <pre style="margin:0;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;font-size:12px;line-height:1.5;color:#0f172a;white-space:pre-wrap;">${escapeHtml(lecteursList)}</pre>
+        </div>`
+            : ""
+        }
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export function buildActivitePaymentAdminEmailText(params: ActivitePaymentAdminEmailParams): string {
+  const isFree = params.montantTotal < 1;
+  const lines = [
+    isFree ? "Inscription activité enregistrée" : "Nouveau paiement activité",
+    "",
+    `Activité              : ${params.activiteNom}`,
+    `Paroisse              : ${params.paroisseName}`,
+    `Compte payeur         : ${params.userEmail}`,
+    `Canal                 : ${isFree ? "Inscription gratuite" : "FedaPay"}`,
+    `Tarif unitaire        : ${fmtMoney(params.montantUnitaire)}`,
+    `Nombre de lecteurs    : ${params.nombreLecteurs}`,
+    `Montant total         : ${isFree ? "Gratuit" : fmtMoney(params.montantTotal)}`,
+    `Référence FedaPay     : ${params.reference ?? "—"}`,
+    `ID transaction FedaPay: ${params.fedapayTransactionId ?? "—"}`,
+    `ID paiement interne   : ${params.paymentId}`,
+    `Date de traitement    : ${params.processedAt}`,
+    "",
+    "Lecteurs inscrits :",
+  ];
+
+  if (params.lecteurs.length === 0) {
+    lines.push("—");
+  } else {
+    for (const l of params.lecteurs) {
+      const id = l.uniqueId ? `[${l.uniqueId}] ` : "";
+      lines.push(`- ${id}${l.nom} ${l.prenoms}`.trim());
+    }
+  }
+
+  return lines.join("\n");
+}

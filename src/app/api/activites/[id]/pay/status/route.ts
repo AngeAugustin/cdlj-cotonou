@@ -63,7 +63,7 @@ async function getScopedPayment(request: Request, params: Promise<{ id: string }
 
 /**
  * GET /api/activites/:id/pay/status?pid=...&paymentId=...
- * Pour PAROISSIAL et VICARIAL : retourne le statut du paiement et, si encore en attente,
+ * Pour VICARIAL : retourne le statut du paiement et, si encore en attente,
  * synchronise avec FedaPay (comme le webhook) pour refléter le paiement réel.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
