@@ -135,7 +135,6 @@ export const VICARIATS: Vicariat[] = [
 
 export interface VicariatDetail {
   description: string;
-  founded: string;
   localisation: string;
   adresse: string;
   lat: number;
@@ -149,7 +148,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
 
   "notre-dame-cotonou": {
     description: "Le Vicariat Forain Notre-Dame de Cotonou est le cœur historique et spirituel de l'Archidiocèse. Centré autour de la Cathédrale Notre-Dame de Miséricorde, il rassemble dix paroisses emblématiques au cœur de la ville de Cotonou, animant une vie liturgique et pastorale intense.",
-    founded: "1928", localisation: "Centre de Cotonou",
+    localisation: "Centre de Cotonou",
     adresse: "Cathédrale Notre-Dame de Miséricorde, Cotonou", lat: 6.3676, lon: 2.4189,
     paroissesList: [
       "Cathédrale Notre-Dame de Miséricorde", "Saint Michel", "Saint Jean-Baptiste",
@@ -166,8 +165,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
   },
 
   "sacre-coeur": {
-    description: "Le Vicariat Forain Sacré-Cœur couvre les quartiers est de Cotonou, d'Akpakpa à Yénadjro. Avec dix paroisses actives, il constitue l'un des vicariats les plus dynamiques de l'archidiocèse, fort d'une jeunesse engagée dans la lecture et la mission.",
-    founded: "1968", localisation: "Akpakpa, Cotonou",
+    description: "Le Vicariat Forain Sacré-Cœur couvre les quartiers est de Cotonou, d'Akpakpa à Yénadjro. Avec dix paroisses actives, il constitue l'un des vicariats les plus dynamiques de l'archidiocèse, fort d'une jeunesse engagée dans la lecture et la mission.", localisation: "Akpakpa, Cotonou",
     adresse: "Paroisse Sacré-Cœur, Quartier Akpakpa, Cotonou", lat: 6.3580, lon: 2.4480,
     paroissesList: [
       "Sacré-Cœur", "Saint Martin", "Sainte Thérèse de l'Enfant-Jésus PK6",
@@ -184,8 +182,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
   },
 
   "bon-pasteur": {
-    description: "Le Vicariat Forain Bon Pasteur s'étend sur les quartiers de Cadjehoun, Fidjrossè et Agla. Il regroupe dix paroisses et une communauté chrétienne dans une zone en pleine expansion urbaine, portée par une pastorale des jeunes particulièrement dynamique.",
-    founded: "1978", localisation: "Cadjehoun / Fidjrossè, Cotonou",
+    description: "Le Vicariat Forain Bon Pasteur s'étend sur les quartiers de Cadjehoun, Fidjrossè et Agla. Il regroupe dix paroisses et une communauté chrétienne dans une zone en pleine expansion urbaine, portée par une pastorale des jeunes particulièrement dynamique.", localisation: "Cadjehoun / Fidjrossè, Cotonou",
     adresse: "Paroisse Bon Pasteur, Cadjehoun, Cotonou", lat: 6.3700, lon: 2.3850,
     paroissesList: [
       "Bon Pasteur CADJEHOUN", "Sts Pierre et Paul AGLA – KOUHOUNOU",
@@ -204,8 +201,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
   },
 
   "ste-therese-godomey": {
-    description: "Le Vicariat Forain Sainte Thérèse de Godomey couvre la zone de Godomey jusqu'à Togbin et Cocotomey. Il rassemble dix paroisses et une communauté chrétienne dans cette commune à forte croissance démographique, aux portes de Cotonou.",
-    founded: "1985", localisation: "Godomey, Abomey-Calavi",
+    description: "Le Vicariat Forain Sainte Thérèse de Godomey couvre la zone de Godomey jusqu'à Togbin et Cocotomey. Il rassemble dix paroisses et une communauté chrétienne dans cette commune à forte croissance démographique, aux portes de Cotonou.", localisation: "Godomey, Abomey-Calavi",
     adresse: "Paroisse Sainte Thérèse, Godomey, Abomey-Calavi", lat: 6.3930, lon: 2.3640,
     paroissesList: [
       "Sainte Thérèse GODOMEY", "Notre-Dame de Charité GODOMEY GARE",
@@ -224,8 +220,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
   },
 
   "st-michel-togoudo": {
-    description: "Le Vicariat Forain Saint Michel de Togoudo s'étend sur les localités de Togoudo, Tankpè et leurs environs. Il regroupe sept paroisses et une communauté chrétienne dans une zone semi-rurale en développement pastoral.",
-    founded: "1992", localisation: "Togoudo, Abomey-Calavi",
+    description: "Le Vicariat Forain Saint Michel de Togoudo s'étend sur les localités de Togoudo, Tankpè et leurs environs. Il regroupe sept paroisses et une communauté chrétienne dans une zone semi-rurale en développement pastoral.", localisation: "Togoudo, Abomey-Calavi",
     adresse: "Paroisse Saint Michel, Togoudo", lat: 6.4200, lon: 2.3500,
     paroissesList: [
       "Saint Michel TOGOUDO", "Sainte Famille TANKPE", "Saint Benoît WOMEY",
@@ -242,8 +237,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
   },
 
   "st-antoine-calavi": {
-    description: "Le Vicariat Forain Saint Antoine de Padoue de Calavi couvre la commune d'Abomey-Calavi, l'une des zones à plus forte croissance de l'archidiocèse. Il rassemble dix paroisses et trois communautés chrétiennes, desservant un territoire en pleine expansion.",
-    founded: "1995", localisation: "Abomey-Calavi",
+    description: "Le Vicariat Forain Saint Antoine de Padoue de Calavi couvre la commune d'Abomey-Calavi, l'une des zones à plus forte croissance de l'archidiocèse. Il rassemble dix paroisses et trois communautés chrétiennes, desservant un territoire en pleine expansion.", localisation: "Abomey-Calavi",
     adresse: "Paroisse Saint Antoine de Padoue, Abomey-Calavi", lat: 6.4480, lon: 2.3450,
     paroissesList: [
       "Saint Antoine de Padoue CALAVI", "Sainte Joséphine BAKHITA CALAVI",
@@ -266,8 +260,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
   },
 
   "saint-luc-ouedo": {
-    description: "Le Vicariat Forain Saint Luc d'Ouédo s'étend sur les paroisses d'Ouédo, Hévié et leurs environs. Il regroupe huit paroisses desservant des communautés rurales et semi-rurales à la foi profondément enracinée.",
-    founded: "2000", localisation: "Ouédo, Abomey-Calavi",
+    description: "Le Vicariat Forain Saint Luc d'Ouédo s'étend sur les paroisses d'Ouédo, Hévié et leurs environs. Il regroupe huit paroisses desservant des communautés rurales et semi-rurales à la foi profondément enracinée.", localisation: "Ouédo, Abomey-Calavi",
     adresse: "Paroisse Saint Luc, Ouédo", lat: 6.4650, lon: 2.3300,
     paroissesList: [
       "Saint Luc OUEDO", "Sainte Bernadette HEVIE DODJI",
@@ -284,8 +277,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
   },
 
   "saint-jean-zinvie": {
-    description: "Le Vicariat Forain Saint Jean l'Évangéliste de Zinvié couvre la commune de Zinvié et ses localités environnantes. Il rassemble dix paroisses dans un territoire principalement rural, où la foi chrétienne s'exprime avec authenticité.",
-    founded: "2003", localisation: "Zinvié, Département de l'Atlantique",
+    description: "Le Vicariat Forain Saint Jean l'Évangéliste de Zinvié couvre la commune de Zinvié et ses localités environnantes. Il rassemble dix paroisses dans un territoire principalement rural, où la foi chrétienne s'exprime avec authenticité.", localisation: "Zinvié, Département de l'Atlantique",
     adresse: "Paroisse Saint Jean l'Évangéliste, Zinvié", lat: 6.5500, lon: 2.4000,
     paroissesList: [
       "Saint Jean l'Évangéliste ZINVIE", "Saint Michel ZE",
@@ -303,8 +295,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
   },
 
   "saint-joseph-glo-yekon": {
-    description: "Le Vicariat Forain Saint Joseph de Glo-Yékon couvre la commune de Glo-Djigbé et ses environs. Avec neuf paroisses, il dessert les communautés rurales du nord de l'archidiocèse, portées par une pastorale missionnaire dynamique.",
-    founded: "2005", localisation: "Glo-Djigbé, Département de l'Atlantique",
+    description: "Le Vicariat Forain Saint Joseph de Glo-Yékon couvre la commune de Glo-Djigbé et ses environs. Avec neuf paroisses, il dessert les communautés rurales du nord de l'archidiocèse, portées par une pastorale missionnaire dynamique.", localisation: "Glo-Djigbé, Département de l'Atlantique",
     adresse: "Paroisse Saint Joseph, Glo-Yékon", lat: 6.5800, lon: 2.4700,
     paroissesList: [
       "Saint Michel AGBODJEDO", "Saint Paul TANGBO-DJEVIE",
@@ -322,8 +313,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
   },
 
   "notre-dame-lac-nokoue": {
-    description: "Le Vicariat Forain Notre-Dame du Lac Nokoué s'étend sur les communautés riveraines et lacustres, incluant la célèbre cité lacustre de Ganvié. Ses cinq paroisses desservent des populations aux traditions uniques, vivant en symbiose avec le lac.",
-    founded: "1958", localisation: "Lac Nokoué / Sô-Ava",
+    description: "Le Vicariat Forain Notre-Dame du Lac Nokoué s'étend sur les communautés riveraines et lacustres, incluant la célèbre cité lacustre de Ganvié. Ses cinq paroisses desservent des populations aux traditions uniques, vivant en symbiose avec le lac.", localisation: "Lac Nokoué / Sô-Ava",
     adresse: "Paroisse Notre-Dame de l'Immaculée Conception, Sô-Tchanhoué", lat: 6.4800, lon: 2.5200,
     paroissesList: [
       "Notre-Dame de l'Immaculée Conception SO-TCHANHOUE", "Saint Ambroise LOKPO",
@@ -339,8 +329,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
   },
 
   "sainte-jeanne-arc-allada": {
-    description: "Le Vicariat Forain Sainte Jeanne d'Arc d'Allada couvre la commune d'Allada et ses environs. Avec dix paroisses, il rayonne dans une région à forte tradition catholique, au cœur du pays Fon, héritière d'une longue histoire missionnaire.",
-    founded: "1935", localisation: "Allada, Département de l'Atlantique",
+    description: "Le Vicariat Forain Sainte Jeanne d'Arc d'Allada couvre la commune d'Allada et ses environs. Avec dix paroisses, il rayonne dans une région à forte tradition catholique, au cœur du pays Fon, héritière d'une longue histoire missionnaire.", localisation: "Allada, Département de l'Atlantique",
     adresse: "Paroisse Sainte Jeanne d'Arc, Allada", lat: 6.6600, lon: 2.1600,
     paroissesList: [
       "Sainte Jeanne d'Arc ALLADA", "St Jean-Baptiste TORI-BOSSITO",
@@ -358,8 +347,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
   },
 
   "saint-antoine-houegbo": {
-    description: "Le Vicariat Forain Saint Antoine de Padoue de Houégbo couvre les communes de Toffo et Houégbo. Il regroupe sept paroisses dans une zone rurale de l'archidiocèse, où la foi catholique s'enracine profondément dans les communautés villageoises.",
-    founded: "1942", localisation: "Toffo / Houégbo",
+    description: "Le Vicariat Forain Saint Antoine de Padoue de Houégbo couvre les communes de Toffo et Houégbo. Il regroupe sept paroisses dans une zone rurale de l'archidiocèse, où la foi catholique s'enracine profondément dans les communautés villageoises.", localisation: "Toffo / Houégbo",
     adresse: "Paroisse Saint Antoine de Padoue, Houégbo", lat: 6.5300, lon: 2.0800,
     paroissesList: [
       "Saint Antoine de Padoue HOUEGBO", "Saint Benoît TOFFO",
@@ -376,8 +364,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
   },
 
   "sainte-genevieve-pahou": {
-    description: "Le Vicariat Forain Sainte Geneviève de Pahou couvre les localités de Pahou, Ahozon et leurs environs. Ses six paroisses forment un pont pastoral entre Cotonou et Ouidah, desservant des communautés côtières et rurales attachées à leur foi.",
-    founded: "1955", localisation: "Pahou, Commune de Ouidah",
+    description: "Le Vicariat Forain Sainte Geneviève de Pahou couvre les localités de Pahou, Ahozon et leurs environs. Ses six paroisses forment un pont pastoral entre Cotonou et Ouidah, desservant des communautés côtières et rurales attachées à leur foi.", localisation: "Pahou, Commune de Ouidah",
     adresse: "Paroisse Sainte Geneviève, Pahou", lat: 6.3800, lon: 2.2200,
     paroissesList: [
       "Sainte Geneviève PAHOU", "Saint Antoine de Padoue AHOZON",
@@ -393,8 +380,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
   },
 
   "notre-dame-ouidah": {
-    description: "Le Vicariat Forain Notre-Dame de l'Immaculée Conception d'Ouidah couvre la commune d'Ouidah, ville historique à la croisée des cultures. La Basilique Notre-Dame de l'Immaculée Conception, l'une des plus anciennes de l'Afrique de l'Ouest, en est le joyau pastoral.",
-    founded: "1680", localisation: "Ouidah, Département de l'Atlantique",
+    description: "Le Vicariat Forain Notre-Dame de l'Immaculée Conception d'Ouidah couvre la commune d'Ouidah, ville historique à la croisée des cultures. La Basilique Notre-Dame de l'Immaculée Conception, l'une des plus anciennes de l'Afrique de l'Ouest, en est le joyau pastoral.", localisation: "Ouidah, Département de l'Atlantique",
     adresse: "Basilique Notre-Dame de l'Immaculée Conception, Ouidah", lat: 6.3650, lon: 2.0850,
     paroissesList: [
       "Basilique Notre Dame de l'Immaculée Conception OUIDAH",
@@ -411,8 +397,7 @@ export const VICARIATS_DETAILS: Record<string, VicariatDetail> = {
   },
 
   "saint-antoine-lac-aheme": {
-    description: "Le Vicariat Forain Saint Antoine de Padoue du Lac Ahémé s'étend sur les rives du Lac Ahémé, aux confins occidentaux de l'archidiocèse. Ses cinq paroisses desservent des communautés de pêcheurs et d'agriculteurs dans un cadre naturel préservé.",
-    founded: "1965", localisation: "Lac Ahémé, Commune de Bopa",
+    description: "Le Vicariat Forain Saint Antoine de Padoue du Lac Ahémé s'étend sur les rives du Lac Ahémé, aux confins occidentaux de l'archidiocèse. Ses cinq paroisses desservent des communautés de pêcheurs et d'agriculteurs dans un cadre naturel préservé.", localisation: "Lac Ahémé, Commune de Bopa",
     adresse: "Paroisse Saint Antoine de Padoue, Ségbohoué", lat: 6.3900, lon: 1.9500,
     paroissesList: [
       "Saint Antoine de Padoue SEGBOHOUE",

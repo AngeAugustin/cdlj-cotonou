@@ -2,8 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import {
-  ArrowLeft, MapPin, Church, Users, Mail,
-  Phone, Calendar, ChevronRight
+  ArrowLeft, MapPin, Church, Users
 } from "lucide-react";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { VICARIATS, VICARIATS_DETAILS } from "@/lib/vicariats-data";
@@ -121,10 +120,6 @@ export default async function VicariatDetailPage({
                 <p className="text-2xl font-black text-white">{vicariat.lecteurs.toLocaleString()}</p>
                 <p className="text-white/60 text-xs uppercase tracking-wider">Lecteurs</p>
               </div>
-              <div className="bg-white/10 border border-white/20 rounded-2xl px-5 py-3 text-center">
-                <p className="text-2xl font-black text-white">{details.founded}</p>
-                <p className="text-white/60 text-xs uppercase tracking-wider">Fondé en</p>
-              </div>
             </div>
           </div>
         </div>
@@ -188,13 +183,6 @@ export default async function VicariatDetailPage({
             <div className="space-y-4">
               <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
                 <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Informations</h3>
-                <div className="flex items-start gap-3 text-sm">
-                  <Calendar className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-slate-400 text-xs">Année de fondation</p>
-                    <p className="font-semibold text-slate-800">{details.founded}</p>
-                  </div>
-                </div>
                 <div className="flex items-start gap-3 text-sm">
                   <MapPin className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                   <div>
@@ -263,26 +251,6 @@ export default async function VicariatDetailPage({
                   <p className="text-sm font-semibold text-slate-800">{details.adresse}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                  <Phone className="w-4 h-4 text-amber-700" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 mb-0.5">Téléphone</p>
-                  <p className="text-sm font-semibold text-slate-800">+229 00 00 00 00</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                  <Mail className="w-4 h-4 text-amber-700" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 mb-0.5">Email</p>
-                  <p className="text-sm font-semibold text-slate-800 break-all">
-                    vicariat{vicariat.id.toLowerCase()}@cdlj-cotonou.org
-                  </p>
-                </div>
-              </div>
               <a
                 href={`https://www.openstreetmap.org/?mlat=${details.lat}&mlon=${details.lon}#map=14/${details.lat}/${details.lon}`}
                 target="_blank"
@@ -297,18 +265,12 @@ export default async function VicariatDetailPage({
         </section>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between pt-8 border-t border-slate-200">
+        <div className="pt-8 border-t border-slate-200">
           <Link
             href="/nos-vicariats"
             className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-amber-900 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" /> Tous les vicariats
-          </Link>
-          <Link
-            href="/auth/login"
-            className="inline-flex items-center gap-2 bg-amber-900 hover:bg-amber-800 text-white text-sm font-bold px-5 py-2.5 rounded-full transition-all hover:-translate-y-0.5 shadow-md"
-          >
-            Accéder au portail <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
 

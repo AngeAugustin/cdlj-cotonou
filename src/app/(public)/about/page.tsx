@@ -1,6 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BookOpen, Users, Leaf, Shield, ChevronRight, Mail, Camera } from "lucide-react";
+import { BookOpen, Users, Leaf, Shield, ChevronRight, Mail } from "lucide-react";
+import { TeamMemberCard } from "@/components/about/TeamMemberCard";
+import {
+  associatedMembers,
+  executiveBoard,
+  executivePrimary,
+  spiritualDirection,
+} from "@/data/diocesan-team";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
   formatLecteursCount,
@@ -335,48 +342,9 @@ export default function AboutPage() {
             <div className="flex-1 h-px bg-slate-200" />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto mb-8">
-            {[
-              {
-                initials: "MN", name: "Père Marius NOUGBODE",
-                role: "Aumônier de l'Enfance Missionnaire",
-                accent: "from-amber-300 to-yellow-500",
-                pill: "bg-amber-50 text-amber-900 border-amber-200",
-                glow: "shadow-amber-500/25",
-              },
-              {
-                initials: "AO", name: "Fr Abel OBALEKE",
-                role: "Parrain de la communauté",
-                accent: "from-yellow-300 to-amber-400",
-                pill: "bg-yellow-50 text-yellow-900 border-yellow-200",
-                glow: "shadow-yellow-500/25",
-              },
-            ].map((m, i) => (
-              <div key={i} className="group relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white/90 shadow-md shadow-amber-950/5 backdrop-blur-sm hover:border-amber-300/40 hover:shadow-lg transition-all duration-500 p-6">
-                {/* Top accent line — plus épais pour marquer l'autorité */}
-                <div className={`absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r ${m.accent}`} />
-                {/* Watermark */}
-                <span className="absolute -right-3 -bottom-5 text-[7rem] font-black text-amber-950/[0.05] select-none leading-none pointer-events-none">
-                  {m.initials}
-                </span>
-                {/* Étoile/insigne spirituel */}
-                <span className="absolute top-5 right-5 text-amber-700/35 text-base select-none">✦</span>
-
-                {/* Avatar */}
-                <div className="relative w-16 h-16 mb-4">
-                  <div className={`w-full h-full rounded-full bg-gradient-to-br ${m.accent} flex items-center justify-center text-amber-950 font-black text-lg ring-2 ring-amber-200/80 shadow-lg ${m.glow} group-hover:ring-amber-400/50 transition-all duration-300`}>
-                    {m.initials}
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <Camera className="w-2.5 h-2.5 text-slate-400" />
-                  </div>
-                </div>
-
-                <h3 className="text-slate-900 font-extrabold text-xl leading-tight mb-2">{m.name}</h3>
-                <span className={`inline-flex items-center text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${m.pill}`}>
-                  {m.role}
-                </span>
-              </div>
+          <div className="mx-auto mb-8 grid max-w-3xl grid-cols-1 gap-5 sm:grid-cols-2">
+            {spiritualDirection.map((m) => (
+              <TeamMemberCard key={m.initials} {...m} variant="featured" spiritual />
             ))}
           </div>
 
@@ -392,64 +360,36 @@ export default function AboutPage() {
           </div>
 
           {/* ── Ligne 1 — 2 membres principaux ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto mb-4">
-            {[
-              { n: "01", initials: "LD", name: "Fr Landry DJOSSOU", role: "Coordonnateur Diocésain", accent: "from-amber-400 to-amber-600", pill: "bg-amber-50 text-amber-900 border-amber-200" },
-              { n: "02", initials: "BS", name: "Fr Bienheureux SESSOU", role: "Secrétaire Général", accent: "from-sky-400 to-sky-600", pill: "bg-sky-50 text-sky-900 border-sky-200" },
-            ].map((m) => (
-              <div key={m.n} className="group relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white/90 shadow-md shadow-amber-950/5 backdrop-blur-sm hover:border-amber-200/60 hover:shadow-lg transition-all duration-500 p-6">
-                {/* Top accent line */}
-                <div className={`absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r ${m.accent}`} />
-                {/* Watermark initial */}
-                <span className="absolute -right-3 -bottom-5 text-[7rem] font-black text-slate-900/[0.04] select-none leading-none pointer-events-none">
-                  {m.initials}
-                </span>
-                {/* Corner number */}
-                <span className="absolute top-5 right-5 text-[10px] font-black text-slate-300 tracking-widest">#{m.n}</span>
-                {/* Photo space */}
-                <div className="relative w-16 h-16 mb-4">
-                  <div className={`w-full h-full rounded-full bg-gradient-to-br ${m.accent} flex items-center justify-center text-white font-black text-lg ring-2 ring-slate-200/80 shadow-lg group-hover:ring-amber-200/60 transition-all duration-300`}>
-                    {m.initials}
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <Camera className="w-2.5 h-2.5 text-slate-400" />
-                  </div>
-                </div>
-                <h3 className="text-slate-900 font-extrabold text-xl leading-tight mb-2">{m.name}</h3>
-                <span className={`inline-flex items-center text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${m.pill}`}>
-                  {m.role}
-                </span>
-              </div>
+          <div className="mx-auto mb-4 grid max-w-3xl grid-cols-1 gap-5 sm:grid-cols-2">
+            {executivePrimary.map((m) => (
+              <TeamMemberCard
+                key={m.n}
+                name={m.name}
+                role={m.role}
+                image={m.image}
+                accent={m.accent}
+                pill={m.pill}
+                initials={m.initials}
+                variant="featured"
+                indexLabel={`#${m.n}`}
+              />
             ))}
           </div>
 
           {/* ── Ligne 2 — 3 membres principaux ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-            {[
-              { n: "03", initials: "AA", name: "Fr Alexis ASSOGBA", role: "CASF", accent: "from-emerald-400 to-emerald-600", pill: "bg-emerald-50 text-emerald-900 border-emerald-200" },
-              { n: "04", initials: "GH", name: "Sr Grâce HOUNTON", role: "Trésorière Générale", accent: "from-violet-400 to-violet-600", pill: "bg-violet-50 text-violet-900 border-violet-200" },
-              { n: "05", initials: "LG", name: "Fr Lionel GNANCADJA", role: "Organisateur Général", accent: "from-rose-400 to-rose-600", pill: "bg-rose-50 text-rose-900 border-rose-200" },
-            ].map((m) => (
-              <div key={m.n} className="group relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white/90 shadow-md shadow-amber-950/5 backdrop-blur-sm hover:border-amber-200/50 hover:shadow-lg transition-all duration-500 p-5">
-                <div className={`absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r ${m.accent}`} />
-                <span className="absolute -right-2 -bottom-4 text-[5.5rem] font-black text-slate-900/[0.04] select-none leading-none pointer-events-none">
-                  {m.initials}
-                </span>
-                <span className="absolute top-4 right-4 text-[10px] font-black text-slate-300 tracking-widest">#{m.n}</span>
-                {/* Photo space */}
-                <div className="relative w-14 h-14 mb-3">
-                  <div className={`w-full h-full rounded-full bg-gradient-to-br ${m.accent} flex items-center justify-center text-white font-black text-sm ring-2 ring-slate-200/80 shadow-lg group-hover:ring-amber-200/50 transition-all duration-300`}>
-                    {m.initials}
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <Camera className="w-2 h-2 text-slate-400" />
-                  </div>
-                </div>
-                <h3 className="text-slate-900 font-extrabold text-base leading-tight mb-2">{m.name}</h3>
-                <span className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${m.pill}`}>
-                  {m.role}
-                </span>
-              </div>
+          <div className="mb-10 grid grid-cols-1 gap-5 sm:grid-cols-3">
+            {executiveBoard.map((m) => (
+              <TeamMemberCard
+                key={m.n}
+                name={m.name}
+                role={m.role}
+                image={m.image}
+                accent={m.accent}
+                pill={m.pill}
+                initials={m.initials}
+                variant="standard"
+                indexLabel={`#${m.n}`}
+              />
             ))}
           </div>
 
@@ -465,26 +405,9 @@ export default function AboutPage() {
           </div>
 
           {/* ── 2 membres secondaires ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl mx-auto">
-            {[
-              { initials: "KA", name: "Fr Kenneth ASSOGBA", role: "Stagiaire CASF", accent: "from-orange-400 to-orange-500", border: "border-l-orange-400" },
-              { initials: "JH", name: "Sr Jarnelle HONTONNOU", role: "Stagiaire TG", accent: "from-teal-400 to-teal-500", border: "border-l-teal-500" },
-            ].map((m, i) => (
-              <div key={i} className={`group flex items-center gap-4 rounded-xl border border-slate-200/90 bg-white/80 shadow-sm backdrop-blur-sm hover:border-slate-300 hover:bg-white hover:shadow-md border-l-2 ${m.border} px-5 py-4 transition-all duration-300`}>
-                {/* Photo space */}
-                <div className="relative shrink-0">
-                  <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${m.accent} flex items-center justify-center text-white font-black text-xs ring-2 ring-slate-200/80 group-hover:ring-amber-200/50 transition-all duration-300`}>
-                    {m.initials}
-                  </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <Camera className="w-2 h-2 text-slate-400" />
-                  </div>
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-slate-800 font-bold text-sm leading-tight">{m.name}</h3>
-                  <span className="text-slate-500 text-[10px] font-semibold uppercase tracking-wider">{m.role}</span>
-                </div>
-              </div>
+          <div className="mx-auto grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2">
+            {associatedMembers.map((m) => (
+              <TeamMemberCard key={m.initials} {...m} variant="compact" />
             ))}
           </div>
 
