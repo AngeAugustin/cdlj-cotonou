@@ -1,4 +1,6 @@
 import { FAQ_ITEMS } from "@/config/faq-data";
+import { SITE_ICONS } from "@/config/site-icons";
+import { SITE_NAV_SEO } from "@/config/site-navigation-seo";
 import {
   PARENT_ORG,
   SITE_CONTACT,
@@ -9,7 +11,6 @@ import {
   SITE_TAGLINE,
 } from "@/config/seo";
 import { absoluteUrl } from "@/lib/site-url";
-import { CDLJ_LOGO_SRC } from "@/config/brand";
 
 const ORG_ID = absoluteUrl("/#organization");
 const WEBSITE_ID = absoluteUrl("/#website");
@@ -22,7 +23,12 @@ export function organizationSchema() {
     name: SITE_NAME_FULL,
     alternateName: SITE_NAME,
     url: absoluteUrl("/"),
-    logo: absoluteUrl(CDLJ_LOGO_SRC),
+    logo: {
+      "@type": "ImageObject",
+      url: absoluteUrl(SITE_ICONS.logo),
+      width: 512,
+      height: 512,
+    },
     description: SITE_DESCRIPTION,
     slogan: SITE_TAGLINE,
     parentOrganization: {
@@ -65,6 +71,17 @@ export function websiteSchema() {
       "query-input": "required name=search_term_string",
     },
   };
+}
+
+/** Aide Google à identifier les pages principales (sitelinks potentiels). */
+export function siteNavigationSchema() {
+  return SITE_NAV_SEO.map((item) => ({
+    "@context": "https://schema.org",
+    "@type": "SiteNavigationElement",
+    name: item.name,
+    description: item.description,
+    url: absoluteUrl(item.href),
+  }));
 }
 
 export function faqPageSchema() {
@@ -110,7 +127,7 @@ export function articleSchema(options: {
     ? options.image
     : options.image
       ? absoluteUrl(options.image)
-      : absoluteUrl(CDLJ_LOGO_SRC);
+      : absoluteUrl(SITE_ICONS.logo);
 
   return {
     "@context": "https://schema.org",

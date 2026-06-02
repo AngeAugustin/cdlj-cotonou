@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Mail, MapPin, Phone } from "lucide-react";
+import { CDLJ_LOGO_SRC } from "@/config/brand";
 import { SocialIconLinks } from "@/components/SocialFollowButtons";
 
 export function Footer() {
@@ -16,11 +17,10 @@ export function Footer() {
             <div className="flex items-center gap-3 justify-start">
               <div className="relative h-10 w-10 sm:h-12 sm:w-12 overflow-hidden rounded-full border border-amber-100 shadow-sm bg-white shrink-0">
                 <Image
-                  src="https://i.postimg.cc/BnnDpTc2/CDLJ.png"
-                  alt="Logo CDLJ"
+                  src={CDLJ_LOGO_SRC}
+                  alt="Logo CDLJ Cotonou"
                   fill
                   className="object-contain p-1"
-                  unoptimized
                 />
               </div>
               <span className="text-xl sm:text-2xl font-black tracking-tight text-amber-900">
@@ -35,7 +35,7 @@ export function Footer() {
           </div>
 
           {/* Explorer */}
-          <div className="lg:col-span-2 lg:col-start-5">
+          <nav className="lg:col-span-2 lg:col-start-5" aria-label="Explorer le site">
             <h3 className="text-slate-900 font-bold mb-4 sm:mb-6 tracking-wide uppercase text-xs sm:text-sm text-left">
               Explorer
             </h3>
@@ -53,10 +53,10 @@ export function Footer() {
                 <Link href="/about" prefetch className="hover:text-amber-900 inline-block transition-colors">À Propos</Link>
               </li>
             </ul>
-          </div>
+          </nav>
 
           {/* Communauté */}
-          <div className="lg:col-span-2 lg:col-start-7">
+          <nav className="lg:col-span-2 lg:col-start-7" aria-label="Communauté CDLJ">
             <h3 className="text-slate-900 font-bold mb-4 sm:mb-6 tracking-wide uppercase text-xs sm:text-sm text-left">
               Communauté
             </h3>
@@ -71,7 +71,7 @@ export function Footer() {
                 <Link href="/auth/login" prefetch className="hover:text-amber-900 inline-block transition-colors text-amber-700">Accès Portail</Link>
               </li>
             </ul>
-          </div>
+          </nav>
 
           {/* Contact */}
           <div className="sm:col-span-2 lg:col-span-3 lg:col-start-10">

@@ -9,7 +9,8 @@
     "dev:webpack": "next dev -H 0.0.0.0 --experimental-https --experimental-https-key certificates/dev-lan-key.pem --experimental-https-cert certificates/dev-lan.pem --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "favicons": "node scripts/generate-favicons.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

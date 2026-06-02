@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/favicon.ico",
-        destination: "/icon.png",
-        permanent: false,
+        destination: "/branding/favicon-48.png",
+        permanent: true,
       },
     ];
   },

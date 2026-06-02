@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_ICONS } from "@/config/site-icons";
 import {
   DEFAULT_OG_IMAGE,
   DEFAULT_OG_IMAGE_HEIGHT,
@@ -12,6 +13,13 @@ import {
   SITE_TAGLINE,
 } from "@/config/seo";
 import { absoluteUrl, getSiteUrl } from "@/lib/site-url";
+
+/** Extrait le jeton seul, même si la variable contient le préfixe google-site-verification=. */
+function normalizeGoogleVerification(raw?: string): string | undefined {
+  const value = raw?.trim();
+  if (!value) return undefined;
+  return value.replace(/^google-site-verification=/i, "");
+}
 
 type PageMetadataOptions = {
   /** Titre affiché (le template racine ajoute « | CDLJ Cotonou »). */
@@ -120,7 +128,9 @@ export function createPageMetadata({
 /** Metadata globale du site (layout racine). */
 export function createRootMetadata(): Metadata {
   const siteUrl = getSiteUrl();
-  const googleVerification = process.env.GOOGLE_SITE_VERIFICATION?.trim();
+  const googleVerification = normalizeGoogleVerification(
+    process.env.GOOGLE_SITE_VERIFICATION
+  );
 
   return {
     metadataBase: new URL(siteUrl),
@@ -178,6 +188,16 @@ export function createRootMetadata(): Metadata {
     },
     alternates: {
       canonical: siteUrl,
+    },
+    icons: {
+      icon: [
+        { url: SITE_ICONS.favicon, sizes: "48x48", type: "image/png" },
+        { url: SITE_ICONS.icon96, sizes: "96x96", type: "image/png" },
+        { url: SITE_ICONS.icon192, sizes: "192x192", type: "image/png" },
+        { url: SITE_ICONS.icon512, sizes: "512x512", type: "image/png" },
+      ],
+      shortcut: SITE_ICONS.favicon,
+      apple: [{ url: SITE_ICONS.appleTouch, sizes: "192x192", type: "image/png" }],
     },
     other: {
       "contact:email": SITE_CONTACT.email,
