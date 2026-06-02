@@ -14,6 +14,21 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function emailDetailsButton(detailsUrl: string, label = "Voir les détails du paiement"): string {
+  const A900 = "#78350f";
+  return `
+                <tr>
+                  <td align="center" style="padding:20px 32px 8px 32px;">
+                    <a href="${escapeHtml(detailsUrl)}" style="display:inline-block;background-color:${A900};color:#ffffff;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-size:14px;font-weight:700;padding:13px 28px;border-radius:12px;">
+                      ${escapeHtml(label)}
+                    </a>
+                    <p style="margin:10px 0 0 0;font-size:11px;line-height:1.5;color:#94a3b8;word-break:break-all;">
+                      ${escapeHtml(detailsUrl)}
+                    </p>
+                  </td>
+                </tr>`;
+}
+
 /**
  * Template ticket premium — tables + styles inline (compat email universelle).
  */
@@ -23,6 +38,7 @@ export function buildActivitePaymentEmailHtml(params: {
   montantUnitaire: number;
   nombreLecteurs: number;
   reference: string | null;
+  detailsUrl: string;
 }): string {
   const orgName = process.env.SMTP_FROM_NAME ?? "CDLJ Cotonou";
   const isFree = params.montantTotal < 1;
@@ -210,6 +226,8 @@ export function buildActivitePaymentEmailHtml(params: {
                   </td>
                 </tr>
 
+                ${emailDetailsButton(params.detailsUrl)}
+
                 <!-- ▌ Perforation — notch gauche + tirets + notch droite ▌ -->
                 <tr>
                   <td style="padding:28px 0 0 0;">
@@ -277,6 +295,7 @@ export function buildActivitePaymentEmailText(params: {
   montantUnitaire: number;
   nombreLecteurs: number;
   reference: string | null;
+  detailsUrl: string;
 }): string {
   const org = process.env.SMTP_FROM_NAME ?? "CDLJ Cotonou";
   const isFree = params.montantTotal < 1;
@@ -302,6 +321,8 @@ export function buildActivitePaymentEmailText(params: {
   }
   if (params.reference) lines.push(`Référence transaction : ${params.reference}`, "");
   lines.push(
+    `Voir les détails du paiement : ${params.detailsUrl}`,
+    "",
     "─────────────────────────────────────────",
     "Conservez cet e-mail comme justificatif.",
     "Cet e-mail est envoyé automatiquement, merci de ne pas y répondre."
@@ -322,6 +343,7 @@ export type ActivitePaymentAdminEmailParams = {
   channel: "fedapay" | "gratuit";
   processedAt: string;
   lecteurs: { uniqueId?: string; nom: string; prenoms: string }[];
+  detailsUrl: string;
 };
 
 function adminDetailRow(label: string, value: string): string {
@@ -392,6 +414,12 @@ export function buildActivitePaymentAdminEmailHtml(params: ActivitePaymentAdminE
         </div>`
             : ""
         }
+        <div style="padding:0 24px 24px;text-align:center;">
+          <a href="${escapeHtml(params.detailsUrl)}" style="display:inline-block;background:#78350f;color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 24px;border-radius:12px;">
+            Voir les détails du paiement
+          </a>
+          <p style="margin:10px 0 0 0;font-size:11px;line-height:1.5;color:#94a3b8;word-break:break-all;">${escapeHtml(params.detailsUrl)}</p>
+        </div>
       </td>
     </tr>
   </table>
@@ -428,5 +456,6 @@ export function buildActivitePaymentAdminEmailText(params: ActivitePaymentAdminE
     }
   }
 
+  lines.push("", `Voir les détails du paiement : ${params.detailsUrl}`);
   return lines.join("\n");
 }

@@ -22,6 +22,10 @@ import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  buildParticipantExportTable,
+  generateActiviteParticipantsPdf,
+} from "@/lib/activiteParticipantsExport";
 
 type Activite = {
   _id: string;
@@ -95,17 +99,6 @@ function formatMoney(n: number) {
   return new Intl.NumberFormat("fr-FR", { style: "decimal", maximumFractionDigits: 0 }).format(n) + " FCFA";
 }
 
-function ageFromBirth(iso?: string) {
-  if (!iso) return "—";
-  const b = new Date(iso);
-  if (Number.isNaN(b.getTime())) return "—";
-  const t = new Date();
-  let a = t.getFullYear() - b.getFullYear();
-  const m = t.getMonth() - b.getMonth();
-  if (m < 0 || (m === 0 && t.getDate() < b.getDate())) a--;
-  return `${a} ans`;
-}
-
 function safeExportFileName(name: string) {
   return name.replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_").trim().slice(0, 48) || "activite";
 }
@@ -163,32 +156,6 @@ function humanizePaymentAnomalyCause(p: Pick<PaiementRow, "status" | "gatewaySta
   return "Cause non déterminée avec certitude. Vérifier la passerelle et les traces techniques.";
 }
 
-function buildParticipantExportTable(participants: ParticipantRow[]) {
-  const includeParoisse = participants.some((p) => Boolean(p.paroisseName));
-  const includeVicariat = participants.some((p) => Boolean(p.vicariatName));
-  const header = [
-    "Matricule",
-    "Nom",
-    "Prénoms",
-    ...(includeParoisse ? ["Paroisse"] : []),
-    ...(includeVicariat ? ["Vicariat"] : []),
-    "Grade",
-    "Âge",
-    "Date de paiement",
-  ];
-  const rows = participants.map((p) => [
-    p.lecteur.uniqueId,
-    p.lecteur.nom,
-    p.lecteur.prenoms,
-    ...(includeParoisse ? [p.paroisseName || "—"] : []),
-    ...(includeVicariat ? [p.vicariatName || "—"] : []),
-    p.grade?.name || p.grade?.abbreviation || "—",
-    ageFromBirth(p.lecteur.dateNaissance),
-    formatPaidAt(p.paidAt),
-  ]);
-  return { header, rows };
-}
-
 /** Téléchargement direct dans le dossier Téléchargements (sans ouvrir un onglet ni « Enregistrer sous »). */
 function triggerBrowserDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -204,6 +171,13 @@ function triggerBrowserDownload(blob: Blob, filename: string) {
 }
 
 const PARTICIPANT_FILTER_ALL = "__all__";
+
+function buildParticipantExportScopeSuffix(selectedVicariat: string, selectedParoisse: string) {
+  const parts: string[] = [];
+  if (selectedVicariat !== PARTICIPANT_FILTER_ALL) parts.push(safeExportFileName(selectedVicariat));
+  if (selectedParoisse !== PARTICIPANT_FILTER_ALL) parts.push(safeExportFileName(selectedParoisse));
+  return parts.length ? `-${parts.join("-")}` : "";
+}
 
 export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = usePromise(params);
@@ -261,6 +235,15 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       .catch((e) => setLoadError(e instanceof Error ? e.message : "Erreur"))
       .finally(() => setLoading(false));
   }, [status, activiteId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const tabParam = sp.get("tab");
+    const paymentIdParam = sp.get("paymentId");
+    if (tabParam === "paiements") setTab("paiements");
+    if (paymentIdParam) setSelectedPaiementId(paymentIdParam);
+  }, []);
 
   /** Données paroisse/vicariat de l’utilisateur paroissial (pour le PDF). */
   useEffect(() => {
@@ -429,6 +412,14 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   }, [activite, tab, isManager, isVicarial, isParoissial, refreshPaiements]);
 
   useEffect(() => {
+    if (typeof window === "undefined" || paiements.length === 0) return;
+    const paymentIdParam = new URLSearchParams(window.location.search).get("paymentId");
+    if (paymentIdParam && paiements.some((p) => p._id === paymentIdParam)) {
+      setSelectedPaiementId(paymentIdParam);
+    }
+  }, [paiements]);
+
+  useEffect(() => {
     if (!selectedPaiementId) return;
     const stillSelectable = paiements.some((p) => p._id === selectedPaiementId && p.status === "approved");
     if (!stillSelectable) {
@@ -526,14 +517,15 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  const downloadParticipantsExcel = () => {
-    if (!activite || !filteredParticipants.length) return;
-    const { header, rows } = buildParticipantExportTable(filteredParticipants);
-    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  const downloadParticipantsExcel = (rows: ParticipantRow[]) => {
+    if (!activite || !rows.length) return;
+    const { header, rows: dataRows } = buildParticipantExportTable(rows);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Participants");
     const base = safeExportFileName(activite.nom);
-    const filename = `participants-${base}.xlsx`;
+    const scopeSuffix = buildParticipantExportScopeSuffix(selectedVicariat, selectedParoisse);
+    const filename = `participants-${base}${scopeSuffix}.xlsx`;
     const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     const blob = new Blob([buf], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -541,208 +533,30 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
     triggerBrowserDownload(blob, filename);
   };
 
-  const downloadParticipantsPdf = async () => {
-    if (!activite || !filteredParticipants.length) return;
+  const downloadParticipantsPdf = async (rows: ParticipantRow[]) => {
+    if (!activite || !rows.length) return;
 
-    const { jsPDF } = await import("jspdf");
-    const autoTable = (await import("jspdf-autotable")).default;
-
-    // ── Load logos as base64 ─────────────────────────────────
-    async function toDataUrl(url: string): Promise<string | null> {
-      try {
-        const res = await fetch(url, { mode: "cors" });
-        const blob = await res.blob();
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => resolve(null);
-          reader.readAsDataURL(blob);
-        });
-      } catch {
-        return null;
+    const blob = await generateActiviteParticipantsPdf(
+      {
+        id: activite._id,
+        nom: activite.nom,
+        dateDebut: activite.dateDebut,
+        dateFin: activite.dateFin,
+        lieu: activite.lieu,
+        montant: activite.montant,
+      },
+      rows,
+      {
+        filterVicariat: selectedVicariat !== PARTICIPANT_FILTER_ALL ? selectedVicariat : null,
+        filterParoisse: selectedParoisse !== PARTICIPANT_FILTER_ALL ? selectedParoisse : null,
+        accountVicariat: meData?.vicariatName ?? null,
+        accountParoisse: meData?.paroisseName ?? null,
       }
-    }
-    const [logoEM, logoCDLJ] = await Promise.all([
-      toDataUrl("https://i.postimg.cc/zGGW7CSV/EM.png"),
-      toDataUrl("https://i.postimg.cc/BnnDpTc2/CDLJ.png"),
-    ]);
-
-    // ── Colour palette ───────────────────────────────────────
-    const C = {
-      amber900: [120, 53, 15] as [number, number, number],
-      amber400: [245, 158, 11] as [number, number, number],
-      amber50:  [255, 251, 235] as [number, number, number],
-      slate200: [226, 232, 240] as [number, number, number],
-      slate400: [148, 163, 184] as [number, number, number],
-      slate500: [100, 116, 139] as [number, number, number],
-      slate900: [15,  23,  42 ] as [number, number, number],
-      white:    [255, 255, 255] as [number, number, number],
-    };
-
-    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-    const W = doc.internal.pageSize.getWidth();   // 297
-    const H = doc.internal.pageSize.getHeight();  // 210
-
-    // ── Reusable header renderer ─────────────────────────────
-    // Height: ~26mm
-    function drawPageHeader() {
-      // Amber top accent
-      doc.setFillColor(...C.amber900);
-      doc.rect(0, 0, W, 1.5, "F");
-
-      // White header band (22mm — reduced from 26)
-      doc.setFillColor(...C.white);
-      doc.rect(0, 1.5, W, 22, "F");
-
-      // Logos — EM enlarged (22), CDLJ unchanged (18)
-      const lEM = 22;
-      const lCDLJ = 18;
-      if (logoEM)   doc.addImage(logoEM,   "PNG",  8,            1.5, lEM,   lEM);
-      if (logoCDLJ) doc.addImage(logoCDLJ, "PNG", W - 8 - lCDLJ, 3,   lCDLJ, lCDLJ);
-
-      // Org name
-      doc.setFontSize(7.5);
-      doc.setTextColor(...C.slate500);
-      doc.setFont("helvetica", "normal");
-      doc.text("Aumônerie de l'Enfance Missionnaire de Cotonou", W / 2, 8.5, { align: "center" });
-
-      doc.setFontSize(10);
-      doc.setTextColor(...C.amber900);
-      doc.setFont("helvetica", "bold");
-      doc.text("Communauté Diocésaine des Lecteurs Juniors (CDLJ)", W / 2, 15.5, { align: "center" });
-
-      // Paroisse / vicariat (si utilisateur paroissial)
-      if (meData?.paroisseName || meData?.vicariatName) {
-        const parts = [
-          meData.vicariatName ? `Vicariat : ${meData.vicariatName}` : null,
-          meData.paroisseName ? `Paroisse : ${meData.paroisseName}` : null,
-        ].filter(Boolean).join("   |   ");
-        doc.setFontSize(7);
-        doc.setTextColor(...C.slate500);
-        doc.setFont("helvetica", "normal");
-        doc.text(parts, W / 2, 21.5, { align: "center" });
-      }
-
-      // Tricolor stripe
-      doc.setFillColor(...C.amber400);  doc.rect(0, 23.5, W, 0.8, "F");
-      doc.setFillColor(...C.slate200);  doc.rect(0, 24.3, W, 0.8, "F");
-      doc.setFillColor(...C.amber900);  doc.rect(0, 25.1, W, 0.8, "F");
-    }
-
-    // ── Page 1 ───────────────────────────────────────────────
-    drawPageHeader();
-
-    // Title block (amber-50 bg)
-    const TITLE_Y = 26;
-    doc.setFillColor(...C.amber50);
-    doc.rect(0, TITLE_Y, W, 15, "F");
-
-    doc.setFontSize(13);
-    doc.setTextColor(...C.slate900);
-    doc.setFont("helvetica", "bold");
-    doc.text(activite.nom, W / 2, TITLE_Y + 7, { align: "center", maxWidth: W - 50 });
-
-    doc.setFontSize(7);
-    doc.setTextColor(...C.slate500);
-    doc.setFont("helvetica", "normal");
-    doc.text("LISTE DES PARTICIPANTS", W / 2, TITLE_Y + 12.5, { align: "center" });
-
-    // Info band
-    const INFO_Y = 43;
-    doc.setDrawColor(...C.slate200);
-    doc.setLineWidth(0.25);
-    doc.line(10, INFO_Y, W - 10, INFO_Y);
-
-    const dateStr = `${format(new Date(activite.dateDebut), "d MMM", { locale: fr })} → ${format(new Date(activite.dateFin), "d MMM yyyy", { locale: fr })}`;
-    const infoItems = [
-      { label: "PÉRIODE",      value: dateStr },
-      { label: "LIEU",         value: activite.lieu },
-      { label: "MONTANT",      value: activite.montant === 0 ? "Gratuit" : formatMoney(activite.montant) },
-      { label: "PARTICIPANTS", value: `${participants.length} participant${participants.length !== 1 ? "s" : ""}` },
-    ];
-    const colW = (W - 20) / 4;
-    infoItems.forEach((item, i) => {
-      const x = 10 + i * colW + 3;
-      doc.setFontSize(6);
-      doc.setTextColor(...C.slate400);
-      doc.setFont("helvetica", "normal");
-      doc.text(item.label, x, INFO_Y + 5.5);
-
-      doc.setFontSize(8.5);
-      doc.setTextColor(...C.slate900);
-      doc.setFont("helvetica", "bold");
-      doc.text(item.value, x, INFO_Y + 11);
-    });
-    // Vertical dividers between info columns
-    for (let i = 1; i < 4; i++) {
-      doc.setDrawColor(...C.slate200);
-      doc.line(10 + i * colW, INFO_Y + 1, 10 + i * colW, INFO_Y + 13);
-    }
-    doc.line(10, INFO_Y + 14, W - 10, INFO_Y + 14);
-
-    // ── Table ────────────────────────────────────────────────
-    const { header, rows } = buildParticipantExportTable(filteredParticipants);
-    const TABLE_START = INFO_Y + 16;
-    const HEADER_H = 28; // header height to reserve on continuation pages
-
-    autoTable(doc, {
-      startY: TABLE_START,
-      head: [header],
-      body: rows,
-      styles: {
-        fontSize: 8,
-        cellPadding: { top: 2.5, right: 3, bottom: 2.5, left: 3 },
-        lineColor: C.slate200,
-        lineWidth: 0.2,
-        textColor: C.slate900,
-        font: "helvetica",
-        overflow: "linebreak",
-      },
-      headStyles: {
-        fillColor: C.amber900,
-        textColor: C.white,
-        fontStyle: "bold",
-        fontSize: 8,
-        cellPadding: { top: 3, right: 3, bottom: 3, left: 3 },
-      },
-      alternateRowStyles: {
-        fillColor: C.amber50,
-      },
-      columnStyles: {
-        0: { cellWidth: 30 }, // Matricule
-        1: { cellWidth: 38 }, // Nom
-        2: { cellWidth: 46 }, // Prénoms
-        3: { cellWidth: 32 }, // Grade
-        4: { cellWidth: 20 }, // Âge
-        5: { cellWidth: 42 }, // Date paiement
-      },
-      margin: { left: 10, right: 10, top: HEADER_H, bottom: 12 },
-      didDrawPage: (data) => {
-        // Redraw header on continuation pages
-        if (data.pageNumber > 1) drawPageHeader();
-      },
-    });
-
-    // ── Footer on every page ─────────────────────────────────
-    const totalPages = doc.getNumberOfPages();
-    const genDate = format(new Date(), "dd/MM/yyyy à HH:mm", { locale: fr });
-
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      doc.setDrawColor(...C.slate200);
-      doc.setLineWidth(0.25);
-      doc.line(10, H - 8, W - 10, H - 8);
-
-      doc.setFontSize(6.5);
-      doc.setTextColor(...C.slate400);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Généré le ${genDate}`, 10, H - 4.5);
-      doc.text("CDLJ — Communauté Diocésaine des Lecteurs Juniors", W / 2, H - 4.5, { align: "center" });
-      doc.text(`Page ${i} / ${totalPages}`, W - 10, H - 4.5, { align: "right" });
-    }
+    );
 
     const base = safeExportFileName(activite.nom);
-    triggerBrowserDownload(doc.output("blob"), `participants-${base}.pdf`);
+    const scopeSuffix = buildParticipantExportScopeSuffix(selectedVicariat, selectedParoisse);
+    triggerBrowserDownload(blob, `participants-${base}${scopeSuffix}.pdf`);
   };
 
   if (status === "loading" || loading) {
@@ -777,90 +591,119 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       ) : null}
 
       <div className="min-h-screen pb-16">
-        <div className="relative overflow-hidden rounded-3xl mb-8 bg-gradient-to-br from-amber-50/80 via-white/60 to-slate-50/40 border border-slate-200/60 shadow-sm">
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-amber-300/10 blur-[80px]" />
-            <div className="absolute -bottom-10 -left-10 w-56 h-56 rounded-full bg-amber-100/30 blur-[60px]" />
+        <div className="relative mb-6 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+
+          <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-2.5 sm:px-5">
+            <Button
+              variant="outline"
+              title="Retour à la liste"
+              aria-label="Retour à la liste"
+              className="inline-flex h-9 w-9 lg:h-9 lg:w-fit items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-0 lg:px-3.5 text-xs font-semibold text-slate-500 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-800 group"
+              onClick={() => router.push("/activites")}
+            >
+              <ArrowLeft className="h-3.5 w-3.5 lg:transition-transform lg:group-hover:-translate-x-0.5" />
+              <span className="hidden lg:inline">Retour</span>
+            </Button>
+
+            {isManager && !activite.terminee ? (
+              <Button
+                type="button"
+                title="Marquer comme terminée"
+                aria-label="Marquer comme terminée"
+                className="h-9 rounded-full bg-emerald-700 px-3.5 text-xs font-semibold text-white hover:bg-emerald-800"
+                onClick={() => setConfirmTermineeOpen(true)}
+              >
+                <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                Terminer
+              </Button>
+            ) : null}
           </div>
 
-          <div className="relative z-10 px-6 py-8 sm:px-10 sm:py-10">
-            <div className="mb-8 flex items-center justify-between gap-3">
-              <Button
-                variant="outline"
-                title="Retour à la liste"
-                aria-label="Retour à la liste"
-                className="inline-flex h-11 w-11 lg:w-fit items-center justify-center gap-2 rounded-full border border-slate-200/80 bg-white/70 px-0 lg:px-4 py-2 text-sm font-semibold text-slate-500 shadow-sm transition-all hover:bg-white hover:text-slate-800 group"
-                onClick={() => router.push("/activites")}
+          <div className="flex flex-col sm:flex-row sm:items-stretch">
+            <div className="relative h-28 w-full shrink-0 overflow-hidden bg-slate-100 sm:h-auto sm:w-32 md:w-36">
+              {activite.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={activite.image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-amber-50 to-amber-100/80">
+                  <Activity className="h-8 w-8 text-amber-300" />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 via-transparent to-transparent sm:bg-gradient-to-r sm:from-transparent sm:to-white/20" />
+              <span
+                className={`absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm ${
+                  activite.terminee ? "bg-white/90 text-slate-600" : "bg-white/95 text-amber-900 shadow-sm"
+                }`}
               >
-                <ArrowLeft className="h-4 w-4 lg:transition-transform lg:group-hover:-translate-x-0.5" />
-                <span className="hidden lg:inline">Retour à la liste</span>
-              </Button>
-
-              {isManager && !activite.terminee ? (
-                <Button
-                  type="button"
-                  title="Marquer comme terminée"
-                  aria-label="Marquer comme terminée"
-                  className="h-11 w-11 lg:w-fit rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-0 lg:px-4"
-                  onClick={() => setConfirmTermineeOpen(true)}
-                >
-                  <CheckCircle className="w-4 h-4 lg:mr-2" />
-                  <span className="hidden lg:inline">Marquer comme terminée</span>
-                </Button>
-              ) : null}
+                {!activite.terminee ? <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> : null}
+                {activite.terminee ? "Terminée" : "En cours"}
+              </span>
             </div>
 
-            <div className="flex flex-col lg:flex-row lg:items-start gap-8">
-              <div className="flex-1 min-w-0">
-                <p className="text-amber-700/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Fiche Activité</p>
-                <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
+            <div className="flex min-w-0 flex-1 flex-col justify-center gap-3 p-4 sm:p-4 md:p-5">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-800/70">Fiche activité</p>
+                <h1 className="mt-0.5 text-xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-2xl">
                   {activite.nom}
                 </h1>
-                <div className="mt-4 flex flex-col gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-bold ${
-                        activite.terminee
-                          ? "bg-slate-50 text-slate-500 border-slate-200"
-                          : "bg-green-50 text-green-700 border-green-200"
-                      }`}
-                    >
-                      <CheckCircle className={`w-3.5 h-3.5 ${activite.terminee ? "text-slate-500" : "text-green-700"}`} />
-                      {activite.terminee ? "Terminée" : "En cours"}
-                    </span>
-                    <span className="inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-600 text-xs font-medium px-3 py-1 rounded-full shadow-sm">
-                      {formatMoney(activite.montant)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-slate-600 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-amber-900/60" />
-                    {format(new Date(activite.dateDebut), "PPP", { locale: fr })} — {format(new Date(activite.dateFin), "PPP", { locale: fr })}
-                  </p>
-                  <p className="text-sm text-slate-600 flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-amber-900/60" />
-                    {activite.lieu}
-                  </p>
-                </div>
               </div>
 
-              <div className="lg:w-[200px] lg:shrink-0">
-                <div className="rounded-3xl border border-slate-200/60 bg-white p-3 shadow-sm">
-                  {activite.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={activite.image} alt="" className="w-full object-cover rounded-2xl max-h-40 mx-auto" />
-                  ) : (
-                    <div className="w-full h-40 rounded-2xl bg-gradient-to-br from-amber-50 to-slate-50 flex items-center justify-center">
-                      <Activity className="w-14 h-14 text-amber-900/40" />
-                    </div>
-                  )}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-2.5 py-2">
+                  <Calendar className="h-3.5 w-3.5 shrink-0 text-amber-800" />
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Période</p>
+                    <p className="text-xs font-medium text-slate-800">
+                      {format(new Date(activite.dateDebut), "d MMM yyyy", { locale: fr })}
+                      <span className="mx-1 text-slate-300">→</span>
+                      {format(new Date(activite.dateFin), "d MMM yyyy", { locale: fr })}
+                    </p>
+                  </div>
                 </div>
+
+                <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-2.5 py-2">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-amber-800" />
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Lieu</p>
+                    <p className="truncate text-xs font-medium text-slate-800">{activite.lieu || "—"}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-2.5 py-2">
+                  <Banknote className="h-3.5 w-3.5 shrink-0 text-amber-800" />
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Tarif</p>
+                    <p className="text-xs font-semibold text-slate-900">
+                      {activite.montant === 0 ? "Gratuit" : formatMoney(activite.montant)}
+                    </p>
+                  </div>
+                </div>
+
+                {!activite.terminee ? (
+                  <div className="flex items-center gap-2 rounded-xl border border-amber-100 bg-amber-50/60 px-2.5 py-2">
+                    <CheckCircle className="h-3.5 w-3.5 shrink-0 text-amber-800" />
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-amber-700/70">Délai paiement</p>
+                      <p className="truncate text-xs font-medium text-amber-950">
+                        {format(new Date(activite.delaiPaiement), "d MMM yyyy · HH:mm", { locale: fr })}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-2.5 py-2">
+                    <CheckCircle className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Statut</p>
+                      <p className="text-xs font-medium text-slate-600">Activité clôturée</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
         </div>
 
-        <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-2xl w-fit max-w-full mb-8">
+        <div className="mb-6 flex w-fit max-w-full flex-wrap gap-1 rounded-2xl bg-slate-100 p-1">
           <button
             type="button"
             onClick={() => setTab("infos")}
@@ -1478,7 +1321,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                     size="sm"
                     variant="outline"
                       className="rounded-xl"
-                      onClick={downloadParticipantsExcel}
+                      onClick={() => downloadParticipantsExcel(filteredParticipants)}
                       disabled={!filteredParticipants.length || participantsLoading}
                     >
                       <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel
@@ -1488,7 +1331,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                       size="sm"
                       variant="outline"
                       className="rounded-xl"
-                      onClick={() => void downloadParticipantsPdf()}
+                      onClick={() => void downloadParticipantsPdf(filteredParticipants)}
                       disabled={!filteredParticipants.length || participantsLoading}
                     >
                       <FileText className="w-4 h-4 mr-1" /> PDF

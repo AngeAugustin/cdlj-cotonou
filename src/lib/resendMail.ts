@@ -35,6 +35,7 @@ export async function sendActivitePaymentConfirmationEmail(
     montantUnitaire: number;
     nombreLecteurs: number;
     reference: string | null;
+    detailsUrl: string;
   }
 ): Promise<void> {
   const resend = getClient();

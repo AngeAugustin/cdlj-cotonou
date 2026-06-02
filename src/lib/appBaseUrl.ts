@@ -13,6 +13,13 @@ export function getAppBaseUrl(): string {
   }
   return url;
 }
+
+/** Lien vers l’onglet Paiements de l’activité, avec surlignage du dossier concerné. */
+export function buildActivitePaymentDetailsUrl(activiteId: string, paymentId: string): string {
+  const q = new URLSearchParams({ tab: "paiements", paymentId });
+  return `${getAppBaseUrl()}/activites/${encodeURIComponent(activiteId)}?${q.toString()}`;
+}
+
 /** URL à enregistrer dans le tableau de bord FedaPay (webhook POST). */
 export function getFedapayWebhookUrl(): string {
   return `${getAppBaseUrl()}/api/webhooks/fedapay`;

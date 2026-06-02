@@ -17,7 +17,6 @@ import {
   displayAvatarSrc,
   displayIdPhotoSrc,
   formatDateFr,
-  gradeLabel,
   lecteurInitials,
   rattachementLines,
 } from "@/modules/lecteurs/lecteurViewUtils";
@@ -47,9 +46,7 @@ function BarcodeStrip({ bars, className }: { bars: number[]; className?: string 
 function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; className?: string }) {
   const photoSrc = displayIdPhotoSrc(lecteur) ?? displayAvatarSrc(lecteur);
   const initials = lecteurInitials(lecteur);
-  const grade = gradeLabel(lecteur);
   const { paroisse, vicariat } = rattachementLines(lecteur);
-  const year = new Date().getFullYear();
 
   return (
     <div
@@ -183,15 +180,8 @@ function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; classNa
             </div>
           </div>
 
-          {/* ── Moitié droite (50%) : séparateur + badge + QR + signatures ── */}
+          {/* ── Moitié droite (50%) : séparateur + QR + signatures ── */}
           <div className="flex flex-col items-center gap-2.5 pl-3" style={{ flex: "0 0 50%" }}>
-
-            {/* Badge grade (sans label) */}
-            {grade !== "—" && (
-              <div className="rounded-full bg-amber-100 border border-amber-300 px-4 py-1 text-center">
-                <p className="text-[10px] font-extrabold text-amber-900 leading-tight">{grade}</p>
-              </div>
-            )}
 
             {/* QR code de l'identifiant */}
             <div className="rounded-md border border-slate-200 bg-white p-1 shadow-sm">

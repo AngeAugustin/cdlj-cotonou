@@ -196,6 +196,7 @@ async function syncKnownPayment(
 
     try {
       await sendActivitePaymentNotifications({
+        activiteId,
         paymentId,
         userEmail: payment.userEmail,
         activiteNom,

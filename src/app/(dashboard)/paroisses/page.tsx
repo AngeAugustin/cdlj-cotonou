@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   Building2, Plus, Edit2, Trash2, Eye, X, Loader2,
@@ -31,16 +32,6 @@ type Paroisse = {
   lecteurCount: number;
 };
 
-type Lecteur = {
-  _id: string;
-  nom: string;
-  prenoms: string;
-  uniqueId: string;
-  sexe: "M" | "F";
-  gradeId?: { name: string; abbreviation: string } | null;
-  dateNaissance?: string;
-};
-
 // ─────────────────────────────────────────────────────────
 // Toast helper
 // ─────────────────────────────────────────────────────────
@@ -50,6 +41,7 @@ type Toast = { message: string; type: "success" | "error" };
 // Page component
 // ─────────────────────────────────────────────────────────
 export default function ParoissesPage() {
+  const router = useRouter();
   const { data: session } = useSession();
   const roles: string[] = (session?.user as any)?.roles ?? [];
   const isAdmin = roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
@@ -74,11 +66,6 @@ export default function ParoissesPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Details panel (VICARIAL)
-  const [detailsParoisse, setDetailsParoisse] = useState<Paroisse | null>(null);
-  const [detailsLecteurs, setDetailsLecteurs] = useState<Lecteur[]>([]);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [paroisseSearch, setParoisseSearch] = useState("");
 
   // Toast
@@ -183,33 +170,6 @@ export default function ParoissesPage() {
     }
   };
 
-  // ── Open details (VICARIAL) ───────────────────────────
-  const openDetails = async (p: Paroisse) => {
-    setDetailsParoisse(p);
-    setSearchQuery("");
-    setDetailsLoading(true);
-    try {
-      const res = await fetch(`/api/lecteurs?paroisseId=${p._id}`);
-      if (res.ok) setDetailsLecteurs(await res.json());
-    } catch {
-      setDetailsLecteurs([]);
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
-
-  // ── Filtered lecteurs (search in details) ────────────
-  const filteredLecteurs = useMemo(() => {
-    if (!searchQuery.trim()) return detailsLecteurs;
-    const q = searchQuery.toLowerCase();
-    return detailsLecteurs.filter((l) =>
-      `${l.nom} ${l.prenoms}`.toLowerCase().includes(q) ||
-      l.uniqueId.toLowerCase().includes(q) ||
-      (l.gradeId?.name ?? "").toLowerCase().includes(q) ||
-      (l.gradeId?.abbreviation ?? "").toLowerCase().includes(q)
-    );
-  }, [detailsLecteurs, searchQuery]);
-
   // ── Filtered paroisses list ───────────────────────────
   const filteredParoisses = useMemo(() => {
     if (!paroisseSearch.trim()) return paroisses;
@@ -233,10 +193,8 @@ export default function ParoissesPage() {
     goToNextPage,
   } = usePaginatedList(filteredParoisses, paroisseSearch);
 
-  // ── Helpers ───────────────────────────────────────────
-  const getAge = (dob?: string) => {
-    if (!dob) return "—";
-    return String(new Date().getFullYear() - new Date(dob).getFullYear());
+  const openDetails = (p: Paroisse) => {
+    router.push(`/paroisses/${p._id}`);
   };
 
   // ─────────────────────────────────────────────────────
@@ -375,31 +333,30 @@ export default function ParoissesPage() {
                   </div>
 
                   <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => openDetails(p)}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-900 transition-all hover:bg-amber-100 hover:text-amber-700"
+                    >
+                      <Eye className="h-3.5 w-3.5" /> Détails
+                    </button>
                     {isAdmin ? (
                       <>
                         <button
                           onClick={() => openEdit(p)}
-                          className="p-2 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-all"
+                          className="rounded-xl p-2 text-slate-500 transition-all hover:bg-amber-50 hover:text-amber-600"
                           title="Modifier"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <Edit2 className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => setDeleteId(p._id)}
-                          className="p-2 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all"
+                          className="rounded-xl p-2 text-slate-500 transition-all hover:bg-red-50 hover:text-red-600"
                           title="Supprimer"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </>
-                    ) : (
-                      <button
-                        onClick={() => openDetails(p)}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-900 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-all"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> Détails
-                      </button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -454,23 +411,24 @@ export default function ParoissesPage() {
                         </span>
                       </td>
                       <td className="p-5 text-right">
-                        {isAdmin ? (
-                          <div className="flex items-center justify-end gap-1.5 opacity-100 xl:opacity-0 xl:group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => openEdit(p)} className="p-2 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all" title="Modifier">
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => setDeleteId(p._id)} className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Supprimer">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => openDetails(p)}
-                            className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-900 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-all"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-900 transition-all hover:bg-amber-100 hover:text-amber-700"
                           >
-                            <Eye className="w-3.5 h-3.5" /> Détails
+                            <Eye className="h-3.5 w-3.5" /> Détails
                           </button>
-                        )}
+                          {isAdmin ? (
+                            <div className="flex items-center gap-1.5 opacity-100 transition-opacity xl:opacity-0 xl:group-hover:opacity-100">
+                              <button onClick={() => openEdit(p)} className="rounded-xl p-2 text-slate-400 transition-all hover:bg-amber-50 hover:text-amber-600" title="Modifier">
+                                <Edit2 className="h-4 w-4" />
+                              </button>
+                              <button onClick={() => setDeleteId(p._id)} className="rounded-xl p-2 text-slate-400 transition-all hover:bg-red-50 hover:text-red-600" title="Supprimer">
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -604,122 +562,6 @@ export default function ParoissesPage() {
               </Button>
             </div>
           </form>
-        </div>
-      )}
-
-      {/* ════════════════════════════════════════════════
-          MODAL — Détails paroisse + lecteurs (VICARIAL)
-      ════════════════════════════════════════════════ */}
-      {detailsParoisse && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full sm:max-w-3xl rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
-
-            {/* Header */}
-            <div className="flex items-start justify-between p-6 border-b border-slate-100 shrink-0">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl border-2 border-slate-100 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
-                  {detailsParoisse.logo
-                    ? <img src={detailsParoisse.logo} alt="" className="w-full h-full object-cover" />
-                    : <Building2 className="w-7 h-7 text-amber-700 opacity-50" />}
-                </div>
-                <div>
-                  <h2 className="text-xl font-extrabold text-slate-900 leading-tight">{detailsParoisse.name}</h2>
-                  <p className="text-sm text-slate-500 mt-0.5">{detailsParoisse.vicariat?.name ?? "Vicariat"}</p>
-                </div>
-              </div>
-              <button onClick={() => { setDetailsParoisse(null); setDetailsLecteurs([]); }}
-                className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Infos strip */}
-            <div className="px-6 py-4 bg-slate-50/60 border-b border-slate-100 grid grid-cols-2 sm:grid-cols-3 gap-4 shrink-0">
-              {[
-                { label: "Curé",            value: detailsParoisse.cureName || "—"         },
-                { label: "Coordonnateur",   value: detailsParoisse.coordonnateur || "—"    },
-                { label: "Lecteurs inscrits", value: String(detailsParoisse.lecteurCount)  },
-              ].map((f) => (
-                <div key={f.label}>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{f.label}</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">{f.value}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Search lecteurs */}
-            <div className="px-6 pt-5 pb-3 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Rechercher par nom, matricule ou grade…"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-100 hover:bg-slate-200/50 focus:bg-white border border-transparent focus:border-amber-900/20 rounded-xl text-sm outline-none transition-all"
-                  />
-                </div>
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery("")}
-                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Lecteurs list */}
-            <div className="flex-1 overflow-y-auto px-6 pb-6">
-              {detailsLoading ? (
-                <div className="flex items-center justify-center py-16 gap-3">
-                  <Loader2 className="w-8 h-8 text-amber-900 animate-spin" />
-                  <span className="text-slate-500 font-medium">Chargement des lecteurs…</span>
-                </div>
-              ) : filteredLecteurs.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-                  <Users className="w-12 h-12 text-slate-200" />
-                  <p className="text-slate-500 font-medium">
-                    {searchQuery ? "Aucun lecteur ne correspond à la recherche." : "Aucun lecteur enregistré dans cette paroisse."}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
-                    {filteredLecteurs.length} lecteur{filteredLecteurs.length > 1 ? "s" : ""}
-                    {searchQuery ? " trouvé(s)" : ""}
-                  </p>
-                  <div className="space-y-2">
-                    {filteredLecteurs.map((l) => (
-                      <div key={l._id}
-                        className="flex items-center gap-4 p-3.5 bg-slate-50 hover:bg-amber-50/40 rounded-xl border border-transparent hover:border-amber-100 transition-all">
-                        {/* Avatar initials */}
-                        <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-900 flex items-center justify-center font-extrabold text-sm shrink-0">
-                          {l.nom.charAt(0)}{l.prenoms.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-extrabold text-slate-900 text-sm leading-tight truncate">
-                            {l.nom} {l.prenoms}
-                          </p>
-                          <p className="text-xs text-slate-400 font-mono mt-0.5">{l.uniqueId}</p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {l.gradeId ? (
-                            <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-                              {l.gradeId.abbreviation ?? l.gradeId.name}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-medium text-slate-400 italic">Sans grade</span>
-                          )}
-                          <span className="text-[10px] text-slate-400 font-medium">{l.sexe}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
         </div>
       )}
 

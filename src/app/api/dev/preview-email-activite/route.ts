@@ -28,6 +28,7 @@ export async function GET(request: Request) {
     montantUnitaire: 5000,
     nombreLecteurs: 3,
     reference: "FP-TXN-EXEMPLE-0001",
+    detailsUrl: "https://cdlj-cotonou.com/activites/exemple?tab=paiements&paymentId=exemple",
   });
 
   return new NextResponse(html, {

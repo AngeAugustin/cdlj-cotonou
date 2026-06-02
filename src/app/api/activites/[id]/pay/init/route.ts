@@ -181,6 +181,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       });
       try {
         await sendActivitePaymentNotifications({
+          activiteId,
           paymentId: pid,
           userEmail,
           activiteNom: activite.nom,

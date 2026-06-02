@@ -25,6 +25,7 @@ export async function GET() {
     montantUnitaire: 1000,
     nombreLecteurs: 1,
     reference: "ref_test",
+    detailsUrl: "https://cdlj-cotonou.com/activites/test?tab=paiements&paymentId=test",
   });
 
   const usesV2 =
