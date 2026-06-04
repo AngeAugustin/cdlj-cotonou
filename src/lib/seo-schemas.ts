@@ -199,3 +199,43 @@ export function collectionPageSchema(options: {
     inLanguage: "fr-BJ",
   };
 }
+
+/** Page statique (accueil, à propos, forums…). */
+export function webPageSchema(options: {
+  name: string;
+  description: string;
+  path: string;
+}) {
+  const url = absoluteUrl(options.path);
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: options.name,
+    description: options.description,
+    url,
+    isPartOf: { "@id": WEBSITE_ID },
+    publisher: { "@id": ORG_ID },
+    inLanguage: "fr-BJ",
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+  };
+}
+
+export function aboutPageSchema(options: {
+  name: string;
+  description: string;
+  path: string;
+}) {
+  const url = absoluteUrl(options.path);
+  return {
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    name: options.name,
+    description: options.description,
+    url,
+    isPartOf: { "@id": WEBSITE_ID },
+    about: { "@id": ORG_ID },
+    publisher: { "@id": ORG_ID },
+    inLanguage: "fr-BJ",
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+  };
+}

@@ -2,20 +2,17 @@ import { MessageSquare, Users, BookOpen, Award, ChevronRight, Lock } from "lucid
 import { SocialFollowButtons } from "@/components/SocialFollowButtons";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { FACEBOOK_URL } from "@/config/social-links";
+import { PAGE_SEO } from "@/config/page-seo";
 import { createPageMetadata } from "@/lib/seo";
-import { breadcrumbSchema } from "@/lib/seo-schemas";
+import { breadcrumbSchema, webPageSchema } from "@/lib/seo-schemas";
+
+const seo = PAGE_SEO.forums;
 
 export const metadata = createPageMetadata({
-  title: "Forums",
-  description:
-    "Espaces d'échange de la CDLJ : forum général, forums vicariaux et communautés de formateurs. Rejoignez la vie numérique de la communauté diocésaine.",
+  title: seo.title,
+  description: seo.description,
   path: "/forums",
-  keywords: [
-    "forum CDLJ",
-    "communauté lecteurs juniors",
-    "échanges vicariats",
-    "formateurs liturgiques",
-  ],
+  keywords: [...seo.keywords],
 });
 
 export default function ForumsPage() {
@@ -69,10 +66,17 @@ export default function ForumsPage() {
   return (
     <div className="bg-slate-50 min-h-screen py-16 relative overflow-hidden">
       <JsonLd
-        data={breadcrumbSchema([
-          { name: "Accueil", path: "/" },
-          { name: "Forums", path: "/forums" },
-        ])}
+        data={[
+          breadcrumbSchema([
+            { name: "Accueil", path: "/" },
+            { name: "Forums", path: "/forums" },
+          ]),
+          webPageSchema({
+            name: seo.title,
+            description: seo.description,
+            path: "/forums",
+          }),
+        ]}
       />
       {/* Background Decor */}
       <div className="absolute top-0 right-0 -mr-32 -mt-32 w-96 h-96 rounded-full bg-amber-500/5 blur-[100px] pointer-events-none" />
@@ -86,7 +90,7 @@ export default function ForumsPage() {
             Rejoignez nos <span className="text-amber-900">Forums</span>
           </h1>
           <p className="text-xl text-slate-500 max-w-2xl leading-relaxed">
-            Échangez, posez vos questions, et tissez des liens puissants avec les autres membres de la Communauté Diocésaine.
+            Échangez avec les lecteurs juniors, responsables vicariaux, formateurs et commissionnaires de la CDLJ de Cotonou via nos espaces de discussion.
           </p>
         </div>
 
@@ -99,9 +103,9 @@ export default function ForumsPage() {
 
               <div className="flex flex-col flex-1 h-full">
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="text-xl font-bold text-slate-800 group-hover:text-amber-900 transition-colors leading-tight">
+                  <h2 className="text-xl font-bold text-slate-800 group-hover:text-amber-900 transition-colors leading-tight">
                     {forum.title}
-                  </h3>
+                  </h2>
                   <span className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${forum.badge}`}>
                     {forum.access}
                   </span>

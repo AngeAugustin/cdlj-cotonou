@@ -17,7 +17,7 @@ export const PARENT_ORG =
 
 /** Description par défaut pour les moteurs de recherche et réseaux sociaux. */
 export const SITE_DESCRIPTION =
-  `Plateforme officielle de la Communauté Diocésaine des Lecteurs Juniors (CDLJ) de l'Archidiocèse de Cotonou. Formation, animation et fédération de ${lecteursSeoPhrase()} répartis dans ${VICARIATS_TOTAL} vicariats forains et ${PAROISHES_TOTAL} paroisses.`;
+  `Site officiel de la CDLJ (${SITE_NAME_FULL}) à Cotonou : formation liturgique, animation paroissiale et fédération de ${lecteursSeoPhrase()} dans ${VICARIATS_TOTAL} vicariats forains et ${PAROISHES_TOTAL} paroisses de l'Archidiocèse de Cotonou.`;
 
 /** Image Open Graph par défaut (1200×630). */
 export const DEFAULT_OG_IMAGE = "/branding/og-default.jpg";

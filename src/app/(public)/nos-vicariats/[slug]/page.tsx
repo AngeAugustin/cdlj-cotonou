@@ -39,9 +39,11 @@ export async function generateMetadata({
     path: `/nos-vicariats/${vicariat.slug}`,
     keywords: [
       vicariat.name,
+      vicariat.fullName,
       vicariat.zone,
       "vicariat forain Cotonou",
       "paroisses CDLJ",
+      "lecteurs juniors Archidiocèse de Cotonou",
     ],
   });
 }

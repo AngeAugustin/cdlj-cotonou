@@ -17,9 +17,11 @@ import {
 import { fadeUp, staggerContainer } from "./motion";
 import {
   lecteursLabel,
+  lecteursSeoPhrase,
   PAROISHES_TOTAL,
   VICARIATS_TOTAL,
 } from "@/config/community-stats";
+import { SITE_NAME_FULL } from "@/config/seo";
 
 const HERO_IMAGE = {
   src: "/images/20240630_110241 (1).jpg",
@@ -189,7 +191,7 @@ export function HeroSection() {
             custom={2}
             className="mt-4 sm:mt-6 text-base sm:text-lg md:text-xl text-slate-600 max-w-xl mx-auto lg:mx-0 leading-relaxed px-1"
           >
-            Proclamer, Prier & Obéir est notre seule devise.
+            Proclamer, Prier &amp; Obéir est notre devise. La {SITE_NAME_FULL} (CDLJ) fédère {lecteursSeoPhrase()}  dans l&apos;Archidiocèse de Cotonou.
           </motion.p>
 
           <motion.div

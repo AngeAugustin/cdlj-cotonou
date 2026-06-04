@@ -104,7 +104,7 @@ export function FeaturesBento() {
               Fonctionnalités
             </span>
             <h2 className="mt-1 text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight text-balance">
-              Ce que la plateforme vous apporte
+              Plateforme CDLJ : outils pour les lecteurs juniors
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto lg:mx-0 lg:text-right leading-relaxed text-center lg:text-left">

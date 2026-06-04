@@ -67,7 +67,7 @@ export async function NewsPostsAsync() {
 
       {others.length > 0 && (
         <>
-          <h3 className="text-2xl font-bold text-slate-800 mb-8">Toutes les publications</h3>
+          <h2 className="text-2xl font-bold text-slate-800 mb-8">Toutes les publications</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {others.map((post) => (
               <div
@@ -90,11 +90,11 @@ export async function NewsPostsAsync() {
                 </div>
 
                 <div className="p-6 flex flex-col flex-1">
-                  <h4 className="text-xl font-bold text-slate-800 mb-3 group-hover:text-amber-900 transition-colors">
+                  <h3 className="text-xl font-bold text-slate-800 mb-3 group-hover:text-amber-900 transition-colors">
                     <Link href={`/news/${post.slug}`} prefetch>
                       {post.title}
                     </Link>
-                  </h4>
+                  </h3>
                   <p className="text-slate-600 mb-6 line-clamp-3 leading-relaxed flex-1">{post.excerpt}</p>
                   <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100">
                     <div className="text-sm font-medium text-slate-500 flex items-center gap-2">

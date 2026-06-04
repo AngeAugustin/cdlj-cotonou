@@ -28,8 +28,7 @@ export function Footer() {
               </span>
             </div>
             <p className="text-sm sm:text-base text-slate-500 leading-relaxed max-w-sm">
-              Plateforme officielle de la Communauté Diocésaine
-              des Lecteurs Juniors de Cotonou. Lecteurs, Sel & Lumière nous sommes !!!
+              Site officiel de la Communauté Diocésaine des Lecteurs Juniors (CDLJ) de l&apos;Archidiocèse de Cotonou, Bénin. Formation liturgique, actualités et vie de la communauté.
             </p>
             <SocialIconLinks />
           </div>

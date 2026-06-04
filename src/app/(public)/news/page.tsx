@@ -3,22 +3,19 @@ import { Badge } from "@/components/ui/badge";
 import { NewsPostsAsync } from "@/components/news/NewsPostsAsync";
 import { NewsListSkeleton } from "@/components/public/PublicPageSkeleton";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { PAGE_SEO } from "@/config/page-seo";
 import { createPageMetadata } from "@/lib/seo";
 import { breadcrumbSchema, collectionPageSchema } from "@/lib/seo-schemas";
 
 export const revalidate = 120;
 
+const seo = PAGE_SEO.news;
+
 export const metadata = createPageMetadata({
-  title: "Blog & Actualités",
-  description:
-    "Actualités, événements et nouvelles de la Communauté Diocésaine des Lecteurs Juniors de Cotonou. Restez informés de la vie de la communauté diocésaine.",
+  title: seo.title,
+  description: seo.description,
   path: "/news",
-  keywords: [
-    "actualités CDLJ",
-    "événements lecteurs juniors",
-    "blog communauté diocésaine",
-    "nouvelles Cotonou",
-  ],
+  keywords: [...seo.keywords],
 });
 
 export default function NewsPage() {
@@ -31,9 +28,8 @@ export default function NewsPage() {
             { name: "Actualités", path: "/news" },
           ]),
           collectionPageSchema({
-            name: "Blog & Actualités — CDLJ Cotonou",
-            description:
-              "Actualités et événements de la Communauté Diocésaine des Lecteurs Juniors.",
+            name: seo.title,
+            description: seo.description,
             path: "/news",
           }),
         ]}
@@ -44,10 +40,10 @@ export default function NewsPage() {
             A la une
           </Badge>
           <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight">
-            Blog & Actualités
+            Actualités & blog — CDLJ Cotonou
           </h1>
           <p className="mt-4 text-xl text-slate-500 max-w-2xl">
-            Tenez-vous informés des dernières nouveautés, événements et décisions de notre grande communauté de lecteurs.
+            Retrouvez les dernières nouvelles, assemblées, sessions diocésaines et événements de la Communauté Diocésaine des Lecteurs Juniors de l&apos;Archidiocèse de Cotonou.
           </p>
         </div>
 

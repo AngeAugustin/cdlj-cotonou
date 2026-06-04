@@ -2,22 +2,19 @@ import { Suspense } from "react";
 import { MediathequePageAsync } from "@/components/mediatheque/MediathequePageAsync";
 import { MediathequeGridSkeleton } from "@/components/public/PublicPageSkeleton";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { PAGE_SEO } from "@/config/page-seo";
 import { createPageMetadata } from "@/lib/seo";
 import { breadcrumbSchema, collectionPageSchema } from "@/lib/seo-schemas";
 
 export const revalidate = 120;
 
+const seo = PAGE_SEO.mediatheque;
+
 export const metadata = createPageMetadata({
-  title: "Médiathèque",
-  description:
-    "Archives photos, vidéos et ressources documentaires de la CDLJ. Retrouvez les moments forts des sessions diocésaines, célébrations et activités paroissiales.",
+  title: seo.title,
+  description: seo.description,
   path: "/mediatheque",
-  keywords: [
-    "médiathèque CDLJ",
-    "photos lecteurs juniors",
-    "archives communauté diocésaine",
-    "vidéos CDLJ Cotonou",
-  ],
+  keywords: [...seo.keywords],
 });
 
 export default function MediathequePage() {
@@ -30,9 +27,8 @@ export default function MediathequePage() {
             { name: "Médiathèque", path: "/mediatheque" },
           ]),
           collectionPageSchema({
-            name: "Médiathèque — CDLJ Cotonou",
-            description:
-              "Archives visuelles et documentaires de la Communauté Diocésaine des Lecteurs Juniors.",
+            name: seo.title,
+            description: seo.description,
             path: "/mediatheque",
           }),
         ]}
@@ -46,7 +42,7 @@ export default function MediathequePage() {
             Photos, vidéos & ressources
           </h1>
           <p className="mt-4 text-base sm:text-lg text-slate-500 max-w-2xl">
-            Retrouvez ici les archives visuelles et documentaires de la Communauté Diocésaine des Lecteurs Juniors.
+            Archives photos et vidéos des sessions diocésaines, célébrations et activités paroissiales de la CDLJ à Cotonou. Médiathèque officielle des lecteurs juniors.
           </p>
         </div>
 

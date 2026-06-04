@@ -23,10 +23,10 @@ export default function FaqSection() {
           Questions fréquentes
         </span>
         <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight text-balance px-1">
-          Tout ce que vous devez savoir
+          FAQ — la CDLJ et les lecteurs juniors
         </h2>
         <p className="mt-3 sm:mt-4 text-sm sm:text-base md:text-lg text-slate-500 max-w-xl mx-auto px-1">
-          Tout sur la vie de la communauté, les vicariats, les activités et la progression des lecteurs.
+          Organisation diocésaine, vicariats forains, activités liturgiques et progression des grades à Cotonou.
         </p>
       </motion.div>
 
@@ -54,10 +54,12 @@ export default function FaqSection() {
                 onClick={() => setOpen(isOpen ? null : i)}
                 className="w-full flex items-start sm:items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-4 sm:py-5 text-left"
                 aria-expanded={isOpen}
+                aria-controls={`faq-answer-${i}`}
+                id={`faq-question-${i}`}
               >
-                <span className={`font-semibold text-sm sm:text-base leading-snug transition-colors ${isOpen ? "text-amber-900" : "text-slate-800"}`}>
+                <h3 className={`font-semibold text-sm sm:text-base leading-snug transition-colors ${isOpen ? "text-amber-900" : "text-slate-800"}`}>
                   {faq.q}
-                </span>
+                </h3>
                 <motion.span
                   animate={{ rotate: isOpen ? 180 : 0 }}
                   transition={{ duration: 0.25 }}
@@ -77,7 +79,12 @@ export default function FaqSection() {
                     transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                     className="overflow-hidden"
                   >
-                    <p className="px-4 sm:px-6 pb-4 sm:pb-5 text-slate-600 leading-relaxed text-xs sm:text-sm">
+                    <p
+                      id={`faq-answer-${i}`}
+                      role="region"
+                      aria-labelledby={`faq-question-${i}`}
+                      className="px-4 sm:px-6 pb-4 sm:pb-5 text-slate-600 leading-relaxed text-xs sm:text-sm"
+                    >
                       {faq.a}
                     </p>
                   </motion.div>

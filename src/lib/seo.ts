@@ -107,7 +107,15 @@ export function createPageMetadata({
       title: `${title} | ${SITE_NAME}`,
       description: desc,
       ...(image && {
-        images: [{ url: image.startsWith("http") ? image : absoluteUrl(image), alt: title }],
+        images: [
+          {
+            url: image.startsWith("http") ? image : absoluteUrl(image),
+            alt: `${title} | ${SITE_NAME}`,
+            ...(image === DEFAULT_OG_IMAGE
+              ? { width: DEFAULT_OG_IMAGE_WIDTH, height: DEFAULT_OG_IMAGE_HEIGHT }
+              : {}),
+          },
+        ],
       }),
       ...(publishedTime && { publishedTime }),
       ...(modifiedTime && { modifiedTime }),

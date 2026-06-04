@@ -9,20 +9,17 @@ import {
   PAROISHES_TOTAL,
   VICARIATS_TOTAL,
 } from "@/config/community-stats";
+import { PAGE_SEO } from "@/config/page-seo";
 import { createPageMetadata } from "@/lib/seo";
 import { breadcrumbSchema, collectionPageSchema } from "@/lib/seo-schemas";
 
+const seo = PAGE_SEO.vicariats;
+
 export const metadata = createPageMetadata({
-  title: "Nos vicariats",
-  description:
-    `Carte et fiches des ${VICARIATS_TOTAL} vicariats forains de l'Archidiocèse de Cotonou. Paroisses affiliées, coordonnées et organisation territoriale de la CDLJ.`,
+  title: seo.title,
+  description: seo.description,
   path: "/nos-vicariats",
-  keywords: [
-    "vicariats forains Cotonou",
-    "paroisses Archidiocèse de Cotonou",
-    "organisation diocésaine Bénin",
-    "carte vicariats CDLJ",
-  ],
+  keywords: [...seo.keywords],
 });
 
 const WORKFLOW = [
@@ -42,9 +39,8 @@ export default function VicariatsPage() {
             { name: "Nos vicariats", path: "/nos-vicariats" },
           ]),
           collectionPageSchema({
-            name: "Les Vicariats Forains — CDLJ Cotonou",
-            description:
-              `${VICARIATS_TOTAL} vicariats forains, ${PAROISHES_TOTAL} paroisses et ${lecteursSeoPhrase()} dans l'Archidiocèse de Cotonou.`,
+            name: seo.title,
+            description: seo.description,
             path: "/nos-vicariats",
           }),
         ]}
@@ -67,8 +63,8 @@ export default function VicariatsPage() {
             </span>
           </h1>
           <p className="text-xl text-slate-600 leading-relaxed max-w-2xl mb-8">
-            L'archidiocèse est organisé en <strong>15 vicariats forains</strong> couvrant l'ensemble du territoire.
-            Chaque vicariat constitue un relai essentiel entre l'administration diocésaine et les communautés locales.
+            L&apos;Archidiocèse de Cotonou est organisé en <strong>{VICARIATS_TOTAL} vicariats forains</strong> couvrant l&apos;ensemble du territoire.
+            Chaque vicariat constitue un relais essentiel entre l&apos;administration diocésaine et les communautés locales de lecteurs juniors CDLJ.
           </p>
           <Link href="/nos-vicariats#carte">
             <button className="group relative inline-flex items-center justify-center gap-2 bg-amber-900 hover:bg-amber-800 text-white px-8 py-4 rounded-full font-bold shadow-xl shadow-amber-900/20 transition-all hover:-translate-y-1 overflow-hidden">
@@ -126,10 +122,10 @@ export default function VicariatsPage() {
               Vue territoriale
             </span>
             <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">
-              Carte des 15 Vicariats
+              Carte des {VICARIATS_TOTAL} vicariats forains
             </h2>
             <p className="text-slate-500 mt-3 text-base max-w-lg mx-auto">
-              Répartition schématique des 15 vicariats forains du diocèse. Cliquez sur un nœud pour explorer.
+              Répartition schématique des vicariats de l&apos;Archidiocèse de Cotonou. Cliquez sur un nœud pour explorer un vicariat et ses paroisses.
             </p>
           </div>
           <VicariatsMapWrapper />
@@ -143,7 +139,7 @@ export default function VicariatsPage() {
             Détail
           </span>
           <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">
-            Les 15 Vicariats en détail
+            Les {VICARIATS_TOTAL} vicariats en détail
           </h2>
         </div>
 

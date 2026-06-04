@@ -8,41 +8,43 @@ export type SiteNavSeoItem = {
   description: string;
 };
 
+import { VICARIATS_TOTAL } from "@/config/community-stats";
+
 export const SITE_NAV_SEO: SiteNavSeoItem[] = [
   {
     href: "/",
     name: "Accueil",
     description:
-      "Communauté Diocésaine des Lecteurs Juniors — formation, animation et vie de la CDLJ à Cotonou.",
+      "CDLJ Cotonou — Communauté Diocésaine des Lecteurs Juniors : formation liturgique et vie de la communauté.",
   },
   {
     href: "/about",
     name: "À propos",
     description:
-      "Histoire, mission et valeurs de la CDLJ depuis 2013 dans l'Archidiocèse de Cotonou.",
+      "Histoire, mission, valeurs et équipe diocésaine de la CDLJ depuis 2013 à Cotonou.",
   },
   {
     href: "/nos-vicariats",
     name: "Nos vicariats",
     description:
-      "Carte et fiches des 15 vicariats forains, paroisses affiliées et coordonnées.",
+      `Carte des ${VICARIATS_TOTAL} vicariats forains, paroisses affiliées et coordonnées pastorales.`,
   },
   {
     href: "/news",
-    name: "Blog & Actualités",
+    name: "Actualités",
     description:
-      "Dernières nouvelles, événements et annonces de la communauté diocésaine.",
+      "Blog et actualités officielles : événements, assemblées et nouvelles de la CDLJ.",
   },
   {
     href: "/mediatheque",
     name: "Médiathèque",
     description:
-      "Photos, vidéos et archives des sessions et activités de la CDLJ.",
+      "Photos, vidéos et archives des sessions diocésaines et activités de la CDLJ.",
   },
   {
     href: "/forums",
     name: "Forums",
     description:
-      "Espaces d'échange et de discussion pour les membres de la communauté.",
+      "Forums et espaces d'échange pour les lecteurs juniors et responsables de la CDLJ.",
   },
 ];

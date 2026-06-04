@@ -14,20 +14,17 @@ import {
   FOUNDED_YEAR,
   lecteursLabel,
 } from "@/config/community-stats";
+import { PAGE_SEO } from "@/config/page-seo";
 import { createPageMetadata } from "@/lib/seo";
-import { breadcrumbSchema } from "@/lib/seo-schemas";
+import { aboutPageSchema, breadcrumbSchema } from "@/lib/seo-schemas";
+
+const seo = PAGE_SEO.about;
 
 export const metadata = createPageMetadata({
-  title: "À propos",
-  description:
-    `Découvrez l'histoire, la mission et les valeurs de la CDLJ : Communauté Diocésaine des Lecteurs Juniors de l'Archidiocèse de Cotonou, au service de la jeunesse depuis ${FOUNDED_YEAR}.`,
+  title: seo.title,
+  description: seo.description,
   path: "/about",
-  keywords: [
-    "CDLJ histoire",
-    "mission lecteurs juniors",
-    "Enfance Missionnaire Cotonou",
-    "formation jeunes lecteurs",
-  ],
+  keywords: [...seo.keywords],
 });
 
 export default function AboutPage() {
@@ -61,10 +58,17 @@ export default function AboutPage() {
   return (
     <div className="bg-slate-50 min-h-screen relative overflow-hidden">
       <JsonLd
-        data={breadcrumbSchema([
-          { name: "Accueil", path: "/" },
-          { name: "À propos", path: "/about" },
-        ])}
+        data={[
+          breadcrumbSchema([
+            { name: "Accueil", path: "/" },
+            { name: "À propos", path: "/about" },
+          ]),
+          aboutPageSchema({
+            name: seo.title,
+            description: seo.description,
+            path: "/about",
+          }),
+        ]}
       />
       {/* Decorative Blur Backgrounds */}
       <div className="absolute top-0 right-[-10%] w-[40rem] h-[40rem] rounded-full bg-amber-500/10 blur-[100px] pointer-events-none" />
@@ -78,11 +82,15 @@ export default function AboutPage() {
               À Propos de nous
             </div>
             <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight mb-6">
-              Servir la Parole, <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-700 to-amber-900">Inspirer la Jeunesse.</span>
+              CDLJ Cotonou : servir la Parole, <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-700 to-amber-900">inspirer la jeunesse</span>
             </h1>
             <p className="text-xl text-slate-600 leading-relaxed max-w-lg mb-8">
-              La Communauté Diocésaine des Lecteurs Juniors (CDLJ) encadre, forme et responsabilise les jeunes lecteurs de l&apos;Archidiocèse de Cotonou depuis {FOUNDED_YEAR}.
+              La Communauté Diocésaine des Lecteurs Juniors (CDLJ) encadre, forme et responsabilise les jeunes lecteurs de l&apos;Archidiocèse de Cotonou depuis {FOUNDED_YEAR}. Découvrez notre histoire, notre mission et notre organisation par{" "}
+              <Link href="/nos-vicariats" className="font-semibold text-amber-900 hover:underline">
+                vicariats forains
+              </Link>
+              .
             </p>
             <Link href="/news">
               <button className="group relative inline-flex items-center justify-center gap-2 bg-amber-900 hover:bg-amber-800 text-white px-8 py-4 rounded-full font-bold shadow-xl shadow-amber-900/20 transition-all hover:-translate-y-1 overflow-hidden">
@@ -96,7 +104,7 @@ export default function AboutPage() {
             <div className="relative aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/50 group">
               <Image
                 src="https://i.postimg.cc/WzL22YRK/about.png"
-                alt="Communauté en prière"
+                alt="Jeunes lecteurs juniors de la CDLJ en prière — Archidiocèse de Cotonou"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-1000 ease-in-out"
                 unoptimized

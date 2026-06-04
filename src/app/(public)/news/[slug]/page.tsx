@@ -42,7 +42,13 @@ export async function generateMetadata({
     publishedTime: post.publishedAt,
     authors: [post.author],
     section: post.category,
-    keywords: [post.category, "CDLJ actualités", "lecteurs juniors Cotonou"],
+    keywords: [
+      post.category,
+      "CDLJ actualités",
+      "lecteurs juniors Cotonou",
+      "Communauté Diocésaine des Lecteurs Juniors",
+      "Archidiocèse de Cotonou",
+    ],
   });
 }
 
@@ -64,7 +70,7 @@ export default async function NewsDetailPage({
   }
 
   return (
-    <div className="bg-white min-h-screen">
+    <article className="bg-white min-h-screen">
       <JsonLd
         data={[
           breadcrumbSchema([
@@ -218,6 +224,6 @@ export default async function NewsDetailPage({
           </div>
         )}
       </div>
-    </div>
+    </article>
   );
 }
