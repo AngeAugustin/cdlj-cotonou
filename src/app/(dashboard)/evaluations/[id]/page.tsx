@@ -1,12 +1,14 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { AlertCircle, CheckCircle, Loader2, Pencil, Upload } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AlertCircle, ArrowLeft, CheckCircle, Loader2, Pencil, Upload } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -63,6 +65,22 @@ function formatDecision(d?: string) {
   if (d === "PROMU") return "Promu";
   if (d === "MAINTENU") return "Maintenu";
   return String(d);
+}
+
+function BackToEvaluationsLink() {
+  return (
+    <Link
+      href="/evaluations"
+      title="Retour aux évaluations"
+      aria-label="Retour aux évaluations"
+      className={cn(
+        buttonVariants({ variant: "outline", size: "icon" }),
+        "rounded-xl border-slate-200 hover:bg-amber-50 hover:text-amber-900 hover:border-amber-200 shrink-0"
+      )}
+    >
+      <ArrowLeft className="h-4 w-4" />
+    </Link>
+  );
 }
 
 export default function EvaluationDetailsPage() {
@@ -305,18 +323,24 @@ export default function EvaluationDetailsPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="flex justify-center py-24">
-        <Loader2 className="w-10 h-10 animate-spin text-amber-900" />
+      <div className="w-full space-y-6 pb-12">
+        <BackToEvaluationsLink />
+        <div className="flex justify-center py-24">
+          <Loader2 className="w-10 h-10 animate-spin text-amber-900" />
+        </div>
       </div>
     );
   }
 
   if (loadError) {
     return (
-      <div className="max-w-3xl mx-auto mt-16">
-        <div className="rounded-2xl border border-red-100 bg-red-50 text-red-800 px-4 py-3 flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          {loadError}
+      <div className="w-full space-y-6 pb-12">
+        <BackToEvaluationsLink />
+        <div className="max-w-3xl">
+          <div className="rounded-2xl border border-red-100 bg-red-50 text-red-800 px-4 py-3 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            {loadError}
+          </div>
         </div>
       </div>
     );
@@ -454,7 +478,9 @@ export default function EvaluationDetailsPage() {
       ) : null}
 
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-        <div>
+        <div className="flex items-start gap-4 min-w-0 flex-1">
+          <BackToEvaluationsLink />
+          <div className="min-w-0">
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Évaluation</h1>
           <p className="text-slate-500 mt-2 text-lg">
             {evaluation.nom} · {evaluation.annee} · {evaluation.gradeId?.abbreviation ?? "—"} ·{" "}
@@ -464,6 +490,7 @@ export default function EvaluationDetailsPage() {
             {format(new Date(evaluation.activiteId?.dateDebut ?? new Date()), "PPP", { locale: fr })} —{" "}
             {format(new Date(evaluation.activiteId?.dateFin ?? new Date()), "PPP", { locale: fr })}
           </p>
+          </div>
         </div>
 
         {canManage ? (

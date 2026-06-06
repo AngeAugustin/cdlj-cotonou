@@ -4,6 +4,7 @@ import { Evaluation, EvaluationLecteur, EvaluationNote, type IEvaluation } from 
 import { CreateEvaluationInput, UpdateEvaluationInput, UpsertEvaluationNoteInput } from "./schema";
 import { Lecteur } from "@/modules/lecteurs/model";
 import { Grade } from "@/modules/grades/model";
+import "@/modules/activites/model";
 
 type EvaluationFullRow = IEvaluation & {
   gradeId?: { _id: mongoose.Types.ObjectId; name: string; abbreviation: string; level: number };
@@ -102,10 +103,22 @@ export class EvaluationRepository {
   async createEvaluation(data: CreateEvaluationInput): Promise<EvaluationFullRow> {
     await connectToDatabase();
 
-    // Règle TDR: il ne peut pas y avoir deux évaluations pour la même année.
-    const existsForYear = await Evaluation.exists({ annee: data.annee });
-    if (existsForYear) {
-      throw new Error(`Une évaluation pour l'année ${data.annee} existe déjà`);
+    // Règle TDR: une seule évaluation par grade et par année.
+    const existsForGradeYear = await Evaluation.exists({
+      annee: data.annee,
+      gradeId: new mongoose.Types.ObjectId(data.gradeId),
+    });
+    if (existsForGradeYear) {
+      throw new Error(`Une évaluation existe déjà pour ce grade en ${data.annee}`);
+    }
+
+    // Règle TDR: une seule évaluation par activité et par année.
+    const existsForActivityYear = await Evaluation.exists({
+      annee: data.annee,
+      activiteId: new mongoose.Types.ObjectId(data.activiteId),
+    });
+    if (existsForActivityYear) {
+      throw new Error(`Une évaluation existe déjà pour cette activité en ${data.annee}`);
     }
 
     // Règle TDR: il ne peut pas y avoir deux évaluations avec le même nom.
@@ -177,15 +190,20 @@ export class EvaluationRepository {
       throw new Error("Une évaluation en cours ne peut être modifiée que sur nombreNotes et activiteId");
     }
 
-    // Règle TDR: pas deux évaluations pour la même année.
-    if (data.annee !== undefined && data.annee !== ev.annee) {
-      const conflict = await Evaluation.findOne({ annee: data.annee, _id: { $ne: ev._id } }).lean();
-      if (conflict) throw new Error(`Une évaluation pour l'année ${data.annee} existe déjà`);
-    }
-
     const prevNombreNotes = ev.nombreNotes;
 
-    if (data.activiteId !== undefined) ev.activiteId = new mongoose.Types.ObjectId(data.activiteId);
+    if (data.activiteId !== undefined) {
+      const nextActiviteId = new mongoose.Types.ObjectId(data.activiteId);
+      const conflict = await Evaluation.findOne({
+        annee: ev.annee,
+        activiteId: nextActiviteId,
+        _id: { $ne: ev._id },
+      }).lean();
+      if (conflict) {
+        throw new Error(`Une évaluation existe déjà pour cette activité en ${ev.annee}`);
+      }
+      ev.activiteId = nextActiviteId;
+    }
     if (data.nombreNotes !== undefined) ev.nombreNotes = data.nombreNotes;
 
     await ev.save();

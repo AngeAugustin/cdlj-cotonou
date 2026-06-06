@@ -2,16 +2,13 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { UserService, createUserSchema } from "@/modules/users/service";
-
-function isSuperAdmin(roles: string[] | undefined) {
-  return roles?.includes("SUPERADMIN");
-}
+import { canManageUsers } from "@/lib/userAdminAccess";
 
 export async function GET() {
   try {
     const session: any = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (!isSuperAdmin(session.user.roles)) {
+    if (!canManageUsers(session.user.roles)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const service = new UserService();
@@ -26,7 +23,7 @@ export async function POST(request: Request) {
   try {
     const session: any = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (!isSuperAdmin(session.user.roles)) {
+    if (!canManageUsers(session.user.roles)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const body = await request.json();

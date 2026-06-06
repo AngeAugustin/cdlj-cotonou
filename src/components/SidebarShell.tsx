@@ -44,7 +44,7 @@ const ALL_NAV = [
   { name: "Évaluations",     href: "/evaluations",  icon: GraduationCap,  roles: ["DIOCESAIN", "SUPERADMIN"] },
   { name: "Actualités",      href: "/actualites",   icon: Newspaper,      roles: ["DIOCESAIN", "SUPERADMIN"] },
   { name: "Médiathèque",     href: "/gestion-mediatheque", icon: ImageIcon, roles: ["DIOCESAIN", "SUPERADMIN"] },
-  { name: "Utilisateurs",    href: "/utilisateurs", icon: Shield,         roles: ["SUPERADMIN"] },
+  { name: "Utilisateurs",    href: "/utilisateurs", icon: Shield,         roles: ["DIOCESAIN", "SUPERADMIN"] },
 ];
 
 interface SidebarShellProps {

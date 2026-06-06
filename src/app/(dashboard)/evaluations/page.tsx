@@ -28,6 +28,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { createEvaluationSchema, updateEvaluationSchema } from "@/modules/evaluations/schema";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+
+const SELECT_EMPTY = "__cdlj_empty__";
+
+type GradeOpt = { _id: string; name: string; abbreviation: string };
+
+function gradeDisplayLabel(value: string, grades: GradeOpt[], emptyLabel = "Sélectionner un grade…"): string {
+  if (!value || value === SELECT_EMPTY || value.length < 24) return emptyLabel;
+  const g = grades.find((x) => String(x._id) === value);
+  if (!g) return emptyLabel;
+  return g.abbreviation ? `${g.name} (${g.abbreviation})` : g.name;
+}
 
 type EvaluationNode = {
   _id: string;
@@ -39,6 +52,14 @@ type EvaluationNode = {
   gradeId: { _id?: string; name: string; abbreviation: string; level: number };
   activiteId: { _id?: string; nom: string; dateDebut: string | Date; dateFin: string | Date; lieu: string; montant?: number; terminee?: boolean };
 };
+
+function evaluationActiviteId(ev: EvaluationNode): string {
+  return String(ev.activiteId?._id ?? ev.activiteId ?? "");
+}
+
+function evaluationGradeId(ev: EvaluationNode): string {
+  return String(ev.gradeId?._id ?? ev.gradeId ?? "");
+}
 
 export default function EvaluationsPage() {
   const { data: session, status } = useSession();
@@ -168,6 +189,43 @@ export default function EvaluationsPage() {
     setFormOpen(true);
   };
 
+  const selectableActivites = useMemo(() => {
+    const year = typeof fAnnee === "number" ? fAnnee : null;
+    if (year == null) return activites;
+
+    const usedActiviteIds = new Set(
+      evaluations
+        .filter((ev) => ev.annee === year && ev._id !== editId)
+        .map((ev) => evaluationActiviteId(ev))
+        .filter(Boolean)
+    );
+
+    return activites.filter((a) => !usedActiviteIds.has(String(a._id)));
+  }, [activites, evaluations, fAnnee, editId]);
+
+  const usedGradeIdsForYear = useMemo(() => {
+    const year = typeof fAnnee === "number" ? fAnnee : null;
+    if (year == null) return new Set<string>();
+
+    return new Set(
+      evaluations
+        .filter((ev) => ev.annee === year && ev._id !== editId)
+        .map((ev) => evaluationGradeId(ev))
+        .filter(Boolean)
+    );
+  }, [evaluations, fAnnee, editId]);
+
+  useEffect(() => {
+    if (!formOpen || !fActiviteId) return;
+    const stillAvailable = selectableActivites.some((a) => String(a._id) === fActiviteId);
+    if (!stillAvailable) setFActiviteId("");
+  }, [formOpen, fActiviteId, selectableActivites]);
+
+  useEffect(() => {
+    if (!formOpen || !fGradeId || (editId && !editTerminee)) return;
+    if (usedGradeIdsForYear.has(fGradeId)) setFGradeId("");
+  }, [formOpen, fGradeId, usedGradeIdsForYear, editId, editTerminee]);
+
   const [deleteTarget, setDeleteTarget] = useState<EvaluationNode | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -230,13 +288,37 @@ export default function EvaluationsPage() {
 
       const validated = parsed.data;
 
-      // Règle TDR: il ne peut pas y avoir deux évaluations pour la même année.
-      // (Note: en édition en cours, on n'envoie pas/ni ne change `annee`.)
-      if (!inProgressEdit && typeof validated.annee === "number") {
-        const desiredYear = validated.annee;
-        const conflict = evaluations.some((ev) => ev.annee === desiredYear && (!editId || ev._id !== editId));
+      const targetYear = inProgressEdit
+        ? evaluations.find((ev) => ev._id === editId)?.annee
+        : typeof validated.annee === "number"
+          ? validated.annee
+          : undefined;
+
+      // Règle TDR: une seule évaluation par grade et par année.
+      const targetGradeId = !inProgressEdit ? validated.gradeId : undefined;
+      if (targetGradeId && targetYear !== undefined) {
+        const gradeConflict = evaluations.some(
+          (ev) =>
+            ev.annee === targetYear &&
+            evaluationGradeId(ev) === targetGradeId &&
+            ev._id !== editId
+        );
+        if (gradeConflict) {
+          throw new Error(`Une évaluation existe déjà pour ce grade en ${targetYear}`);
+        }
+      }
+
+      // Règle TDR: une seule évaluation par activité et par année.
+      const targetActiviteId = validated.activiteId;
+      if (targetActiviteId && targetYear !== undefined) {
+        const conflict = evaluations.some(
+          (ev) =>
+            ev.annee === targetYear &&
+            evaluationActiviteId(ev) === targetActiviteId &&
+            ev._id !== editId
+        );
         if (conflict) {
-          throw new Error(`Une évaluation pour l'année ${desiredYear} existe déjà`);
+          throw new Error(`Une évaluation existe déjà pour cette activité en ${targetYear}`);
         }
       }
 
@@ -502,23 +584,40 @@ export default function EvaluationsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="ev-grade">Grade concerné</Label>
-                <select
-                  id="ev-grade"
-                  value={fGradeId}
-                  onChange={(e) => setFGradeId(e.target.value)}
+                <Select
+                  value={fGradeId && fGradeId.length >= 24 ? fGradeId : SELECT_EMPTY}
+                  onValueChange={(v) => setFGradeId(!v || v === SELECT_EMPTY ? "" : v)}
                   disabled={optionsLoading || inProgressEdit}
-                  className={`w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 font-medium focus:outline-none focus:border-amber-900 ${
-                    inProgressEdit ? "opacity-60 cursor-not-allowed" : ""
-                  } ${formFieldErrors.gradeId ? "border-red-500 bg-red-50 focus:border-red-600" : ""}`}
-                  aria-invalid={!!formFieldErrors.gradeId}
                 >
-                  <option value="">Sélectionner un grade…</option>
-                  {grades.map((g) => (
-                    <option key={g._id} value={g._id}>
-                      {g.name} ({g.abbreviation})
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    id="ev-grade"
+                    className={cn(
+                      "mt-1.5 w-full h-12 rounded-2xl border-slate-200 bg-slate-50 text-slate-700 font-medium",
+                      inProgressEdit && "opacity-60 cursor-not-allowed",
+                      formFieldErrors.gradeId && "border-red-500 bg-red-50"
+                    )}
+                    aria-invalid={!!formFieldErrors.gradeId}
+                  >
+                    <SelectValue>{gradeDisplayLabel(fGradeId, grades)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SELECT_EMPTY}>Sélectionner un grade…</SelectItem>
+                    {grades.map((g) => {
+                      const used = usedGradeIdsForYear.has(String(g._id));
+                      return (
+                        <SelectItem key={g._id} value={g._id} disabled={used}>
+                          <span className="flex items-center gap-2">
+                            {used ? <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" /> : null}
+                            <span className={cn(used && "text-slate-400")}>
+                              {g.name} ({g.abbreviation})
+                              {used ? " — déjà utilisé cette année" : ""}
+                            </span>
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
                 {formFieldErrors.gradeId ? <p className="text-xs text-red-600 mt-1">{formFieldErrors.gradeId}</p> : null}
               </div>
               <div>
@@ -533,8 +632,12 @@ export default function EvaluationsPage() {
                   }`}
                   aria-invalid={!!formFieldErrors.activiteId}
                 >
-                  <option value="">Sélectionner une activité…</option>
-                  {activites.map((a) => (
+                  <option value="">
+                    {selectableActivites.length === 0
+                      ? "Aucune activité disponible pour cette année"
+                      : "Sélectionner une activité…"}
+                  </option>
+                  {selectableActivites.map((a) => (
                     <option key={a._id} value={a._id}>
                       {a.nom}
                     </option>

@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input";
 import { DashboardPageShell, DashboardPanel } from "@/components/dashboard/page-shell";
 import { ListPagination } from "@/components/ui/list-pagination";
 import { usePaginatedList } from "@/lib/pagination";
+import { canManageUsers } from "@/lib/userAdminAccess";
 
 const AVAILABLE_ROLES = ["SUPERADMIN", "DIOCESAIN", "VICARIAL", "PAROISSIAL"] as const;
 
@@ -101,7 +102,7 @@ export default function UtilisateursPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const roles = (session?.user as { roles?: string[] } | undefined)?.roles ?? [];
-  const isSuperAdmin = roles.includes("SUPERADMIN");
+  const canManage = canManageUsers(roles);
 
   const [usersList, setUsersList] = useState<ApiUser[]>([]);
   const [paroisses, setParoisses] = useState<ParoisseOpt[]>([]);
@@ -133,7 +134,7 @@ export default function UtilisateursPage() {
   };
 
   const loadAll = useCallback(async () => {
-    if (!isSuperAdmin) return;
+    if (!canManage) return;
     setLoading(true);
     try {
       const [ur, pr, vr] = await Promise.all([
@@ -150,17 +151,17 @@ export default function UtilisateursPage() {
     } finally {
       setLoading(false);
     }
-  }, [isSuperAdmin]);
+  }, [canManage]);
 
   useEffect(() => {
     if (status === "loading") return;
     if (!session) return;
-    if (!isSuperAdmin) {
+    if (!canManage) {
       router.replace("/dashboard");
       return;
     }
     loadAll();
-  }, [session, status, isSuperAdmin, router, loadAll]);
+  }, [session, status, canManage, router, loadAll]);
 
   const sortedParoisses = useMemo(
     () => [...paroisses].sort((a, b) => a.name.localeCompare(b.name, "fr")),
@@ -369,7 +370,7 @@ export default function UtilisateursPage() {
     goToNextPage,
   } = usePaginatedList(filteredUsers, searchTerm);
 
-  if (status === "loading" || (loading && usersList.length === 0 && isSuperAdmin)) {
+  if (status === "loading" || (loading && usersList.length === 0 && canManage)) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
         <Loader2 className="w-10 h-10 animate-spin text-amber-900" />
@@ -377,7 +378,7 @@ export default function UtilisateursPage() {
     );
   }
 
-  if (!isSuperAdmin) {
+  if (!canManage) {
     return null;
   }
 
@@ -575,11 +576,11 @@ export default function UtilisateursPage() {
                       </div>
                     </td>
                     <td className="p-5 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => openModalForEdit(user)}
-                          className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
+                          className="p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
                           title="Modifier"
                         >
                           <Edit2 className="w-5 h-5" />
@@ -587,7 +588,7 @@ export default function UtilisateursPage() {
                         <button
                           type="button"
                           onClick={() => setDeleteUserId(user._id)}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                          className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                           title="Supprimer"
                         >
                           <Trash2 className="w-5 h-5" />
