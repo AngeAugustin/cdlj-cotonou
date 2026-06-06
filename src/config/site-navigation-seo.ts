@@ -47,4 +47,10 @@ export const SITE_NAV_SEO: SiteNavSeoItem[] = [
     description:
       "Forums et espaces d'échange pour les lecteurs juniors et responsables de la CDLJ.",
   },
+  {
+    href: "/resultats",
+    name: "Résultats",
+    description:
+      "Consultation publique des résultats d'évaluation de l'année en cours par numéro lecteur.",
+  },
 ];

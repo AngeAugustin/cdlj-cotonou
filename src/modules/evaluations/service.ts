@@ -52,6 +52,10 @@ export class EvaluationService {
     return this.repo.getLecteurPublishedEvaluations(lecteurId);
   }
 
+  getPublicLecteurResultForYear(uniqueId: string, year?: number) {
+    return this.repo.getPublicLecteurResultForYear(uniqueId, year);
+  }
+
   hasAnyEvaluationForLecteur(lecteurId: string) {
     return this.repo.hasAnyEvaluationForLecteur(lecteurId);
   }

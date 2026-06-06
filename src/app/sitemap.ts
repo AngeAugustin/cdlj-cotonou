@@ -10,6 +10,7 @@ const STATIC_ROUTES: MetadataRoute.Sitemap = [
   { url: absoluteUrl("/news"), changeFrequency: "daily", priority: 0.9 },
   { url: absoluteUrl("/mediatheque"), changeFrequency: "weekly", priority: 0.8 },
   { url: absoluteUrl("/forums"), changeFrequency: "monthly", priority: 0.6 },
+  { url: absoluteUrl("/resultats"), changeFrequency: "weekly", priority: 0.8 },
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

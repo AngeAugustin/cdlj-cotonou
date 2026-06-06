@@ -76,6 +76,10 @@ export class LecteurService {
     return this.repository.findById(id);
   }
 
+  async getLecteurByUniqueId(uniqueId: string) {
+    return this.repository.findByUniqueId(uniqueId);
+  }
+
   async getLecteursByParish(parishId: string) {
     return this.repository.findByParishId(parishId);
   }

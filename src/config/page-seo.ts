@@ -84,4 +84,15 @@ export const PAGE_SEO = {
       "formateurs liturgiques Bénin",
     ],
   },
+  resultats: {
+    title: "Résultats des évaluations",
+    description:
+      "Consultez votre résultat d'évaluation CDLJ de l'année en cours : saisissez votre numéro lecteur pour voir votre décision et votre nouveau grade dès publication officielle.",
+    keywords: [
+      "résultats évaluation CDLJ",
+      "résultat lecteur junior Cotonou",
+      "promotion grade CDLJ",
+      "numéro lecteur résultat",
+    ],
+  },
 } as const satisfies Record<string, PageSeoEntry>;

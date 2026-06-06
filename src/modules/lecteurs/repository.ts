@@ -31,6 +31,18 @@ export class LecteurRepository {
     return row as ILecteur | null;
   }
 
+  async findByUniqueId(uniqueId: string): Promise<ILecteur | null> {
+    await connectToDatabase();
+    const cleanedUniqueId = uniqueId.trim();
+    if (!cleanedUniqueId) return null;
+    const row = await Lecteur.findOne({ uniqueId: cleanedUniqueId })
+      .populate("vicariatId", "name abbreviation")
+      .populate("paroisseId", "name")
+      .populate("gradeId", "name abbreviation level")
+      .lean();
+    return row as ILecteur | null;
+  }
+
   async findByParishId(parishId: string): Promise<ILecteur[]> {
     await connectToDatabase();
     const rows = await Lecteur.find({ paroisseId: parishId })

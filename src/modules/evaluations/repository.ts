@@ -535,6 +535,50 @@ export class EvaluationRepository {
     return result;
   }
 
+  async getPublicLecteurResultForYear(uniqueId: string, year = new Date().getFullYear()) {
+    await connectToDatabase();
+    const cleanedUniqueId = uniqueId.trim();
+    if (!cleanedUniqueId) return null;
+
+    const lecteur = await Lecteur.findOne({ uniqueId: cleanedUniqueId })
+      .populate("vicariatId", "name")
+      .populate("paroisseId", "name")
+      .lean();
+    if (!lecteur) return null;
+
+    const evaluations = await this.getLecteurPublishedEvaluations(String(lecteur._id));
+    const yearEval = evaluations.find((e) => Number(e.annee) === year);
+
+    const vicariat = lecteur.vicariatId as { name?: string } | null;
+    const paroisse = lecteur.paroisseId as { name?: string } | null;
+
+    const decision = yearEval?.decision;
+    const hasResult =
+      yearEval &&
+      (decision === "PROMU" || decision === "MAINTENU") &&
+      yearEval.gradeAffecte?.name;
+
+    return {
+      lecteur: {
+        nom: lecteur.nom,
+        prenoms: lecteur.prenoms,
+        uniqueId: lecteur.uniqueId,
+        vicariat: vicariat?.name ?? "—",
+        paroisse: paroisse?.name ?? "—",
+      },
+      result: hasResult
+        ? {
+            annee: yearEval.annee,
+            decision,
+            nouveauGrade: {
+              name: yearEval.gradeAffecte.name,
+              abbreviation: yearEval.gradeAffecte.abbreviation,
+            },
+          }
+        : null,
+    };
+  }
+
   async hasAnyEvaluationForLecteur(lecteurId: string): Promise<boolean> {
     await connectToDatabase();
     if (!mongoose.Types.ObjectId.isValid(lecteurId)) return false;

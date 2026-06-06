@@ -11,4 +11,5 @@ export const PUBLIC_NAV_LINKS: PublicNavLink[] = [
   { href: "/forums", label: "Forums" },
   { href: "/news", label: "Blog & Actualités", shortLabel: "Blog" },
   { href: "/mediatheque", label: "Médiathèque" },
+  { href: "/resultats", label: "Résultats" },
 ];
