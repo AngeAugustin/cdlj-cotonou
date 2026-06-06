@@ -7,10 +7,11 @@ export type LecteurFormContext = {
   vicariats: { _id: string; name: string }[];
   paroisses: { _id: string; name: string; vicariatId: string }[];
   lockParishVicariat?: {
-    paroisseId: string;
     vicariatId: string;
-    paroisseName?: string;
     vicariatName?: string;
+    /** Absent pour un VICARIAL en création : seul le vicariat est verrouillé. */
+    paroisseId?: string;
+    paroisseName?: string;
   };
 };
 
@@ -29,9 +30,11 @@ export async function getLecteurFormContext(user: {
 
   const roles: string[] = user.roles ?? [];
   const isParoissial = roles.includes("PAROISSIAL");
+  const isVicarial = roles.includes("VICARIAL");
 
   let vicariats: { _id: string; name: string }[] = [];
   let paroisses: { _id: string; name: string; vicariatId: string }[] = [];
+  let lockParishVicariat: LecteurFormContext["lockParishVicariat"];
 
   if (isParoissial && isValidObjectId(user.vicariatId) && isValidObjectId(user.parishId)) {
     const [vList, pList] = await Promise.all([
@@ -44,6 +47,27 @@ export async function getLecteurFormContext(user: {
       name: p.name,
       vicariatId: String(p.vicariatId),
     }));
+    lockParishVicariat = {
+      paroisseId: user.parishId,
+      vicariatId: user.vicariatId,
+      paroisseName: paroisses[0]?.name,
+      vicariatName: vicariats[0]?.name,
+    };
+  } else if (isVicarial && isValidObjectId(user.vicariatId)) {
+    const [vList, pList] = await Promise.all([
+      Vicariat.find({ _id: user.vicariatId }).sort({ name: 1 }).lean(),
+      Paroisse.find({ vicariatId: user.vicariatId }).sort({ name: 1 }).lean(),
+    ]);
+    vicariats = vList.map((v) => ({ _id: String(v._id), name: v.name }));
+    paroisses = pList.map((p) => ({
+      _id: String(p._id),
+      name: p.name,
+      vicariatId: String(p.vicariatId),
+    }));
+    lockParishVicariat = {
+      vicariatId: user.vicariatId,
+      vicariatName: vicariats[0]?.name,
+    };
   } else {
     const [vList, pList] = await Promise.all([
       Vicariat.find().sort({ name: 1 }).lean(),
@@ -56,16 +80,6 @@ export async function getLecteurFormContext(user: {
       vicariatId: String(p.vicariatId),
     }));
   }
-
-  const lockParishVicariat =
-    isParoissial && isValidObjectId(user.parishId) && isValidObjectId(user.vicariatId)
-      ? {
-          paroisseId: user.parishId,
-          vicariatId: user.vicariatId,
-          paroisseName: paroisses[0]?.name,
-          vicariatName: vicariats[0]?.name,
-        }
-      : undefined;
 
   return { vicariats, paroisses, lockParishVicariat };
 }

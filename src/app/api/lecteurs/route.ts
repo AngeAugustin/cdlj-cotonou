@@ -87,6 +87,19 @@ export async function POST(request: Request) {
     if (isParoissial && session.user.parishId) body.paroisseId = session.user.parishId;
     if (isParoissial && session.user.vicariatId) body.vicariatId = session.user.vicariatId;
 
+    if (isVicarial && session.user.vicariatId) {
+      body.vicariatId = session.user.vicariatId;
+      if (body.paroisseId) {
+        const inScope = await assertParoisseInVicariat(String(body.paroisseId), String(session.user.vicariatId));
+        if (!inScope) {
+          return NextResponse.json(
+            { error: "Cette paroisse n'appartient pas à votre vicariat" },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     const validatedData = createLecteurSchema.parse(body);
 
     const service = new LecteurService();

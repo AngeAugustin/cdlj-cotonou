@@ -7,10 +7,10 @@ type EditLecteurFormClientProps = {
   lecteurId: string;
   initialData: LecteurFormInitial;
   lockParishVicariat?: {
-    paroisseId: string;
     vicariatId: string;
-    paroisseName?: string;
     vicariatName?: string;
+    paroisseId?: string;
+    paroisseName?: string;
   };
   lockGradeId: boolean;
   vicariats: { _id: string; name: string }[];

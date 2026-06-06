@@ -161,10 +161,10 @@ export function LecteurForm({
   lecteurId?: string;
   initialData?: LecteurFormInitial | null;
   lockParishVicariat?: {
-    paroisseId: string;
     vicariatId: string;
-    paroisseName?: string;
     vicariatName?: string;
+    paroisseId?: string;
+    paroisseName?: string;
   };
   lockGradeId?: boolean;
   vicariats?: { _id: string; name: string }[];
@@ -269,14 +269,13 @@ export function LecteurForm({
   }, [mode, lecteurId, initialData, lockParoisseId, lockVicariatId, lastStepIndex]);
 
   useEffect(() => {
-    if (!lockParoisseId || !lockVicariatId) return;
-    form.setValue("paroisseId", lockParoisseId);
-    form.setValue("vicariatId", lockVicariatId);
+    if (lockVicariatId) form.setValue("vicariatId", lockVicariatId);
+    if (lockParoisseId) form.setValue("paroisseId", lockParoisseId);
   }, [lockParoisseId, lockVicariatId, form]);
 
   // Si l’utilisateur change de vicariat, on évite de garder une paroisse invalide.
   useEffect(() => {
-    if (lockParishVicariat) return; // champ masqué + valeurs fixées par le parent
+    if (lockParoisseId) return;
 
     const vid = form.getValues("vicariatId");
     const pid = form.getValues("paroisseId");
@@ -285,7 +284,7 @@ export function LecteurForm({
 
     const allowed = paroisses.some((p) => String(p._id) === String(pid) && String(p.vicariatId ?? "") === String(vid));
     if (!allowed) form.setValue("paroisseId", "");
-  }, [lockParishVicariat, paroisses, form, watchedVicariatId]);
+  }, [lockParoisseId, paroisses, form, watchedVicariatId]);
 
   const goToStep = useCallback(
     (index: number) => {
@@ -721,22 +720,55 @@ export function LecteurForm({
           {/* Étape 2 — Rattachement */}
           {step === 2 && (
             <>
-              {lockParishVicariat ? (
+              {lockVicariatId ? (
                 <>
                   <FormItem className="w-full md:col-span-2">
                     <FormLabel>Vicariat</FormLabel>
                     <div className="min-h-11 px-3 py-2.5 flex items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-medium w-full">
-                      {lockParishVicariat.vicariatName ?? "Non renseigné"}
-                    </div>
-                  </FormItem>
-                  <FormItem className="w-full md:col-span-2">
-                    <FormLabel>Paroisse</FormLabel>
-                    <div className="min-h-11 px-3 py-2.5 flex items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-medium w-full">
-                      {lockParishVicariat.paroisseName ?? "Non renseigné"}
+                      {lockParishVicariat?.vicariatName ?? "Non renseigné"}
                     </div>
                   </FormItem>
                   <input type="hidden" {...form.register("vicariatId")} />
-                  <input type="hidden" {...form.register("paroisseId")} />
+                  {lockParoisseId ? (
+                    <>
+                      <FormItem className="w-full md:col-span-2">
+                        <FormLabel>Paroisse</FormLabel>
+                        <div className="min-h-11 px-3 py-2.5 flex items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-medium w-full">
+                          {lockParishVicariat?.paroisseName ?? "Non renseigné"}
+                        </div>
+                      </FormItem>
+                      <input type="hidden" {...form.register("paroisseId")} />
+                    </>
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="paroisseId"
+                      render={({ field }) => (
+                        <FormItem className="w-full md:col-span-2">
+                          <FormLabel>Paroisse</FormLabel>
+                          <Select
+                            value={field.value && field.value.length >= 24 ? field.value : SELECT_EMPTY}
+                            onValueChange={(v) => field.onChange(v === SELECT_EMPTY ? "" : v)}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="w-full min-w-0 h-11 rounded-xl border-slate-200 justify-between">
+                                <SelectValue>{entityDisplayLabel(field.value ?? "", filteredParoisses)}</SelectValue>
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value={SELECT_EMPTY}>Non renseigné</SelectItem>
+                              {filteredParoisses.map((p) => (
+                                <SelectItem key={p._id} value={p._id}>
+                                  {p.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </>
               ) : (
                 <>
