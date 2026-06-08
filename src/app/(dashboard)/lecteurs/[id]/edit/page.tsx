@@ -1,15 +1,12 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { ArrowLeft, FileEdit, Hash } from "lucide-react";
-import { authOptions } from "@/lib/auth";
-import connectToDatabase from "@/lib/mongoose";
-import { Vicariat } from "@/modules/vicariats/model";
-import { Paroisse } from "@/modules/paroisses/model";
-import { LecteurService } from "@/modules/lecteurs/service";
-import { EvaluationService } from "@/modules/evaluations/service";
-import { serializeLecteur } from "@/modules/lecteurs/serializeApi";
+import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { ArrowLeft, FileEdit, Hash, Loader2, AlertCircle } from "lucide-react";
 import type { LecteurFormInitial } from "@/modules/lecteurs/components/LecteurForm";
+import type { LecteurFormContext } from "@/modules/lecteurs/formContext";
 import { DashboardPageShell } from "@/components/dashboard/page-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -24,6 +21,8 @@ const HERO_AMBER_BG = (
   </>
 );
 
+const EDIT_ROLES = ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"];
+
 function refId(v: unknown): string {
   if (v == null) return "";
   if (typeof v === "string") return v;
@@ -31,93 +30,158 @@ function refId(v: unknown): string {
   return "";
 }
 
-function canAccessLecteur(
-  user: { roles?: string[]; parishId?: string; vicariatId?: string },
-  lecteur: Record<string, unknown>
-) {
-  const roles: string[] = user.roles ?? [];
-  if (roles.includes("SUPERADMIN") || roles.includes("DIOCESAIN")) return true;
-
-  const pid = refId(lecteur.paroisseId);
-  const vid = refId(lecteur.vicariatId);
-
-  if (roles.includes("VICARIAL") && user.vicariatId && vid === String(user.vicariatId)) return true;
-  if (roles.includes("PAROISSIAL") && user.parishId && pid === String(user.parishId)) return true;
-
-  return false;
+function refName(v: unknown): string | undefined {
+  if (v && typeof v === "object" && "name" in v) {
+    const name = (v as { name?: unknown }).name;
+    return typeof name === "string" ? name : undefined;
+  }
+  return undefined;
 }
 
-function canEdit(user: { roles?: string[] }) {
-  return (user.roles ?? []).some((r) => ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"].includes(r));
-}
-
-export default async function EditLecteurPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/auth/login");
-
-  const user = session.user as { roles?: string[]; parishId?: string; vicariatId?: string };
-  if (!canEdit(user)) redirect("/lecteurs");
-
-  const { id } = await params;
-
-  await connectToDatabase();
-
-  const lecteurService = new LecteurService();
-  const lecteurDoc = await lecteurService.getLecteurById(id);
-  if (!lecteurDoc) notFound();
-
-  const lecteurRaw = lecteurDoc as unknown as Record<string, unknown>;
-  if (!canAccessLecteur(user, lecteurRaw)) redirect("/lecteurs");
-
-  const lecteur = serializeLecteur(lecteurDoc) as LecteurFormInitial & {
-    nom?: string;
-    prenoms?: string;
-    uniqueId?: string;
-    paroisseId?: { name?: string } | string | null;
-    vicariatId?: { name?: string } | string | null;
+type EditPageState = {
+  lecteur: LecteurFormInitial & { nom?: string; prenoms?: string; uniqueId?: string };
+  lockGradeId: boolean;
+  vicariats: { _id: string; name: string }[];
+  paroisses: { _id: string; name: string; vicariatId: string }[];
+  lockParishVicariat?: {
+    paroisseId: string;
+    vicariatId: string;
+    paroisseName?: string;
+    vicariatName?: string;
   };
+};
 
-  const evaluationService = new EvaluationService();
-  const lockGradeId = await evaluationService.hasAnyEvaluationForLecteur(id);
-
-  const roles = user.roles ?? [];
+export default function EditLecteurPage() {
+  const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
+  const { data: session, status } = useSession();
+  const roles: string[] = (session?.user as { roles?: string[] })?.roles ?? [];
+  const canEdit = roles.some((r) => EDIT_ROLES.includes(r));
   const isParoissial = roles.includes("PAROISSIAL");
   const isVicarial = roles.includes("VICARIAL");
 
-  let vicariats: { _id: string; name: string }[] = [];
-  let paroisses: { _id: string; name: string; vicariatId: string }[] = [];
+  const [state, setState] = useState<EditPageState | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  let lockParishVicariat:
-    | {
-        paroisseId: string;
-        vicariatId: string;
-        paroisseName?: string;
-        vicariatName?: string;
+  useEffect(() => {
+    if (status !== "authenticated" || !canEdit || !id) return;
+
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+
+    (async () => {
+      try {
+        const [lecteurRes, evalRes, contextRes] = await Promise.all([
+          fetch(`/api/lecteurs/${id}`),
+          fetch(`/api/lecteurs/${id}/evaluations/concerned`),
+          !isParoissial && !isVicarial ? fetch("/api/lecteurs/form-context") : Promise.resolve(null),
+        ]);
+
+        const lecteurData = await lecteurRes.json().catch(() => ({}));
+        if (!lecteurRes.ok) throw new Error(lecteurData.error ?? "Lecteur introuvable");
+
+        const evalData = await evalRes.json().catch(() => ({}));
+        if (!evalRes.ok) throw new Error(evalData.error ?? "Impossible de vérifier les évaluations");
+
+        let vicariats: { _id: string; name: string }[] = [];
+        let paroisses: { _id: string; name: string; vicariatId: string }[] = [];
+        let lockParishVicariat: EditPageState["lockParishVicariat"];
+
+        const lecteur = lecteurData.lecteur as EditPageState["lecteur"];
+
+        if (isParoissial || isVicarial) {
+          lockParishVicariat = {
+            paroisseId: refId(lecteur.paroisseId),
+            vicariatId: refId(lecteur.vicariatId),
+            paroisseName: refName(lecteur.paroisseId),
+            vicariatName: refName(lecteur.vicariatId),
+          };
+        } else if (contextRes) {
+          const contextData = await contextRes.json().catch(() => ({}));
+          if (!contextRes.ok) throw new Error(contextData.error ?? "Impossible de charger le formulaire");
+          const ctx = contextData as LecteurFormContext;
+          vicariats = ctx.vicariats ?? [];
+          paroisses = ctx.paroisses ?? [];
+        }
+
+        if (!cancelled) {
+          setState({
+            lecteur,
+            lockGradeId: Boolean(evalData.hasEvaluations),
+            vicariats,
+            paroisses,
+            lockParishVicariat,
+          });
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setLoadError(err instanceof Error ? err.message : "Erreur de chargement");
+          setState(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    | undefined;
+    })();
 
-  if (isParoissial || isVicarial) {
-    lockParishVicariat = {
-      paroisseId: refId(lecteur.paroisseId),
-      vicariatId: refId(lecteur.vicariatId),
-      paroisseName:
-        lecteur.paroisseId && typeof lecteur.paroisseId === "object" && "name" in lecteur.paroisseId
-          ? String((lecteur.paroisseId as { name?: string }).name ?? "")
-          : undefined,
-      vicariatName:
-        lecteur.vicariatId && typeof lecteur.vicariatId === "object" && "name" in lecteur.vicariatId
-          ? String((lecteur.vicariatId as { name?: string }).name ?? "")
-          : undefined,
+    return () => {
+      cancelled = true;
     };
-  } else {
-    const [vList, pList] = await Promise.all([
-      Vicariat.find().sort({ name: 1 }).lean(),
-      Paroisse.find().sort({ name: 1 }).lean(),
-    ]);
-    vicariats = vList.map((v) => ({ _id: v._id.toString(), name: v.name }));
-    paroisses = pList.map((p) => ({ _id: p._id.toString(), name: p.name, vicariatId: String(p.vicariatId) }));
+  }, [id, status, canEdit, isParoissial, isVicarial]);
+
+  if (status === "loading" || loading) {
+    return (
+      <div className="flex h-64 items-center justify-center text-slate-400">
+        <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+        Chargement…
+      </div>
+    );
   }
 
+  if (!canEdit) {
+    return (
+      <div className="flex h-64 items-center justify-center text-slate-400">
+        Vous n&apos;avez pas l&apos;autorisation de modifier ce lecteur.
+      </div>
+    );
+  }
+
+  if (loadError || !state) {
+    return (
+      <DashboardPageShell
+        title="Modifier le lecteur"
+        actions={
+          <Link
+            href="/lecteurs"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "icon" }),
+              "rounded-xl border-slate-200 hover:bg-amber-50 hover:text-amber-900 hover:border-amber-200"
+            )}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        }
+      >
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-red-100 bg-red-50/80 px-6 py-12 text-center">
+          <AlertCircle className="h-10 w-10 text-red-500" />
+          <p className="max-w-md text-sm font-medium text-red-800">
+            {loadError ?? "Impossible de charger le formulaire de modification."}
+          </p>
+          <button
+            type="button"
+            onClick={() => router.refresh()}
+            className={cn(buttonVariants({ variant: "outline" }), "rounded-xl")}
+          >
+            Réessayer
+          </button>
+        </div>
+      </DashboardPageShell>
+    );
+  }
+
+  const { lecteur, lockGradeId, vicariats, paroisses, lockParishVicariat } = state;
   const fullName = `${lecteur.nom ?? ""} ${lecteur.prenoms ?? ""}`.trim();
 
   return (
