@@ -381,15 +381,15 @@ export default function AssembleesPage() {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            <span className="sm:hidden">Assemb. Générales</span>
-            <span className="hidden sm:inline">Assemblées Générales</span>
+            <span className="sm:hidden">Conseils dioc.</span>
+            <span className="hidden sm:inline">Conseils diocésains</span>
           </h1>
           <p className="text-slate-500 mt-2 text-lg">
             {isManager
-              ? "Créez, gérez les rapports d'AG."
+              ? "Créez, gérez les rapports de CD."
               : isVicarial
                 ? "Soumettez votre rapport et consultez l'historique."
-                : "Consultez les assemblées générales."}
+                : "Consultez les conseils diocésains."}
           </p>
         </div>
         {isManager ? (
@@ -399,7 +399,7 @@ export default function AssembleesPage() {
               onClick={openCreate}
               size="icon"
               title="Ajouter une assemblée générale"
-              aria-label="Ajouter une assemblée générale"
+              aria-label="Ajouter un conseil diocésain"
               className="h-11 w-11 shrink-0 rounded-xl bg-amber-900 hover:bg-amber-800 text-white shadow-xl shadow-amber-900/20 lg:hidden"
             >
               <Plus className="w-5 h-5" />
@@ -409,7 +409,7 @@ export default function AssembleesPage() {
               onClick={openCreate}
               className="hidden lg:inline-flex h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-xl shadow-amber-900/20 shrink-0"
             >
-              <Plus className="w-5 h-5 mr-2" /> Créer une Assemblée
+              <Plus className="w-5 h-5 mr-2" /> Créer un conseil diocésain
             </Button>
           </>
         ) : null}
@@ -450,11 +450,11 @@ export default function AssembleesPage() {
       {loadError ? null : filtered.length === 0 ? (
         <div className="bg-white p-12 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20 py-24 flex flex-col items-center text-center">
           <FileText className="w-16 h-16 text-slate-300 mb-6" />
-          <h2 className="text-xl font-bold text-slate-900">Aucune assemblée à afficher</h2>
+          <h2 className="text-xl font-bold text-slate-900">Aucun conseil diocésain à afficher</h2>
           <p className="text-slate-500 mt-2 max-w-md">
             {tab === "encours"
-              ? "Il n'y a pas d'assemblée générale en cours pour le moment."
-              : "Aucune assemblée générale terminée / passée."}
+              ? "Il n'y a pas de conseil diocésain en cours pour le moment."
+              : "Aucun conseil diocésain terminé / passé."}
           </p>
         </div>
       ) : (
@@ -602,13 +602,13 @@ export default function AssembleesPage() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto rounded-3xl sm:max-w-4xl">
           <DialogHeader>
-            <DialogTitle>{editId ? "Modifier l'assemblée" : "Créer une assemblée générale"}</DialogTitle>
+            <DialogTitle>{editId ? "Modifier le conseil diocésain" : "Créer un conseil diocésain"}</DialogTitle>
             <DialogDescription>Nom, date et heure, lieu et (optionnel) une image de présentation.</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={submitEdit} className="space-y-4">
             <div>
-              <Label htmlFor="ag-nom">Nom de l’assemblée générale</Label>
+              <Label htmlFor="ag-nom">Nom du conseil diocésain</Label>
               <Input id="ag-nom" value={fNom} onChange={(e) => setFNom(e.target.value)} className="rounded-xl mt-1.5" />
             </div>
 
@@ -630,7 +630,7 @@ export default function AssembleesPage() {
             </div>
 
             <div>
-              <Label>Image de l’assemblée (optionnel)</Label>
+              <Label>Image du conseil diocésain (optionnel)</Label>
               <div className="mt-1.5 flex flex-wrap items-center gap-3">
                 <Input
                   type="file"
@@ -672,8 +672,8 @@ export default function AssembleesPage() {
       <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <DialogContent className="rounded-3xl">
           <DialogHeader>
-            <DialogTitle>Supprimer cette assemblée ?</DialogTitle>
-            <DialogDescription>Cette action supprime également tous les rapports associés à cette assemblée générale.</DialogDescription>
+            <DialogTitle>Supprimer ce conseil diocésain ?</DialogTitle>
+            <DialogDescription>Cette action supprime également tous les rapports associés à ce conseil diocésain.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button type="button" variant="outline" className="rounded-xl" onClick={() => setDeleteTarget(null)}>
@@ -695,7 +695,7 @@ export default function AssembleesPage() {
       <Dialog open={!!terminTarget} onOpenChange={(o) => !o && setTerminTarget(null)}>
         <DialogContent className="rounded-3xl">
           <DialogHeader>
-            <DialogTitle>Marquer cette assemblée comme terminée ?</DialogTitle>
+            <DialogTitle>Marquer ce conseil diocésain comme terminée ?</DialogTitle>
             <DialogDescription>
               Une fois terminée, la soumission des rapports sera bloquée pour les vicariats.
             </DialogDescription>

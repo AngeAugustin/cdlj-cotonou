@@ -3,8 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { AssembleeGeneraleService } from "@/modules/assemblees/service";
 import { upsertAssembleeRapportSchema } from "@/modules/assemblees/schema";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { uploadToBlob } from "@/lib/blob";
 
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -108,18 +107,13 @@ export async function POST(
       return NextResponse.json({ error: "Fichier trop volumineux (max 10 Mo)" }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
     const ext = file.name.split(".").pop()?.toLowerCase() || "bin";
     const filenameVicariatPart = vicariatId ? vicariatId : "DIOCESAIN";
     const filename = `rapport-${assembleeId}-${filenameVicariatPart}-${Date.now()}-${randomToken()}.${ext}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(path.join(uploadDir, filename), buffer);
+    const fileUrl = await uploadToBlob(`rapports/${filename}`, file, { contentType: file.type });
 
     const payload = upsertAssembleeRapportSchema.parse({
-      fileUrl: `/uploads/${filename}`,
+      fileUrl,
       originalName: file.name,
       mimeType: file.type,
       vicariatMention,
