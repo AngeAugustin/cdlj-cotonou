@@ -9,6 +9,7 @@ import { FACEBOOK_URL, TIKTOK_URL } from "@/config/social-links";
 import { getNewsBySlug, getPublishedNews, type PublicNewsDetail } from "@/lib/public-cache";
 import { createPageMetadata, stripHtml, truncateDescription } from "@/lib/seo";
 import { articleSchema, breadcrumbSchema } from "@/lib/seo-schemas";
+import { NewsEngagement } from "@/components/news/NewsEngagement";
 
 export const revalidate = 120;
 
@@ -173,6 +174,8 @@ export default async function NewsDetailPage({
           className="article-body"
           dangerouslySetInnerHTML={{ __html: post.body }}
         />
+
+        <NewsEngagement slug={post.slug} />
 
         {/* ── SOCIAL FOLLOW ─────────────────────────────────── */}
         <div className="mt-16 flex flex-col sm:flex-row items-center gap-5 bg-slate-50 border border-slate-100 rounded-2xl px-8 py-6">

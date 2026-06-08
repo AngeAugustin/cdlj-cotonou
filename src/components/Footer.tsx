@@ -101,6 +101,13 @@ export function Footer() {
           <p className="font-medium text-slate-500">
             © {new Date().getFullYear()} <span className="text-amber-900">CDLJ</span>. Tous droits réservés.
           </p>
+          <Link
+            href="/confidentialite"
+            prefetch
+            className="hover:text-amber-900 transition-colors font-medium"
+          >
+            Confidentialité & cookies
+          </Link>
         </div>
       </div>
     </footer>

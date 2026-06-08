@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
-  Newspaper, Plus, Edit2, Trash2, Eye, EyeOff, X, Loader2,
+  Newspaper, Plus, Edit2, Trash2, Eye, EyeOff, Loader2,
   CheckCircle2, AlertCircle, Search, Star, StarOff,
-  Calendar, Tag, ImageOff, Send, Clock,
+  Calendar, Tag, Send, BarChart3, Heart, MessageCircle,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,6 @@ export default function ActualitesPage() {
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [previewItem, setPreviewItem] = useState<Actualite | null>(null);
 
   type ConfirmAction = {
     id: string;
@@ -337,7 +336,7 @@ export default function ActualitesPage() {
                   </button>
                 </div>
 
-                <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2">
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2 space-y-2">
                   <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
                     <span className="inline-flex items-center gap-1.5 min-w-0">
                       <span className="w-6 h-6 rounded-full bg-amber-900/10 flex items-center justify-center text-[10px] font-bold text-amber-900 shrink-0">
@@ -349,6 +348,19 @@ export default function ActualitesPage() {
                       <Calendar className="w-3.5 h-3.5" /> {formatDate(a.createdAt)}
                     </span>
                   </div>
+                  {a.published && (
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                      <span className="inline-flex items-center gap-1">
+                        <Eye className="w-3 h-3" /> {a.viewCount ?? 0}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Heart className="w-3 h-3" /> {a.likeCount ?? 0}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <MessageCircle className="w-3 h-3" /> {a.commentCount ?? 0}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-end gap-1.5 pt-1">
@@ -368,13 +380,20 @@ export default function ActualitesPage() {
                       <Send className="w-4 h-4" />
                     </button>
                   )}
-                  <button
-                    onClick={() => setPreviewItem(a)}
+                  <Link
+                    href={`/actualites/${a._id}/stats`}
+                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                    title="Statistiques"
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                  </Link>
+                  <Link
+                    href={`/actualites/${a._id}`}
                     className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all"
-                    title="Aperçu"
+                    title="Détail"
                   >
                     <Eye className="w-4 h-4" />
-                  </button>
+                  </Link>
                   <Link
                     href={`/actualites/${a._id}/edit`}
                     className="p-2 text-slate-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-all"
@@ -463,74 +482,6 @@ export default function ActualitesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Preview Overlay ───────────────────────────────── */}
-      {previewItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[88vh] overflow-y-auto">
-
-            {previewItem.image ? (
-              <div className="relative h-60 w-full overflow-hidden rounded-t-3xl">
-                <img src={previewItem.image} alt={previewItem.title} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-              </div>
-            ) : (
-              <div className="h-20 rounded-t-3xl bg-gradient-to-r from-amber-800 to-amber-900 flex items-center justify-center">
-                <ImageOff className="w-8 h-8 text-white/40" />
-              </div>
-            )}
-
-            <div className="p-8">
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 text-xs font-semibold px-3 py-1 rounded-full">
-                  <Tag className="w-3 h-3" /> {previewItem.category}
-                </span>
-                <button onClick={() => setPreviewItem(null)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <h2 className="text-2xl font-extrabold text-slate-900 mb-3 leading-tight">
-                {previewItem.title}
-              </h2>
-
-              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 mb-6 pb-5 border-b border-slate-100">
-                <span>{previewItem.author}{previewItem.authorRole && ` · ${previewItem.authorRole}`}</span>
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5" /> {formatDate(previewItem.createdAt)}
-                </span>
-                {previewItem.readTime && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" /> {previewItem.readTime}
-                  </span>
-                )}
-              </div>
-
-              {(previewItem.tags?.length ?? 0) > 0 && (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {previewItem.tags!.map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full"
-                    >
-                      <Tag className="w-3 h-3" /> {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <p className="text-slate-600 font-medium italic border-l-4 border-amber-700 pl-4 mb-6">
-                {previewItem.excerpt}
-              </p>
-
-              <div
-                className="article-body article-body--editor"
-                dangerouslySetInnerHTML={{ __html: previewItem.body }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

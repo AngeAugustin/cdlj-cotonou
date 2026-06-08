@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { CookieConsent } from "@/components/CookieConsent";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { PUBLIC_NAV_LINKS } from "@/config/public-nav";
@@ -17,6 +18,7 @@ export default function PublicLayout({
       <Navbar links={PUBLIC_NAV_LINKS} />
       <main className="flex-1">{children}</main>
       <Footer />
+      <CookieConsent />
     </div>
   );
 }

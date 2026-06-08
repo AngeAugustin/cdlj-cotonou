@@ -23,6 +23,9 @@ export type Actualite = {
   tags?: string[];
   featured: boolean;
   published: boolean;
+  viewCount?: number;
+  likeCount?: number;
+  commentCount?: number;
   createdAt: string;
 };
 

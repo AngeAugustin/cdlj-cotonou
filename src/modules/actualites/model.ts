@@ -13,6 +13,9 @@ export interface IActualite extends Document {
   tags: string[];
   featured: boolean;
   published: boolean;
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,6 +34,9 @@ const ActualiteSchema = new Schema<IActualite>(
     tags:       { type: [String], default: [] },
     featured:   { type: Boolean, default: false },
     published:  { type: Boolean, default: false },
+    viewCount:    { type: Number, default: 0 },
+    likeCount:    { type: Number, default: 0 },
+    commentCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

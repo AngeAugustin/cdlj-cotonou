@@ -95,4 +95,15 @@ export const PAGE_SEO = {
       "numéro lecteur résultat",
     ],
   },
+  confidentialite: {
+    title: "Confidentialité & cookies",
+    description:
+      "Politique de confidentialité et d'utilisation des cookies du site CDLJ Cotonou : consentement, données d'engagement sur les actualités et vos droits.",
+    keywords: [
+      "confidentialité CDLJ",
+      "cookies CDLJ Cotonou",
+      "données personnelles lecteurs juniors",
+      "RGPD cookies Bénin",
+    ],
+  },
 } as const satisfies Record<string, PageSeoEntry>;
