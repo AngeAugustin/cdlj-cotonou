@@ -170,11 +170,7 @@ export default async function NewsDetailPage({
 
         {/* Body — rendered HTML from rich text editor */}
         <div
-          className="prose prose-slate prose-lg max-w-none
-                     prose-headings:font-extrabold prose-headings:text-slate-800
-                     prose-p:text-slate-700 prose-p:leading-relaxed
-                     prose-ul:text-slate-700 prose-ol:text-slate-700
-                     prose-a:text-amber-800 prose-a:underline"
+          className="article-body"
           dangerouslySetInnerHTML={{ __html: post.body }}
         />
 

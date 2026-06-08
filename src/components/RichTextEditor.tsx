@@ -77,7 +77,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
       : content) || "<p></p>",
     editorProps: {
       attributes: {
-        class: `outline-none px-5 py-4 text-slate-700 leading-relaxed prose prose-sm max-w-none prose-headings:text-slate-800 prose-headings:font-bold prose-p:my-1.5 prose-ul:my-1 prose-ol:my-1 ${
+        class: `article-body article-body--editor outline-none px-5 py-4 ${
           fillHeight ? "min-h-full h-full" : "min-h-[240px]"
         }`,
       },

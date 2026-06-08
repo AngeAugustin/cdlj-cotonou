@@ -524,7 +524,7 @@ export default function ActualitesPage() {
               </p>
 
               <div
-                className="prose prose-slate prose-sm max-w-none"
+                className="article-body article-body--editor"
                 dangerouslySetInnerHTML={{ __html: previewItem.body }}
               />
             </div>
