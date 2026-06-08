@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { ActualiteService } from "@/modules/actualites/service";
@@ -46,6 +47,7 @@ export async function PUT(
     const service = new ActualiteService();
     const result = await service.updateActualite(id, validated);
     if (!result) return NextResponse.json({ error: "Actualité introuvable" }, { status: 404 });
+    revalidateTag("actualites", "max");
     return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });
@@ -67,6 +69,7 @@ export async function DELETE(
     const service = new ActualiteService();
     const deleted = await service.deleteActualite(id);
     if (!deleted) return NextResponse.json({ error: "Actualité introuvable" }, { status: 404 });
+    revalidateTag("actualites", "max");
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowLeft, Calendar, User, Clock, Tag, ArrowRight, Facebook } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, ArrowRight, Facebook, Bookmark, Hash } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { FACEBOOK_URL, TIKTOK_URL } from "@/config/social-links";
@@ -44,6 +44,7 @@ export async function generateMetadata({
     section: post.category,
     keywords: [
       post.category,
+      ...post.tags,
       "CDLJ actualités",
       "lecteurs juniors Cotonou",
       "Communauté Diocésaine des Lecteurs Juniors",
@@ -136,18 +137,31 @@ export default async function NewsDetailPage({
             <span>{post.date}</span>
           </div>
 
-          {post.readTime && (
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-amber-700" />
-              <span>{post.readTime}</span>
-            </div>
-          )}
-
           <div className="flex items-center gap-1.5">
-            <Tag className="w-4 h-4 text-amber-700" />
+            <Bookmark className="w-4 h-4 text-amber-700" />
             <span>{post.category}</span>
           </div>
         </div>
+
+        {(post.tags.length > 0 || post.readTime) && (
+          <div className="flex flex-wrap items-center gap-2 mb-10 -mt-4">
+            {post.readTime && (
+              <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-full">
+                <Clock className="w-3.5 h-3.5 text-amber-700" />
+                {post.readTime}
+              </span>
+            )}
+            {post.tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-900 text-xs font-semibold px-3 py-1.5 rounded-full border border-amber-100"
+              >
+                <Hash className="w-3 h-3" />
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Lead paragraph */}
         <p className="text-xl text-slate-600 leading-relaxed font-medium mb-10 border-l-4 border-amber-900 pl-5">

@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import {
   Newspaper, Plus, Edit2, Trash2, Eye, EyeOff, X, Loader2,
   CheckCircle2, AlertCircle, Search, Star, StarOff,
-  Calendar, Tag, ImageOff, Send,
+  Calendar, Tag, ImageOff, Send, Clock,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -494,12 +494,30 @@ export default function ActualitesPage() {
                 {previewItem.title}
               </h2>
 
-              <div className="flex items-center gap-4 text-xs text-slate-500 mb-6 pb-5 border-b border-slate-100">
+              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 mb-6 pb-5 border-b border-slate-100">
                 <span>{previewItem.author}{previewItem.authorRole && ` · ${previewItem.authorRole}`}</span>
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5" /> {formatDate(previewItem.createdAt)}
                 </span>
+                {previewItem.readTime && (
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" /> {previewItem.readTime}
+                  </span>
+                )}
               </div>
+
+              {(previewItem.tags?.length ?? 0) > 0 && (
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {previewItem.tags!.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full"
+                    >
+                      <Tag className="w-3 h-3" /> {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               <p className="text-slate-600 font-medium italic border-l-4 border-amber-700 pl-4 mb-6">
                 {previewItem.excerpt}

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { ActualiteService } from "@/modules/actualites/service";
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
     const validated = createActualiteSchema.parse(body);
     const service = new ActualiteService();
     const result = await service.createActualite(validated);
+    revalidateTag("actualites", "max");
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });

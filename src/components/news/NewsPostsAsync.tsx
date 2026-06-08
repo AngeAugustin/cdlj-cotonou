@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Calendar, User } from "lucide-react";
+import { ArrowRight, Calendar, User, Clock, Hash } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getPublishedNews, type PublicNewsDetail } from "@/lib/public-cache";
 
@@ -52,7 +52,26 @@ export async function NewsPostsAsync() {
             <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-6 leading-tight group-hover:text-amber-900 transition-colors">
               {post.title}
             </h2>
-            <p className="text-lg text-slate-600 mb-8 leading-relaxed">{post.excerpt}</p>
+            <p className="text-lg text-slate-600 mb-6 leading-relaxed">{post.excerpt}</p>
+            {(post.tags.length > 0 || post.readTime) && (
+              <div className="flex flex-wrap items-center gap-2 mb-6">
+                {post.readTime && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                    <Clock className="w-3.5 h-3.5 text-amber-900" />
+                    {post.readTime}
+                  </span>
+                )}
+                {post.tags.slice(0, 3).map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full"
+                  >
+                    <Hash className="w-3 h-3" />
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="flex items-center text-sm font-medium text-slate-500 gap-6 mt-auto">
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-amber-900" /> {post.author}
@@ -95,7 +114,26 @@ export async function NewsPostsAsync() {
                       {post.title}
                     </Link>
                   </h3>
-                  <p className="text-slate-600 mb-6 line-clamp-3 leading-relaxed flex-1">{post.excerpt}</p>
+                  <p className="text-slate-600 mb-4 line-clamp-3 leading-relaxed flex-1">{post.excerpt}</p>
+                  {(post.tags.length > 0 || post.readTime) && (
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                      {post.readTime && (
+                        <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                          <Clock className="w-3 h-3 text-amber-900" />
+                          {post.readTime}
+                        </span>
+                      )}
+                      {post.tags.slice(0, 2).map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 text-xs font-medium px-2 py-0.5 rounded-full"
+                        >
+                          <Hash className="w-3 h-3" />
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100">
                     <div className="text-sm font-medium text-slate-500 flex items-center gap-2">
                       <Calendar className="w-4 h-4" /> {post.date}

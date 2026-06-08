@@ -4,13 +4,17 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
-import { useEffect } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import {
   Bold, Italic, Underline as UnderlineIcon,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Heading1, Heading2, Heading3, Pilcrow,
   List, ListOrdered,
 } from "lucide-react";
+
+export type RichTextEditorHandle = {
+  getHTML: () => string;
+};
 
 interface RichTextEditorProps {
   content: string;
@@ -48,7 +52,13 @@ function Divider() {
   return <div className="w-px h-5 bg-slate-200 mx-1 shrink-0" />;
 }
 
-export default function RichTextEditor({ content, onChange, placeholder, fillHeight = false }: RichTextEditorProps) {
+const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(function RichTextEditor(
+  { content, onChange, placeholder, fillHeight = false },
+  ref,
+) {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -73,9 +83,13 @@ export default function RichTextEditor({ content, onChange, placeholder, fillHei
       },
     },
     onUpdate({ editor }) {
-      onChange(editor.getHTML());
+      onChangeRef.current(editor.getHTML());
     },
   });
+
+  useImperativeHandle(ref, () => ({
+    getHTML: () => editor?.getHTML() ?? "",
+  }), [editor]);
 
   // Sync external content changes (e.g. when editing an existing article)
   useEffect(() => {
@@ -84,7 +98,10 @@ export default function RichTextEditor({ content, onChange, placeholder, fillHei
       ? (content as string[]).map((p) => `<p>${p}</p>`).join("")
       : content;
     const normalized = raw || "<p></p>";
-    if (normalized !== editor.getHTML()) {
+    const current = editor.getHTML();
+    // Ne pas effacer le contenu saisi si le state parent n'a pas encore été synchronisé.
+    if (!raw && !editor.isEmpty) return;
+    if (normalized !== current) {
       editor.commands.setContent(normalized, { emitUpdate: false });
     }
   }, [content, editor]);
@@ -234,4 +251,6 @@ export default function RichTextEditor({ content, onChange, placeholder, fillHei
       </div>
     </div>
   );
-}
+});
+
+export default RichTextEditor;

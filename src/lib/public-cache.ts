@@ -14,12 +14,13 @@ export type PublicNewsPost = {
   category: string;
   image: string;
   featured: boolean;
+  readTime: string;
+  tags: string[];
 };
 
 export type PublicNewsDetail = PublicNewsPost & {
   body: string;
   authorRole: string;
-  readTime: string;
 };
 
 function normalizeNewsPost(p: {
@@ -35,6 +36,7 @@ function normalizeNewsPost(p: {
   body?: unknown;
   authorRole?: string;
   readTime?: string;
+  tags?: string[];
 }): PublicNewsDetail {
   return {
     id: p._id.toString(),
@@ -57,6 +59,7 @@ function normalizeNewsPost(p: {
     authorRole: p.authorRole ?? "",
     category: p.category,
     readTime: p.readTime ?? "",
+    tags: Array.isArray(p.tags) ? p.tags.filter(Boolean) : [],
     image:
       p.image ||
       "https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&q=80&w=1600",

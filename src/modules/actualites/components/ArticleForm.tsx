@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
+import type { RichTextEditorHandle } from "@/components/RichTextEditor";
 import { Loader2, AlertCircle, UploadCloud, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardPanel } from "@/components/dashboard/page-shell";
@@ -192,9 +193,11 @@ function ImageUpload({
 function ArticleFormFields({
   form,
   set,
+  editorRef,
 }: {
   form: FormState;
   set: <K extends keyof FormState>(key: K, val: FormState[K]) => void;
+  editorRef: React.RefObject<RichTextEditorHandle | null>;
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-0 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 lg:items-stretch">
@@ -236,6 +239,7 @@ function ArticleFormFields({
           </label>
           <div className="min-h-0 flex-1 flex flex-col">
             <RichTextEditor
+              ref={editorRef}
               content={form.body ?? ""}
               onChange={(html) => set("body", html)}
               placeholder="Rédigez le contenu de votre article ici…"
@@ -417,6 +421,8 @@ export function ArticleForm({
   onError?: (message: string) => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const editorRef = useRef<RichTextEditorHandle>(null);
+  const publishIntentRef = useRef<"draft" | "publish">("draft");
   const [form, setForm] = useState<FormState>(emptyForm());
   const [submitting, setSubmitting] = useState(false);
   const [publishMode, setPublishMode] = useState<"draft" | "publish">("draft");
@@ -424,7 +430,9 @@ export function ArticleForm({
   useEffect(() => {
     if (editItem) {
       setForm(actualiteToFormState(editItem));
-      setPublishMode(editItem.published ? "publish" : "draft");
+      const mode = editItem.published ? "publish" : "draft";
+      setPublishMode(mode);
+      publishIntentRef.current = mode;
     }
   }, [editItem]);
 
@@ -435,19 +443,21 @@ export function ArticleForm({
     e.preventDefault();
     setSubmitting(true);
     try {
+      const bodyHtml = editorRef.current?.getHTML() ?? form.body ?? "";
       const { tags: tagsInput, ...formRest } = form;
+      const published = publishIntentRef.current === "publish";
       const payload = {
         ...formRest,
         title: form.title ?? "",
         excerpt: form.excerpt ?? "",
-        body: form.body ?? "",
+        body: bodyHtml,
         category: form.category ?? "",
         author: form.author ?? "",
         tags: parseTagsInput(tagsInput ?? ""),
         image: form.image || undefined,
         authorRole: form.authorRole || undefined,
         readTime: form.readTime || undefined,
-        published: publishMode === "publish",
+        published,
       };
 
       const url = editItem ? `/api/actualites/${editItem._id}` : "/api/actualites";
@@ -467,7 +477,7 @@ export function ArticleForm({
       onSuccess(
         editItem
           ? "Article modifié avec succès"
-          : publishMode === "publish"
+          : published
             ? "Article publié avec succès"
             : "Article enregistré comme brouillon"
       );
@@ -485,14 +495,22 @@ export function ArticleForm({
   const formContent = (
     <>
       <form ref={formRef} onSubmit={handleSubmit}>
-        <ArticleFormFields form={form} set={set} />
+        <ArticleFormFields form={form} set={set} editorRef={editorRef} />
       </form>
       <ArticleFormFooter
         publishMode={publishMode}
         submitting={submitting}
         onCancel={onCancel}
-        onDraft={() => { setPublishMode("draft"); requestSubmit(); }}
-        onPublish={() => { setPublishMode("publish"); requestSubmit(); }}
+        onDraft={() => {
+          publishIntentRef.current = "draft";
+          setPublishMode("draft");
+          requestSubmit();
+        }}
+        onPublish={() => {
+          publishIntentRef.current = "publish";
+          setPublishMode("publish");
+          requestSubmit();
+        }}
       />
     </>
   );
