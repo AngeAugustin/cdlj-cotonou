@@ -38,7 +38,7 @@ const ALL_NAV = [
   { name: "Paroisses",       href: "/paroisses",    icon: Building2,      roles: ["VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
   { name: "Vicariats",       href: "/vicariats",    icon: Map,            roles: ["DIOCESAIN", "SUPERADMIN"] },
   { name: "Activités",       href: "/activites",    icon: Activity,       roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
-  { name: "A. Générales",    href: "/assemblees",   icon: FileText,       roles: ["VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
+  { name: "Conseils Dioc.",    href: "/assemblees",   icon: FileText,       roles: ["VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
  // { name: "Cotisations",     href: "/cotisations",  icon: Wallet,         roles: ["VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
   { name: "Grades",          href: "/grades",       icon: Award,          roles: ["DIOCESAIN", "SUPERADMIN"] },
   { name: "Évaluations",     href: "/evaluations",  icon: GraduationCap,  roles: ["DIOCESAIN", "SUPERADMIN"] },

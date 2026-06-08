@@ -5,6 +5,8 @@ import { CreateEvaluationInput, UpdateEvaluationInput, UpsertEvaluationNoteInput
 import { Lecteur } from "@/modules/lecteurs/model";
 import { Grade } from "@/modules/grades/model";
 import "@/modules/activites/model";
+import "@/modules/vicariats/model";
+import "@/modules/paroisses/model";
 
 type EvaluationFullRow = IEvaluation & {
   gradeId?: { _id: mongoose.Types.ObjectId; name: string; abbreviation: string; level: number };

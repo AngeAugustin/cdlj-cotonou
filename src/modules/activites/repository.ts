@@ -57,7 +57,11 @@ export class ActiviteRepository {
       lieu: data.lieu,
       montant: data.montant,
       delaiPaiement: parseDate(data.delaiPaiement),
-      numeroPaiement: data.numeroPaiement.trim(),
+      grillePenalite: (data.grillePenalite ?? []).map((p) => ({
+        dateDebut: parseDate(p.dateDebut),
+        dateFin: parseDate(p.dateFin),
+        montantSupplementaire: p.montantSupplementaire,
+      })),
       image: data.image,
       terminee: false,
     });
@@ -74,7 +78,13 @@ export class ActiviteRepository {
     if (data.dateDebut !== undefined) patch.dateDebut = parseDate(data.dateDebut);
     if (data.dateFin !== undefined) patch.dateFin = parseDate(data.dateFin);
     if (data.delaiPaiement !== undefined) patch.delaiPaiement = parseDate(data.delaiPaiement);
-    if (data.numeroPaiement !== undefined) patch.numeroPaiement = data.numeroPaiement.trim();
+    if (data.grillePenalite !== undefined) {
+      patch.grillePenalite = data.grillePenalite.map((p: CreateActiviteInput["grillePenalite"][number]) => ({
+        dateDebut: parseDate(p.dateDebut),
+        dateFin: parseDate(p.dateFin),
+        montantSupplementaire: p.montantSupplementaire,
+      }));
+    }
     return Activite.findByIdAndUpdate(id, patch, { new: true }).lean();
   }
 

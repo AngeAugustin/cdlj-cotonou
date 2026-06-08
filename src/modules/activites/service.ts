@@ -1,5 +1,6 @@
 import { ActiviteRepository } from "./repository";
 import { CreateActiviteInput, UpdateActiviteInput } from "./schema";
+import { validateGrillePenalite } from "./penalites";
 
 export class ActiviteService {
   private repo = new ActiviteRepository();
@@ -28,7 +29,23 @@ export class ActiviteService {
     return this.repo.create(data);
   }
 
-  updateActivite(id: string, data: UpdateActiviteInput) {
+  async updateActivite(id: string, data: UpdateActiviteInput) {
+    if (data.grillePenalite !== undefined || data.delaiPaiement !== undefined) {
+      const existing = await this.repo.findById(id);
+      if (!existing) return null;
+      const delai = data.delaiPaiement ?? (existing.delaiPaiement as Date).toISOString();
+      const grille =
+        data.grillePenalite ??
+        ((existing.grillePenalite as { dateDebut: Date; dateFin: Date; montantSupplementaire: number }[] | undefined) ?? []).map(
+          (p) => ({
+            dateDebut: p.dateDebut.toISOString(),
+            dateFin: p.dateFin.toISOString(),
+            montantSupplementaire: p.montantSupplementaire,
+          })
+        );
+      const err = validateGrillePenalite(delai, grille);
+      if (err) throw new Error(err);
+    }
     return this.repo.update(id, data);
   }
 

@@ -9,6 +9,7 @@ import { fedapayFindOrCreateCustomer, fedapayCreateTransactionAndPaymentUrl } fr
 import { sendActivitePaymentNotifications } from "@/lib/activitePaymentNotifications";
 import { syncPaymentFromFedapayTransactionId } from "@/lib/activitePaymentFinalize";
 import { canEnrollLecteurs, resolveEnrollmentParoisseId } from "@/lib/activiteEnrollmentScope";
+import { computeMontantApplicable } from "@/modules/activites/penalites";
 import mongoose from "mongoose";
 import { ZodError } from "zod";
 
@@ -75,7 +76,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     const n = selectedLecteurIds.length;
-    const montantUnitaire = activite.montant;
+    const montantUnitaire = computeMontantApplicable(
+      activite.montant,
+      activite.delaiPaiement,
+      activite.grillePenalite as { dateDebut: Date; dateFin: Date; montantSupplementaire: number }[] | undefined
+    );
     const montantTotal = montantUnitaire * n;
 
     const baseUrl = getAppBaseUrl();

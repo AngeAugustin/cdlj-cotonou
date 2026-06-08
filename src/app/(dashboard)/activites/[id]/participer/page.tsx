@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { PAYMENT_PENDING_TIMEOUT_MS } from "@/lib/activitePayments";
 import { cn } from "@/lib/utils";
+import { computeMontantApplicable } from "@/modules/activites/penalites";
 
 type Activite = {
   _id: string;
@@ -24,7 +25,11 @@ type Activite = {
   lieu: string;
   montant: number;
   delaiPaiement: string;
-  numeroPaiement?: string;
+  grillePenalite?: {
+    dateDebut: string;
+    dateFin: string;
+    montantSupplementaire: number;
+  }[];
   image?: string;
   terminee: boolean;
 };
@@ -144,6 +149,11 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
   };
 
   const activeParoisseId = needsParoissePicker ? selectedParoisseId : null;
+
+  const montantApplicable = useMemo(() => {
+    if (!activite) return 0;
+    return computeMontantApplicable(activite.montant, activite.delaiPaiement, activite.grillePenalite);
+  }, [activite]);
 
   const participationsUrl = useMemo(() => {
     const base = `/api/activites/${encodeURIComponent(activiteId)}/participations`;
@@ -642,10 +652,13 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
             {activite.montant != null ? (
               <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 shadow-sm sm:min-w-[11rem]">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800/80">Montant</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800/80">Tarif actuel</p>
                   <p className="text-lg font-extrabold tabular-nums text-amber-950 leading-tight">
-                    {activite.montant === 0 ? "Gratuit" : formatMoney(activite.montant)}
+                    {montantApplicable === 0 ? "Gratuit" : formatMoney(montantApplicable)}
                   </p>
+                  {montantApplicable !== activite.montant && activite.montant > 0 ? (
+                    <p className="text-[10px] text-amber-800/70">Initial : {formatMoney(activite.montant)}</p>
+                  ) : null}
                 </div>
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-900/10">
                   <Banknote className="h-5 w-5 text-amber-900" />

@@ -26,6 +26,8 @@ import {
   buildParticipantExportTable,
   generateActiviteParticipantsPdf,
 } from "@/lib/activiteParticipantsExport";
+import { computeMontantApplicable } from "@/modules/activites/penalites";
+import { GrillePenaliteDisplay } from "@/modules/activites/components/GrillePenaliteDisplay";
 
 type Activite = {
   _id: string;
@@ -35,7 +37,11 @@ type Activite = {
   lieu: string;
   montant: number;
   delaiPaiement: string;
-  numeroPaiement?: string;
+  grillePenalite?: {
+    dateDebut: string;
+    dateFin: string;
+    montantSupplementaire: number;
+  }[];
   image?: string;
   terminee: boolean;
 };
@@ -427,6 +433,11 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
     }
   }, [paiements, selectedPaiementId]);
 
+  const montantApplicable = useMemo(() => {
+    if (!activite) return 0;
+    return computeMontantApplicable(activite.montant, activite.delaiPaiement, activite.grillePenalite);
+  }, [activite]);
+
   const paiementCounts = useMemo(
     () => ({
       all: paiements.length,
@@ -672,10 +683,13 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                 <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-2.5 py-2">
                   <Banknote className="h-3.5 w-3.5 shrink-0 text-amber-800" />
                   <div className="min-w-0">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Tarif</p>
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Tarif actuel</p>
                     <p className="text-xs font-semibold text-slate-900">
-                      {activite.montant === 0 ? "Gratuit" : formatMoney(activite.montant)}
+                      {montantApplicable === 0 ? "Gratuit" : formatMoney(montantApplicable)}
                     </p>
+                    {montantApplicable !== activite.montant && activite.montant > 0 ? (
+                      <p className="text-[10px] text-slate-500">Initial : {formatMoney(activite.montant)}</p>
+                    ) : null}
                   </div>
                 </div>
 
@@ -1291,20 +1305,20 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Lieu</p>
                 <p className="text-sm font-semibold text-slate-800">{activite.lieu}</p>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/40 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Montant</p>
-                <p className="text-sm font-semibold text-slate-800">{formatMoney(activite.montant)}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/40 p-4">
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/40 p-4 sm:col-span-2">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Délai de paiement</p>
                 <p className="text-sm font-semibold text-slate-800">
                   {format(new Date(activite.delaiPaiement), "PPPp", { locale: fr })}
                 </p>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/40 p-4 sm:col-span-2">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Numéro de paiement</p>
-                <p className="text-sm font-semibold text-slate-800">{activite.numeroPaiement?.trim() || "—"}</p>
-              </div>
+            </div>
+            <div className="mt-5">
+              <h3 className="mb-3 text-sm font-bold text-slate-900">Tarification et pénalités</h3>
+              <GrillePenaliteDisplay
+                montantInitial={activite.montant}
+                delaiPaiement={activite.delaiPaiement}
+                grille={activite.grillePenalite}
+              />
             </div>
           </div>
         ) : (

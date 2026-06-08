@@ -1,5 +1,11 @@
 import mongoose, { Document, Schema, Model } from "mongoose";
 
+export interface IPalierPenalite {
+  dateDebut: Date;
+  dateFin: Date;
+  montantSupplementaire: number;
+}
+
 export interface IActivite extends Document {
   nom: string;
   dateDebut: Date;
@@ -7,6 +13,7 @@ export interface IActivite extends Document {
   lieu: string;
   montant: number;
   delaiPaiement: Date;
+  grillePenalite: IPalierPenalite[];
   /** Référence / numéro à utiliser pour les paiements (ex. compte marchand, code USSD) */
   numeroPaiement?: string;
   image?: string;
@@ -14,6 +21,15 @@ export interface IActivite extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+const palierPenaliteSchema = new Schema<IPalierPenalite>(
+  {
+    dateDebut: { type: Date, required: true },
+    dateFin: { type: Date, required: true },
+    montantSupplementaire: { type: Number, required: true, min: 0 },
+  },
+  { _id: false }
+);
 
 const activiteSchema = new Schema<IActivite>(
   {
@@ -23,6 +39,7 @@ const activiteSchema = new Schema<IActivite>(
     lieu: { type: String, required: true },
     montant: { type: Number, required: true, min: 0 },
     delaiPaiement: { type: Date, required: true },
+    grillePenalite: { type: [palierPenaliteSchema], default: [] },
     numeroPaiement: { type: String, default: "" },
     image: { type: String },
     terminee: { type: Boolean, default: false },

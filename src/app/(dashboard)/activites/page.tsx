@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -21,9 +22,9 @@ import {
   Banknote,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -45,26 +46,16 @@ type Activite = {
   lieu: string;
   montant: number;
   delaiPaiement: string;
-  numeroPaiement?: string;
+  grillePenalite?: {
+    dateDebut: string;
+    dateFin: string;
+    montantSupplementaire: number;
+  }[];
   image?: string;
   terminee: boolean;
 };
 
 type Toast = { message: string; type: "success" | "error" };
-
-function isoToDateInput(iso: string) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return format(d, "yyyy-MM-dd");
-}
-
-function isoToDatetimeLocal(iso: string) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return format(d, "yyyy-MM-dd'T'HH:mm");
-}
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("fr-FR", { style: "decimal", maximumFractionDigits: 0 }).format(n) + " FCFA";
@@ -72,6 +63,7 @@ function formatMoney(n: number) {
 
 // ── Page ──────────────────────────────────────────────────
 export default function ActivitesPage() {
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
   const sessionUser = session?.user as { roles?: string[] } | undefined;
   const roles: string[] = sessionUser?.roles ?? [];
@@ -91,21 +83,8 @@ export default function ActivitesPage() {
   /** Onglet principal : en cours vs passées/terminées */
   const [mainTab, setMainTab] = useState<"encours" | "passees">("encours");
 
-  // ── Admin : formulaire ──
-  const [formOpen, setFormOpen] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [fnom, setFnom] = useState("");
-  const [fdebut, setFdebut] = useState("");
-  const [ffin, setFfin] = useState("");
-  const [flieu, setFlieu] = useState("");
-  const [fmontant, setFmontant] = useState("");
-  const [fnumeroPaiement, setFnumeroPaiement] = useState("");
-  const [fdelai, setFdelai] = useState("");
-  const [fimage, setFimage] = useState("");
-  const [uploading, setUploading] = useState(false);
-
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [termineeTarget, setTermineeTarget] = useState<Activite | null>(null);
   const [markingDone, setMarkingDone] = useState(false);
@@ -127,6 +106,29 @@ export default function ActivitesPage() {
     fetchActivites();
   }, [fetchActivites]);
 
+  useEffect(() => {
+    const message = searchParams.get("toast");
+    const type = searchParams.get("type") === "error" ? "error" : "success";
+    if (message) {
+      showToast(message, type);
+      window.history.replaceState(null, "", "/activites");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  const deleteTarget = useMemo(
+    () => (deleteId ? activites.find((a) => a._id === deleteId) ?? null : null),
+    [activites, deleteId]
+  );
+
+  const canConfirmDelete =
+    !!deleteTarget && deleteConfirmName.trim() === deleteTarget.nom.trim();
+
+  const closeDeleteDialog = () => {
+    setDeleteId(null);
+    setDeleteConfirmName("");
+  };
+
   const filtered = useMemo(() => {
     return activites.filter((a) => (mainTab === "encours" ? !a.terminee : a.terminee));
   }, [activites, mainTab]);
@@ -143,92 +145,6 @@ export default function ActivitesPage() {
     goToNextPage,
   } = usePaginatedList(filtered, mainTab);
 
-  const openCreate = () => {
-    setEditId(null);
-    setFnom("");
-    setFdebut("");
-    setFfin("");
-    setFlieu("");
-    setFmontant("");
-    setFnumeroPaiement("");
-    setFdelai("");
-    setFimage("");
-    setFormOpen(true);
-  };
-
-  const openEdit = (a: Activite) => {
-    setEditId(a._id);
-    setFnom(a.nom);
-    setFdebut(isoToDateInput(a.dateDebut));
-    setFfin(isoToDateInput(a.dateFin));
-    setFlieu(a.lieu);
-    setFmontant(String(a.montant));
-    setFnumeroPaiement(a.numeroPaiement ?? "");
-    setFdelai(isoToDatetimeLocal(a.delaiPaiement));
-    setFimage(a.image ?? "");
-    setFormOpen(true);
-  };
-
-  const handleImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.url) {
-        setFimage(data.url);
-        showToast("Image téléversée");
-      } else showToast(data.error ?? "Échec du téléversement", "error");
-    } catch {
-      showToast("Échec du téléversement", "error");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const submitForm = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fnom.trim() || !fdebut || !ffin || !flieu.trim() || !fmontant || !fnumeroPaiement.trim() || !fdelai) {
-      showToast("Remplissez tous les champs obligatoires", "error");
-      return;
-    }
-    setSubmitting(true);
-    const payload = {
-      nom: fnom.trim(),
-      dateDebut: new Date(fdebut).toISOString(),
-      dateFin: new Date(ffin).toISOString(),
-      lieu: flieu.trim(),
-      montant: Number(fmontant),
-      delaiPaiement: new Date(fdelai).toISOString(),
-      numeroPaiement: fnumeroPaiement.trim(),
-      image: fimage.trim() || undefined,
-    };
-    try {
-      const url = editId ? `/api/activites/${editId}` : "/api/activites";
-      const method = editId ? "PUT" : "POST";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        showToast(editId ? "Activité mise à jour" : "Activité créée");
-        setFormOpen(false);
-        fetchActivites();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showToast(err.error ?? "Erreur", "error");
-      }
-    } catch {
-      showToast("Erreur inattendue", "error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const confirmDelete = async () => {
     if (!deleteId) return;
     setDeleting(true);
@@ -236,7 +152,7 @@ export default function ActivitesPage() {
       const res = await fetch(`/api/activites/${deleteId}`, { method: "DELETE" });
       if (res.ok) {
         showToast("Activité supprimée");
-        setDeleteId(null);
+        closeDeleteDialog();
         fetchActivites();
       } else {
         const err = await res.json().catch(() => ({}));
@@ -367,15 +283,6 @@ export default function ActivitesPage() {
                   </div>
                 </div>
 
-                {a.numeroPaiement ? (
-                  <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 sm:col-span-2 xl:col-span-1">
-                    <Activity className="h-3.5 w-3.5 shrink-0 text-amber-800" />
-                    <div className="min-w-0">
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Paiement</p>
-                      <p className="truncate text-xs font-medium text-slate-800">{a.numeroPaiement}</p>
-                    </div>
-                  </div>
-                ) : null}
               </div>
             </div>
 
@@ -407,18 +314,18 @@ export default function ActivitesPage() {
               {isManager ? (
                 <div className="flex w-full flex-wrap items-center gap-1.5 lg:justify-stretch">
                   {!a.terminee ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 flex-1 rounded-lg lg:flex-none"
+                    <Link
+                      href={`/activites/${a._id}/edit`}
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "sm" }),
+                        "h-8 flex-1 justify-center rounded-lg lg:flex-none"
+                      )}
                       title="Modifier"
                       aria-label="Modifier l’activité"
-                      onClick={() => openEdit(a)}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                       <span className="ml-1.5 lg:hidden xl:inline">Modifier</span>
-                    </Button>
+                    </Link>
                   ) : null}
                   {!a.terminee ? (
                     <Button
@@ -441,7 +348,10 @@ export default function ActivitesPage() {
                       className="h-8 flex-1 rounded-lg border-red-200 text-red-600 hover:bg-red-50 lg:flex-none"
                       title="Supprimer"
                       aria-label="Supprimer l’activité"
-                      onClick={() => setDeleteId(a._id)}
+                      onClick={() => {
+                        setDeleteConfirmName("");
+                        setDeleteId(a._id);
+                      }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -468,23 +378,26 @@ export default function ActivitesPage() {
       actions={
         isManager ? (
           <>
-            <Button
-              type="button"
-              onClick={openCreate}
-              size="icon"
+            <Link
+              href="/activites/new"
               title="Ajouter une activité"
               aria-label="Ajouter une activité"
-              className="h-11 w-11 shrink-0 rounded-xl bg-amber-900 hover:bg-amber-800 text-white shadow-xl shadow-amber-900/20 lg:hidden"
+              className={cn(
+                buttonVariants({ size: "icon" }),
+                "h-11 w-11 shrink-0 rounded-xl bg-amber-900 text-white shadow-xl shadow-amber-900/20 hover:bg-amber-800 lg:hidden"
+              )}
             >
               <Plus className="w-5 h-5" />
-            </Button>
-            <Button
-              type="button"
-              onClick={openCreate}
-              className="hidden lg:inline-flex h-12 px-8 rounded-2xl bg-amber-900 hover:bg-amber-800 text-white font-bold shadow-xl shadow-amber-900/20 shrink-0"
+            </Link>
+            <Link
+              href="/activites/new"
+              className={cn(
+                buttonVariants(),
+                "hidden h-12 shrink-0 rounded-2xl bg-amber-900 px-8 font-bold text-white shadow-xl shadow-amber-900/20 hover:bg-amber-800 lg:inline-flex"
+              )}
             >
-              <Plus className="w-5 h-5 mr-2" /> Créer une activité
-            </Button>
+              <Plus className="mr-2 h-5 w-5" /> Créer une activité
+            </Link>
           </>
         ) : null
       }
@@ -546,86 +459,46 @@ export default function ActivitesPage() {
         </div>
       )}
 
-      {/* ── Formulaire admin ── */}
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto rounded-3xl sm:max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>{editId ? "Modifier l’activité" : "Créer une activité"}</DialogTitle>
-            <DialogDescription>
-              Nom, dates, lieu, montant, numéro de paiement, délai de paiement et visuel (TDR — rôle diocésain).
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={submitForm} className="space-y-4">
-            <div>
-              <Label htmlFor="fnom">Nom de l’activité</Label>
-              <Input id="fnom" value={fnom} onChange={(e) => setFnom(e.target.value)} className="rounded-xl mt-1.5" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="fdebut">Date de début</Label>
-                <Input id="fdebut" type="date" value={fdebut} onChange={(e) => setFdebut(e.target.value)} className="rounded-xl mt-1.5" />
-              </div>
-              <div>
-                <Label htmlFor="ffin">Date de fin</Label>
-                <Input id="ffin" type="date" value={ffin} onChange={(e) => setFfin(e.target.value)} className="rounded-xl mt-1.5" />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="flieu">Lieu</Label>
-              <Input id="flieu" value={flieu} onChange={(e) => setFlieu(e.target.value)} className="rounded-xl mt-1.5" />
-            </div>
-            <div>
-              <Label htmlFor="fmontant">Montant (FCFA)</Label>
-              <Input id="fmontant" type="number" min={0} value={fmontant} onChange={(e) => setFmontant(e.target.value)} className="rounded-xl mt-1.5" />
-            </div>
-            <div>
-              <Label htmlFor="fnumeroPaiement">Numéro de paiement</Label>
-              <Input
-                id="fnumeroPaiement"
-                value={fnumeroPaiement}
-                onChange={(e) => setFnumeroPaiement(e.target.value)}
-                placeholder="Ex. compte mobile money, référence bancaire…"
-                className="rounded-xl mt-1.5"
-              />
-            </div>
-            <div>
-              <Label htmlFor="fdelai">Délai de paiement</Label>
-              <Input id="fdelai" type="datetime-local" value={fdelai} onChange={(e) => setFdelai(e.target.value)} className="rounded-xl mt-1.5" />
-            </div>
-            <div>
-              <Label>Image de l’activité</Label>
-              <div className="mt-1.5 flex flex-wrap items-center gap-3">
-                <Input type="file" accept="image/*" onChange={handleImage} disabled={uploading} className="rounded-xl cursor-pointer" />
-                {uploading && <Loader2 className="w-5 h-5 animate-spin text-amber-900" />}
-              </div>
-              {fimage && (
-                <p className="text-xs text-slate-500 mt-2 truncate">Image : {fimage}</p>
-              )}
-            </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" className="rounded-xl" onClick={() => setFormOpen(false)}>
-                Annuler
-              </Button>
-              <Button type="submit" disabled={submitting} className="rounded-xl bg-amber-900 hover:bg-amber-800 text-white">
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : editId ? "Enregistrer" : "Créer"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
       {/* ── Suppression ── */}
-      <Dialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+      <Dialog open={!!deleteId} onOpenChange={(o) => !o && closeDeleteDialog()}>
         <DialogContent className="rounded-3xl">
           <DialogHeader>
             <DialogTitle>Supprimer cette activité ?</DialogTitle>
-            <DialogDescription>Les participations associées seront également supprimées.</DialogDescription>
+            <DialogDescription>
+              Les participations associées seront également supprimées. Cette action est irréversible.
+            </DialogDescription>
           </DialogHeader>
+          {deleteTarget ? (
+            <div className="space-y-3">
+              <p className="text-sm text-slate-600">
+                Pour confirmer, saisissez le nom exact de l&apos;activité :{" "}
+                <span className="font-bold text-slate-900">{deleteTarget.nom}</span>
+              </p>
+              <div>
+                <Label htmlFor="delete-confirm-nom" className="sr-only">
+                  Nom de l&apos;activité à confirmer
+                </Label>
+                <Input
+                  id="delete-confirm-nom"
+                  value={deleteConfirmName}
+                  onChange={(e) => setDeleteConfirmName(e.target.value)}
+                  placeholder={deleteTarget.nom}
+                  className="rounded-xl"
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+          ) : null}
           <DialogFooter>
-            <Button variant="outline" className="rounded-xl" onClick={() => setDeleteId(null)}>
+            <Button variant="outline" className="rounded-xl" onClick={closeDeleteDialog} disabled={deleting}>
               Annuler
             </Button>
-            <Button variant="destructive" className="rounded-xl" disabled={deleting} onClick={confirmDelete}>
+            <Button
+              variant="destructive"
+              className="rounded-xl"
+              disabled={deleting || !canConfirmDelete}
+              onClick={confirmDelete}
+            >
               {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Supprimer"}
             </Button>
           </DialogFooter>
