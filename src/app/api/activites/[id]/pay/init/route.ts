@@ -12,6 +12,7 @@ import { canEnrollLecteurs, resolveEnrollmentParoisseId } from "@/lib/activiteEn
 import { computeMontantApplicable } from "@/modules/activites/penalites";
 import mongoose from "mongoose";
 import { ZodError } from "zod";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 function splitName(displayName: string | null | undefined): { first: string; last: string } {
   const n = (displayName ?? "Utilisateur").trim() || "Utilisateur";
@@ -288,7 +289,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         if (current && current.status === "pending") {
           await service.updatePaiementById(createdPaymentId, {
             status: "failed",
-            statusReason: error instanceof Error ? error.message.slice(0, 500) : "pay_init_error",
+            statusReason: getErrorMessage(error, "pay_init_error").slice(0, 500),
             lastWebhookEvent: "pay_init_error",
           });
         }
@@ -302,8 +303,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: msg }, { status: 400 });
     }
 
-    const msg = error instanceof Error ? error.message : "Erreur serveur";
-    console.error("[pay/init]", activiteIdFromRequest(request.url), error);
+    const msg = getErrorMessage(error);
+    console.error("[pay/init]", activiteIdFromRequest(request.url), msg, error);
 
     const lower = msg.toLowerCase();
     if (

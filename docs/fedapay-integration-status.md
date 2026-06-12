@@ -15,7 +15,7 @@ Il sert de reference technique pour les futures evolutions du flux de paiement d
 
 Configurer dans le tableau de bord FedaPay :
 
-- **URL** : `https://cdlj-cotonou.com/api/webhooks/fedapay`
+- **URL** : `https://www.cdlj-cotonou.com/api/webhooks/fedapay` (avec `www` — sans cela Vercel renvoie un 307 et FedaPay échoue)
 - **Methode** : `POST`
 - **Secret** : copier la valeur de signature FedaPay dans la variable d'environnement `FEDAPAY_WEBHOOK_SECRET` (Vercel / production)
 
