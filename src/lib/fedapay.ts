@@ -105,7 +105,27 @@ function isDuplicateCustomerEmailError(err: unknown): boolean {
   const errors = err.errors as Record<string, unknown> | undefined;
   const emailErr = errors?.email;
   if (!Array.isArray(emailErr)) return false;
-  return emailErr.some((m) => String(m).toLowerCase().includes("disponible"));
+  return emailErr.some((m) => {
+    const lower = String(m).toLowerCase();
+    return (
+      lower.includes("disponible") ||
+      lower.includes("already") ||
+      lower.includes("unique") ||
+      lower.includes("taken") ||
+      lower.includes("existe")
+    );
+  });
+}
+
+function toFedapayPhoneNumber(phone: string): { phone_number: { number: string; country: string } } {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("229") && digits.length >= 11) {
+    return { phone_number: { number: digits.slice(3), country: "BJ" } };
+  }
+  if (digits.length >= 8) {
+    return { phone_number: { number: digits.slice(-8), country: "BJ" } };
+  }
+  return { phone_number: { number: "97000000", country: "BJ" } };
 }
 
 /**
@@ -124,10 +144,15 @@ export async function fedapayFindOrCreateCustomer(params: {
       firstname: params.firstname,
       lastname: params.lastname,
       email: params.email,
-      phone: params.phone,
+      ...toFedapayPhoneNumber(params.phone),
     });
   } catch (e: unknown) {
-    if (!isDuplicateCustomerEmailError(e)) throw e;
+    const emailConflict =
+      e instanceof ApiConnectionError &&
+      (e.httpStatus === 400 || e.httpStatus === 422) &&
+      isDuplicateCustomerEmailError(e);
+    if (!emailConflict) throw e;
+
     const id = await fedapaySearchCustomerIdByEmail(params.email.trim());
     if (id == null) {
       throw new Error(

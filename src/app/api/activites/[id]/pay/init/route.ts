@@ -318,7 +318,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       );
     }
 
-    if (lower.includes("fedapay") || lower.includes("request failed") || lower.includes("network")) {
+    if (
+      lower.includes("fedapay") ||
+      lower.includes("request failed") ||
+      lower.includes("request error") ||
+      lower.includes("network") ||
+      lower.includes("status code 4")
+    ) {
       return NextResponse.json({ error: msg }, { status: 502 });
     }
 
