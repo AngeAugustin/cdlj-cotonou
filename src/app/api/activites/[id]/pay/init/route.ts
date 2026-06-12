@@ -5,12 +5,7 @@ import { ActiviteService } from "@/modules/activites/service";
 import { payerParticipationSchema } from "@/modules/activites/schema";
 import { getAppBaseUrl } from "@/lib/appBaseUrl";
 import { buildActivitePaymentFingerprint } from "@/lib/activitePayments";
-import {
-  fedapayFindOrCreateCustomer,
-  fedapayCreateTransactionAndPaymentUrl,
-  fedapayCurrentEnvironment,
-  paymentFedapayEnvironment,
-} from "@/lib/fedapay";
+import { fedapayFindOrCreateCustomer, fedapayCreateTransactionAndPaymentUrl } from "@/lib/fedapay";
 import { sendActivitePaymentNotifications } from "@/lib/activitePaymentNotifications";
 import { syncPaymentFromFedapayTransactionId } from "@/lib/activitePaymentFinalize";
 import { canEnrollLecteurs, resolveEnrollmentParoisseId } from "@/lib/activiteEnrollmentScope";
@@ -104,30 +99,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       montantTotal,
     });
 
-    const fedapayEnv = fedapayCurrentEnvironment();
-
     const reusable = await service.findReusableOpenPaiement({
       activiteId,
       paroisseId,
       userId,
       requestFingerprint,
     });
-    /**
-     * Un paiement créé dans un autre environnement FedaPay (ex. sandbox avant le
-     * passage en live) référence une transaction introuvable dans l'environnement
-     * courant : on ne le réutilise pas et on le clôture s'il est encore ouvert.
-     */
-    const reusableEnvMismatch = reusable != null && paymentFedapayEnvironment(reusable.metadata) !== fedapayEnv;
-    if (reusable && reusableEnvMismatch) {
-      const reusableId = String((reusable as { _id: mongoose.Types.ObjectId | string })._id);
-      if (reusable.status === "pending" || reusable.status === "non_finalized") {
-        await service.updatePaiementById(reusableId, {
-          status: "failed",
-          statusReason: `fedapay_environment_changed:${paymentFedapayEnvironment(reusable.metadata) ?? "unknown"}->${fedapayEnv}`,
-          lastWebhookEvent: "pay_init_env_mismatch",
-        });
-      }
-    } else if (reusable) {
+    if (reusable) {
       const reusableId = String((reusable as { _id: mongoose.Types.ObjectId | string })._id);
 
       if (reusable.fedapayTransactionId != null) {
@@ -187,7 +165,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       metadata: {
         activiteNom: activite.nom,
         source: "cdlj-activite",
-        fedapayEnvironment: fedapayEnv,
         ...(enrollmentScope.role === "VICARIAL"
           ? { enrolledByRole: "VICARIAL", enrolledByUserId: userId }
           : {}),

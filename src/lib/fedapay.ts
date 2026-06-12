@@ -2,30 +2,21 @@ import { FedaPay, Transaction, Customer, Webhook, ApiConnectionError } from "fed
 
 let configured = false;
 
-export function fedapayCurrentEnvironment(): "live" | "sandbox" {
-  return process.env.FEDAPAY_ENVIRONMENT?.toLowerCase() === "live" ? "live" : "sandbox";
-}
-
-/** Environnement FedaPay dans lequel un paiement local a été créé (tagué dans metadata). */
-export function paymentFedapayEnvironment(metadata: unknown): string | null {
-  if (!metadata || typeof metadata !== "object") return null;
-  const env = (metadata as Record<string, unknown>).fedapayEnvironment;
-  return typeof env === "string" && env.trim() ? env.trim().toLowerCase() : null;
-}
-
 function configure(): void {
   if (configured) return;
   const key = process.env.FEDAPAY_SECRET_KEY;
   if (!key?.trim()) throw new Error("FEDAPAY_SECRET_KEY n'est pas configuré.");
   FedaPay.setApiKey(key.trim());
-  FedaPay.setEnvironment(fedapayCurrentEnvironment());
+  const env = process.env.FEDAPAY_ENVIRONMENT?.toLowerCase() === "live" ? "live" : "sandbox";
+  FedaPay.setEnvironment(env);
   const accountId = process.env.FEDAPAY_ACCOUNT_ID?.trim();
   if (accountId) FedaPay.setAccountId(accountId);
   configured = true;
 }
 
 function fedapayApiBase(): string {
-  if (fedapayCurrentEnvironment() === "live") return "https://api.fedapay.com";
+  const env = process.env.FEDAPAY_ENVIRONMENT?.toLowerCase() === "live" ? "live" : "sandbox";
+  if (env === "live") return "https://api.fedapay.com";
   return "https://sandbox-api.fedapay.com";
 }
 
