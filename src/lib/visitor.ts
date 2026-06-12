@@ -9,7 +9,7 @@ export type VisitorGeo = {
   city: string | null;
   region: string | null;
 };
-
+ 
 export type VisitorContext = {
   visitorId: string;
   ipHash: string;
