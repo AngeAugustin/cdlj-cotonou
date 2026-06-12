@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ActiviteService } from "@/modules/activites/service";
 import { syncPaymentFromFedapayTransactionId } from "@/lib/activitePaymentFinalize";
 import { isPaymentPastPendingTimeout } from "@/lib/activitePayments";
+import { fedapayCurrentEnvironment, paymentFedapayEnvironment } from "@/lib/fedapay";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,13 +37,26 @@ async function runReconciliation(limit: number) {
     action: string;
   }>;
 
+  const fedapayEnv = fedapayCurrentEnvironment();
+
   for (const payment of payments) {
     scanned++;
     const paymentId = payment._id.toString();
     const before = payment.status;
+    const envMismatch = paymentFedapayEnvironment(payment.metadata) !== fedapayEnv;
 
     try {
-      if (payment.fedapayTransactionId != null) {
+      if (envMismatch) {
+        // Transaction créée dans un autre environnement FedaPay (ex. sandbox) :
+        // introuvable dans l'environnement courant, on clôture les paiements ouverts.
+        if (payment.status === "pending" || payment.status === "non_finalized") {
+          await service.updatePaiementById(paymentId, {
+            status: "failed",
+            statusReason: `fedapay_environment_changed:${paymentFedapayEnvironment(payment.metadata) ?? "unknown"}->${fedapayEnv}`,
+            lastWebhookEvent: "cron_reconcile_env_mismatch",
+          });
+        }
+      } else if (payment.fedapayTransactionId != null) {
         await syncPaymentFromFedapayTransactionId(payment.fedapayTransactionId, "cron_reconcile");
       } else if (payment.status === "pending" && isPaymentPastPendingTimeout(payment.createdAt)) {
         await service.updatePaiementById(paymentId, {
@@ -60,8 +74,9 @@ async function runReconciliation(limit: number) {
         paymentId,
         before,
         after,
-        action:
-          payment.fedapayTransactionId != null
+        action: envMismatch
+          ? "env_mismatch"
+          : payment.fedapayTransactionId != null
             ? "sync_transaction"
             : payment.status === "pending" && isPaymentPastPendingTimeout(payment.createdAt)
               ? "mark_failed_missing_txid"
