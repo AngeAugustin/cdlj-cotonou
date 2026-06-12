@@ -299,7 +299,7 @@ export function LecteurDetailClient({ lecteurId, lecteur }: LecteurDetailClientP
                     <GraduationCap className="h-3.5 w-3.5 shrink-0 text-amber-800" />
                     <div className="min-w-0">
                       <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Adhésion</p>
-                      <p className="text-xs font-medium text-slate-800">{lecteur.anneeAdhesion}</p>
+                      <p className="text-xs font-medium text-slate-800">{lecteur.anneeAdhesion ?? "—"}</p>
                     </div>
                   </div>
 
@@ -380,7 +380,7 @@ export function LecteurDetailClient({ lecteurId, lecteur }: LecteurDetailClientP
                   {lecteur.niveau || "—"}
                 </InfoCard>
                 <InfoCard icon={Calendar} label="Année d'adhésion au groupe" color="blue">
-                  {lecteur.anneeAdhesion}
+                  {lecteur.anneeAdhesion ?? <span className="text-slate-400 font-medium italic">Non renseignée</span>}
                 </InfoCard>
                 <InfoCard icon={Briefcase} label="Situation professionnelle" className="sm:col-span-2" color="green">
                   {lecteur.details?.trim() ? (
@@ -396,15 +396,23 @@ export function LecteurDetailClient({ lecteurId, lecteur }: LecteurDetailClientP
               <SectionTitle icon={Phone}>Contact & Localisation</SectionTitle>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <InfoCard icon={Phone} label="Téléphone">
-                  <a href={`tel:${lecteur.contact}`} className="hover:text-amber-800 transition-colors">
-                    {lecteur.contact}
-                  </a>
+                  {lecteur.contact ? (
+                    <a href={`tel:${lecteur.contact}`} className="hover:text-amber-800 transition-colors">
+                      {lecteur.contact}
+                    </a>
+                  ) : (
+                    <span className="text-slate-400 font-medium italic">Non renseigné</span>
+                  )}
                 </InfoCard>
 
                 <InfoCard icon={PhoneCall} label="Contact d'urgence" color="red">
-                  <a href={`tel:${lecteur.contactUrgence}`} className="hover:text-red-700 transition-colors">
-                    {lecteur.contactUrgence}
-                  </a>
+                  {lecteur.contactUrgence ? (
+                    <a href={`tel:${lecteur.contactUrgence}`} className="hover:text-red-700 transition-colors">
+                      {lecteur.contactUrgence}
+                    </a>
+                  ) : (
+                    <span className="text-slate-400 font-medium italic">Non renseigné</span>
+                  )}
                 </InfoCard>
 
                 <InfoCard icon={MapPin} label="Adresse" className="sm:col-span-2">

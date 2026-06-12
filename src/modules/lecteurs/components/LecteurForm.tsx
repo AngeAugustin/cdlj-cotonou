@@ -38,15 +38,21 @@ const lecteurFormInputSchema = z.object({
   dateNaissance: z.string().min(1, "La date de naissance est requise"),
   sexe: z.enum(["M", "F"]),
   gradeId: z.string().optional(),
-  anneeAdhesion: z.number().int().min(1900).max(new Date().getFullYear()),
+  anneeAdhesion: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
   niveau: z
     .string()
     .refine((v) => (NIVEAU_SCOLAIRE_OPTIONS as readonly string[]).includes(v), {
       message: "Le niveau est requis",
     }),
   details: z.string().optional(),
-  contact: z.string().min(8, "Numéro de contact invalide"),
-  contactUrgence: z.string().min(8, "Numéro de contact d'urgence invalide"),
+  contact: z
+    .string()
+    .refine((v) => v.trim() === "" || v.trim().length >= 8, { message: "Numéro de contact invalide" }),
+  contactUrgence: z
+    .string()
+    .refine((v) => v.trim() === "" || v.trim().length >= 8, {
+      message: "Numéro de contact d'urgence invalide",
+    }),
   adresse: z.string().min(5, "L'adresse est requise"),
   maux: z.string().optional(),
   photoIdentite: z.string().optional(),
@@ -197,7 +203,7 @@ export function LecteurForm({
       dateNaissance: "",
       sexe: "M",
       gradeId: "",
-      anneeAdhesion: new Date().getFullYear(),
+      anneeAdhesion: undefined,
       niveau: "",
       details: "",
       contact: "",
@@ -241,7 +247,7 @@ export function LecteurForm({
       dateNaissance: dateYmd,
       sexe: initialData.sexe ?? "M",
       gradeId: gid,
-      anneeAdhesion: initialData.anneeAdhesion ?? new Date().getFullYear(),
+      anneeAdhesion: initialData.anneeAdhesion ?? undefined,
       niveau: initialData.niveau ?? "",
       details: initialData.details ?? "",
       contact: initialData.contact ?? "",
@@ -645,13 +651,17 @@ export function LecteurForm({
                 name="anneeAdhesion"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Année d&apos;adhésion au groupe</FormLabel>
+                    <FormLabel>Année d&apos;adhésion au groupe (facultatif)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         className="rounded-xl"
+                        placeholder={`Ex. ${new Date().getFullYear()}`}
                         {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        value={field.value ?? ""}
+                        onChange={(e) =>
+                          field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
+                        }
                       />
                     </FormControl>
                     <FormMessage />
@@ -841,7 +851,7 @@ export function LecteurForm({
                 name="contact"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Contact</FormLabel>
+                    <FormLabel>Contact (facultatif)</FormLabel>
                     <FormControl>
                       <Input placeholder="Téléphone principal" className="rounded-xl" {...field} />
                     </FormControl>
@@ -854,7 +864,7 @@ export function LecteurForm({
                 name="contactUrgence"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Contact d&apos;urgence</FormLabel>
+                    <FormLabel>Contact d&apos;urgence (facultatif)</FormLabel>
                     <FormControl>
                       <Input placeholder="Personne à prévenir" className="rounded-xl" {...field} />
                     </FormControl>

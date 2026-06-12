@@ -144,9 +144,9 @@ function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; classNa
                     { label: "Nom :",        value: lecteur.nom.toUpperCase(), bold: true },
                     { label: "Prénom(s) :", value: lecteur.prenoms, bold: false },
                     { label: "Né(e) le :",  value: formatDateFr(lecteur.dateNaissance), bold: false },
-                    { label: "Adhésion :",  value: String(lecteur.anneeAdhesion), bold: false },
+                    { label: "Adhésion :",  value: lecteur.anneeAdhesion != null ? String(lecteur.anneeAdhesion) : "", bold: false },
                     { label: "Sexe :",      value: lecteur.sexe === "M" ? "Masculin" : "Féminin", bold: false },
-                    { label: "Contact :",   value: lecteur.contact, bold: false },
+                    { label: "Contact :",   value: lecteur.contact ?? "", bold: false },
                   ] as { label: string; value: string; bold: boolean }[]
                 ).map(({ label, value, bold }) => (
                   <div key={label} className="flex items-baseline gap-1 leading-none">

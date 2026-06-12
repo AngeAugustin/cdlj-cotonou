@@ -56,11 +56,24 @@ export const createLecteurSchema = z.object({
     .string()
     .optional()
     .transform((v) => (v && v.length >= 24 ? v : undefined)),
-  anneeAdhesion: z.coerce.number().int().min(1900).max(new Date().getFullYear()),
+  anneeAdhesion: z
+    .preprocess(
+      (v) => (v === "" || v == null || (typeof v === "number" && Number.isNaN(v)) ? null : v),
+      z.coerce.number().int().min(1900).max(new Date().getFullYear()).nullable()
+    )
+    .optional(),
   niveau: z.enum(NIVEAU_SCOLAIRE_OPTIONS, { message: "Le niveau est requis" }),
   details: z.string().optional(),
-  contact: z.string().min(8, "Numéro de contact invalide"),
-  contactUrgence: z.string().min(8, "Numéro de contact d'urgence invalide"),
+  contact: z
+    .string()
+    .refine((v) => v.trim() === "" || v.trim().length >= 8, { message: "Numéro de contact invalide" })
+    .optional(),
+  contactUrgence: z
+    .string()
+    .refine((v) => v.trim() === "" || v.trim().length >= 8, {
+      message: "Numéro de contact d'urgence invalide",
+    })
+    .optional(),
   adresse: z.string().min(5, "L'adresse est requise"),
   maux: z.string().optional(),
   photo: optionalUrl,

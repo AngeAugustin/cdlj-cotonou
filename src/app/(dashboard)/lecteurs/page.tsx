@@ -56,6 +56,8 @@ export default function LecteursPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [gradeFilter, setGradeFilter] = useState("");
+  const [vicariatFilter, setVicariatFilter] = useState("");
+  const [paroisseFilter, setParoisseFilter] = useState("");
 
   const [deleteTarget, setDeleteTarget] = useState<ApiLecteur | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -102,16 +104,49 @@ export default function LecteursPage() {
       .catch(() => setGrades([]));
   }, []);
 
+  // Options des filtres dérivées de la liste : chaque utilisateur ne voit que son périmètre.
+  const vicariatOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const l of list) {
+      const v = l.vicariatId;
+      if (v && typeof v === "object" && "name" in v) map.set(String(v._id), v.name);
+    }
+    return [...map.entries()]
+      .map(([_id, name]) => ({ _id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  }, [list]);
+
+  const paroisseOptions = useMemo(() => {
+    const map = new Map<string, { name: string; vicariatId: string }>();
+    for (const l of list) {
+      const p = l.paroisseId;
+      if (p && typeof p === "object" && "name" in p) {
+        map.set(String(p._id), { name: p.name, vicariatId: refId(l.vicariatId) });
+      }
+    }
+    return [...map.entries()]
+      .map(([_id, { name, vicariatId }]) => ({ _id, name, vicariatId }))
+      .filter((p) => !vicariatFilter || p.vicariatId === vicariatFilter)
+      .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  }, [list, vicariatFilter]);
+
+  const onVicariatFilterChange = (value: string) => {
+    setVicariatFilter(value);
+    setParoisseFilter("");
+  };
+
   const filtered = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     return list.filter((l) => {
       const gId = refId(l.gradeId);
       if (gradeFilter && gId !== gradeFilter) return false;
+      if (vicariatFilter && refId(l.vicariatId) !== vicariatFilter) return false;
+      if (paroisseFilter && refId(l.paroisseId) !== paroisseFilter) return false;
       if (!q) return true;
       const blob = `${l.uniqueId} ${l.nom} ${l.prenoms}`.toLowerCase();
       return blob.includes(q);
     });
-  }, [list, searchTerm, gradeFilter]);
+  }, [list, searchTerm, gradeFilter, vicariatFilter, paroisseFilter]);
 
   const {
     paginatedItems,
@@ -123,7 +158,7 @@ export default function LecteursPage() {
     showPagination,
     goToPreviousPage,
     goToNextPage,
-  } = usePaginatedList(filtered, `${searchTerm}-${gradeFilter}`);
+  } = usePaginatedList(filtered, `${searchTerm}-${gradeFilter}-${vicariatFilter}-${paroisseFilter}`);
 
   const stats = useMemo(() => {
     const uniqueGrades = new Set(list.map((l) => refId(l.gradeId)).filter(Boolean));
@@ -193,10 +228,10 @@ export default function LecteursPage() {
         gradeLabel(l),
         ageYearsForCsv(l.dateNaissance),
         l.sexe,
-        String(l.anneeAdhesion),
+        l.anneeAdhesion != null ? String(l.anneeAdhesion) : "",
         l.niveau,
-        l.contact,
-        l.contactUrgence,
+        l.contact ?? "",
+        l.contactUrgence ?? "",
         l.adresse.replace(/"/g, '""'),
         pn,
         vn,
@@ -352,9 +387,37 @@ export default function LecteursPage() {
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+          {vicariatOptions.length > 1 ? (
+            <select
+              className="flex-1 md:w-48 h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 font-medium focus:outline-none focus:border-amber-900 appearance-none"
+              value={vicariatFilter}
+              onChange={(e) => onVicariatFilterChange(e.target.value)}
+            >
+              <option value="">Tous les vicariats</option>
+              {vicariatOptions.map((v) => (
+                <option key={v._id} value={v._id}>
+                  {v.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          {paroisseOptions.length > 1 || paroisseFilter ? (
+            <select
+              className="flex-1 md:w-48 h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 font-medium focus:outline-none focus:border-amber-900 appearance-none"
+              value={paroisseFilter}
+              onChange={(e) => setParoisseFilter(e.target.value)}
+            >
+              <option value="">Toutes les paroisses</option>
+              {paroisseOptions.map((p) => (
+                <option key={p._id} value={p._id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <select
-            className="flex-1 md:w-56 h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 font-medium focus:outline-none focus:border-amber-900 appearance-none"
+            className="flex-1 md:w-48 h-12 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 font-medium focus:outline-none focus:border-amber-900 appearance-none"
             value={gradeFilter}
             onChange={(e) => setGradeFilter(e.target.value)}
           >
@@ -506,7 +569,7 @@ export default function LecteursPage() {
                       <div className="text-xs text-slate-500 mt-0.5 leading-snug">{r.paroisse}</div>
                     </td>
                     <td className="p-5 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1">
                         <Link
                           href={`/lecteurs/${l._id}`}
                           className={cn(

@@ -6,11 +6,11 @@ export interface ILecteur extends Document {
   dateNaissance: Date;
   sexe: "M" | "F";
   gradeId?: mongoose.Types.ObjectId;
-  anneeAdhesion: number;
+  anneeAdhesion?: number;
   niveau: string;
   details?: string;
-  contact: string;
-  contactUrgence: string;
+  contact?: string;
+  contactUrgence?: string;
   adresse: string;
   maux?: string;
   /** Photo de profil (avatar) */
@@ -31,11 +31,11 @@ const lecteurSchema = new Schema<ILecteur>(
     dateNaissance: { type: Date, required: true },
     sexe: { type: String, enum: ["M", "F"], required: true },
     gradeId: { type: Schema.Types.ObjectId, ref: "Grade" },
-    anneeAdhesion: { type: Number, required: true },
+    anneeAdhesion: { type: Number },
     niveau: { type: String, required: true },
     details: { type: String },
-    contact: { type: String, required: true },
-    contactUrgence: { type: String, required: true },
+    contact: { type: String },
+    contactUrgence: { type: String },
     adresse: { type: String, required: true },
     maux: { type: String },
     photo: { type: String },

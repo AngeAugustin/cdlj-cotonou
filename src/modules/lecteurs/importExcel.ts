@@ -8,11 +8,11 @@ export const LECTEUR_IMPORT_COLUMNS = [
   { key: "dateNaissance", header: "Date de naissance", required: true },
   { key: "sexe", header: "Sexe", required: true },
   { key: "grade", header: "Grade", required: false },
-  { key: "anneeAdhesion", header: "Année d'adhésion", required: true },
+  { key: "anneeAdhesion", header: "Année d'adhésion", required: false },
   { key: "niveau", header: "Niveau scolaire ou professionnel", required: true },
   { key: "details", header: "Situation professionnelle", required: false },
-  { key: "contact", header: "Contact", required: true },
-  { key: "contactUrgence", header: "Contact d'urgence", required: true },
+  { key: "contact", header: "Contact", required: false },
+  { key: "contactUrgence", header: "Contact d'urgence", required: false },
   { key: "adresse", header: "Adresse", required: true },
   { key: "maux", header: "Maux particuliers", required: false },
 ] as const;
@@ -23,11 +23,11 @@ export type LecteurImportRow = {
   dateNaissance: string;
   sexe: "M" | "F";
   grade?: string;
-  anneeAdhesion: number;
+  anneeAdhesion?: number;
   niveau: string;
   details?: string;
-  contact: string;
-  contactUrgence: string;
+  contact?: string;
+  contactUrgence?: string;
   adresse: string;
   maux?: string;
 };
@@ -227,8 +227,9 @@ export function parseLecteurImportWorkbook(buffer: ArrayBuffer): LecteurImportPa
       return { ok: false, error: `Ligne ${i + 1} : sexe invalide (utilisez M ou F).` };
     }
 
+    const anneeAdhesionText = cellToString(raw.anneeAdhesion);
     const anneeAdhesion = parseAnnee(raw.anneeAdhesion);
-    if (anneeAdhesion == null) {
+    if (anneeAdhesionText && anneeAdhesion == null) {
       return { ok: false, error: `Ligne ${i + 1} : année d'adhésion invalide.` };
     }
 
@@ -240,7 +241,7 @@ export function parseLecteurImportWorkbook(buffer: ArrayBuffer): LecteurImportPa
     const contactUrgence = cellToString(raw.contactUrgence);
     const adresse = cellToString(raw.adresse);
 
-    if (!nom || !prenoms || !niveauRaw || !contact || !contactUrgence || !adresse) {
+    if (!nom || !prenoms || !niveauRaw || !adresse) {
       return { ok: false, error: `Ligne ${i + 1} : champs obligatoires incomplets.` };
     }
 
@@ -257,11 +258,11 @@ export function parseLecteurImportWorkbook(buffer: ArrayBuffer): LecteurImportPa
       dateNaissance,
       sexe,
       grade: cellToString(raw.grade) || undefined,
-      anneeAdhesion,
+      anneeAdhesion: anneeAdhesion ?? undefined,
       niveau,
       details: cellToString(raw.details) || undefined,
-      contact,
-      contactUrgence,
+      contact: contact || undefined,
+      contactUrgence: contactUrgence || undefined,
       adresse,
       maux: cellToString(raw.maux) || undefined,
     });

@@ -111,11 +111,11 @@ export class LecteurRepository {
       dateNaissance: data.dateNaissance,
       sexe: data.sexe,
       gradeId: data.gradeId ? new mongoose.Types.ObjectId(data.gradeId) : undefined,
-      anneeAdhesion: data.anneeAdhesion,
+      anneeAdhesion: data.anneeAdhesion ?? undefined,
       niveau: data.niveau.trim(),
       details: data.details?.trim() || undefined,
-      contact: data.contact.trim(),
-      contactUrgence: data.contactUrgence.trim(),
+      contact: data.contact?.trim() || undefined,
+      contactUrgence: data.contactUrgence?.trim() || undefined,
       adresse: data.adresse.trim(),
       maux: data.maux?.trim() || undefined,
       photo: data.photo,
@@ -146,8 +146,8 @@ export class LecteurRepository {
     if (data.anneeAdhesion !== undefined) patch.anneeAdhesion = data.anneeAdhesion;
     if (data.niveau !== undefined) patch.niveau = data.niveau.trim();
     if (data.details !== undefined) patch.details = data.details?.trim() || undefined;
-    if (data.contact !== undefined) patch.contact = data.contact.trim();
-    if (data.contactUrgence !== undefined) patch.contactUrgence = data.contactUrgence.trim();
+    if (data.contact !== undefined) patch.contact = data.contact.trim() || null;
+    if (data.contactUrgence !== undefined) patch.contactUrgence = data.contactUrgence.trim() || null;
     if (data.adresse !== undefined) patch.adresse = data.adresse.trim();
     if (data.maux !== undefined) patch.maux = data.maux?.trim() || undefined;
     if (data.photo !== undefined) patch.photo = data.photo;
