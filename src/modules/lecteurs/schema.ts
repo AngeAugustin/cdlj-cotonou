@@ -47,6 +47,34 @@ export const NIVEAU_SCOLAIRE_OPTIONS = [
 
 export type NiveauScolaire = (typeof NIVEAU_SCOLAIRE_OPTIONS)[number];
 
+const emptyToUndefined = (v: unknown) => {
+  if (v == null) return undefined;
+  if (typeof v === "string" && v.trim() === "") return undefined;
+  if (typeof v === "number" && Number.isNaN(v)) return undefined;
+  return v;
+};
+
+export const optionalAnneeAdhesionField = z.preprocess(
+  emptyToUndefined,
+  z.coerce.number().int().min(1900).max(new Date().getFullYear()).optional()
+);
+
+export const optionalPhoneField = z.preprocess(
+  emptyToUndefined,
+  z
+    .string()
+    .refine((v) => v.length >= 8, { message: "Numéro de contact invalide" })
+    .optional()
+);
+
+export const optionalUrgencePhoneField = z.preprocess(
+  emptyToUndefined,
+  z
+    .string()
+    .refine((v) => v.length >= 8, { message: "Numéro de contact d'urgence invalide" })
+    .optional()
+);
+
 export const createLecteurSchema = z.object({
   nom: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
   prenoms: z.string().min(2, "Les prénoms doivent contenir au moins 2 caractères"),
@@ -56,24 +84,11 @@ export const createLecteurSchema = z.object({
     .string()
     .optional()
     .transform((v) => (v && v.length >= 24 ? v : undefined)),
-  anneeAdhesion: z
-    .preprocess(
-      (v) => (v === "" || v == null || (typeof v === "number" && Number.isNaN(v)) ? null : v),
-      z.coerce.number().int().min(1900).max(new Date().getFullYear()).nullable()
-    )
-    .optional(),
+  anneeAdhesion: optionalAnneeAdhesionField,
   niveau: z.enum(NIVEAU_SCOLAIRE_OPTIONS, { message: "Le niveau est requis" }),
   details: z.string().optional(),
-  contact: z
-    .string()
-    .refine((v) => v.trim() === "" || v.trim().length >= 8, { message: "Numéro de contact invalide" })
-    .optional(),
-  contactUrgence: z
-    .string()
-    .refine((v) => v.trim() === "" || v.trim().length >= 8, {
-      message: "Numéro de contact d'urgence invalide",
-    })
-    .optional(),
+  contact: optionalPhoneField,
+  contactUrgence: optionalUrgencePhoneField,
   adresse: z.string().min(5, "L'adresse est requise"),
   maux: z.string().optional(),
   photo: optionalUrl,
@@ -83,5 +98,23 @@ export const createLecteurSchema = z.object({
 });
 
 export const updateLecteurSchema = createLecteurSchema.partial();
+
+/** Validation d'une ligne Excel avant création en base. */
+export const lecteurImportRowSchema = z.object({
+  nom: z.string().min(1),
+  prenoms: z.string().min(1),
+  dateNaissance: z.string().min(1),
+  sexe: z.enum(["M", "F"]),
+  grade: z.string().optional(),
+  anneeAdhesion: optionalAnneeAdhesionField,
+  niveau: z.string().min(1),
+  details: z.string().optional(),
+  contact: optionalPhoneField,
+  contactUrgence: optionalUrgencePhoneField,
+  adresse: z.string().min(1),
+  maux: z.string().optional(),
+});
+
 export type CreateLecteurInput = z.infer<typeof createLecteurSchema>;
 export type UpdateLecteurInput = z.infer<typeof updateLecteurSchema>;
+export type LecteurImportRowInput = z.infer<typeof lecteurImportRowSchema>;

@@ -36,12 +36,38 @@ export type LecteurImportParseResult =
   | { ok: true; rows: LecteurImportRow[] }
   | { ok: false; error: string };
 
+/** Ligne en cours d’édition dans la prévisualisation avant import. */
+export type EditableLecteurImportRow = {
+  excelLine: number;
+  nom: string;
+  prenoms: string;
+  dateNaissance: string;
+  sexe: string;
+  grade: string;
+  anneeAdhesion: string;
+  niveau: string;
+  details: string;
+  contact: string;
+  contactUrgence: string;
+  adresse: string;
+  maux: string;
+};
+
+export type LecteurImportPreviewResult =
+  | { ok: true; sheetName: string; rows: EditableLecteurImportRow[] }
+  | { ok: false; error: string };
+
+export type EditableImportRowConvertResult =
+  | { ok: true; data: LecteurImportRow }
+  | { ok: false; message: string };
+
 function normalizeHeader(value: string): string {
   return value
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
     .trim()
+    .replace(/\s*\(facultatif\)\s*$/, "")
     .replace(/\s+/g, " ");
 }
 
@@ -151,6 +177,35 @@ function resolveNiveau(value: string): string | null {
   return NIVEAU_SCOLAIRE_OPTIONS.find((n) => normalizeHeader(n) === norm) ?? null;
 }
 
+export type GradeImportOpt = { name: string; abbreviation?: string };
+
+/** Associe une valeur Excel (nom ou abréviation) au nom canonique du grade. */
+export function matchGradeFromImportText(text: string, grades: GradeImportOpt[]): string {
+  const raw = text.trim();
+  if (!raw) return "";
+  const q = raw.toLowerCase();
+  const match = grades.find(
+    (g) => g.name.toLowerCase() === q || (g.abbreviation?.toLowerCase() ?? "") === q
+  );
+  return match?.name ?? raw;
+}
+
+export function isKnownGradeName(value: string, grades: GradeImportOpt[]): boolean {
+  const q = value.trim().toLowerCase();
+  if (!q) return true;
+  return grades.some((g) => g.name.toLowerCase() === q);
+}
+
+export function normalizeEditableRowsGrades(
+  rows: EditableLecteurImportRow[],
+  grades: GradeImportOpt[]
+): EditableLecteurImportRow[] {
+  return rows.map((row) => ({
+    ...row,
+    grade: matchGradeFromImportText(row.grade, grades),
+  }));
+}
+
 function excelColumnLetter(colIndex1Based: number): string {
   let n = colIndex1Based;
   let s = "";
@@ -165,11 +220,24 @@ function excelColumnLetter(colIndex1Based: number): string {
 const TEMPLATE_DATA_ROWS = 500;
 
 function isRowEmpty(values: Record<string, unknown>): boolean {
-  const keys = ["nom", "prenoms", "contact", "adresse"] as const;
+  const keys = ["nom", "prenoms", "dateNaissance", "niveau", "adresse"] as const;
   return keys.every((k) => !cellToString(values[k]));
 }
 
-export function parseLecteurImportWorkbook(buffer: ArrayBuffer): LecteurImportParseResult {
+function optionalTrimmed(value: unknown): string | undefined {
+  const text = cellToString(value);
+  return text || undefined;
+}
+
+function validateOptionalPhone(value: string | undefined, label: string, line: number): string | null {
+  if (!value) return null;
+  if (value.length < 8) return `Ligne ${line} : ${label} invalide (au moins 8 caractères si renseigné).`;
+  return null;
+}
+
+function readWorkbookMatrix(buffer: ArrayBuffer):
+  | { ok: true; sheetName: string; matrix: unknown[][]; columnIndex: Partial<Record<keyof LecteurImportRow, number>> }
+  | { ok: false; error: string } {
   let workbook: XLSX.WorkBook;
   try {
     workbook = XLSX.read(buffer, { type: "array", cellDates: true });
@@ -203,7 +271,39 @@ export function parseLecteurImportWorkbook(buffer: ArrayBuffer): LecteurImportPa
     return { ok: false, error: `Colonnes obligatoires manquantes : ${labels}.` };
   }
 
-  const rows: LecteurImportRow[] = [];
+  return { ok: true, sheetName, matrix, columnIndex };
+}
+
+function rawRowToEditable(raw: Record<string, unknown>, excelLine: number): EditableLecteurImportRow {
+  const dateParsed = parseExcelDate(raw.dateNaissance);
+  const sexeParsed = parseSexe(raw.sexe);
+  const anneeParsed = parseAnnee(raw.anneeAdhesion);
+  const niveauRaw = cellToString(raw.niveau);
+
+  return {
+    excelLine,
+    nom: cellToString(raw.nom),
+    prenoms: cellToString(raw.prenoms),
+    dateNaissance: dateParsed ?? cellToString(raw.dateNaissance),
+    sexe: sexeParsed ?? cellToString(raw.sexe).toUpperCase(),
+    grade: cellToString(raw.grade),
+    anneeAdhesion: anneeParsed != null ? String(anneeParsed) : cellToString(raw.anneeAdhesion),
+    niveau: resolveNiveau(niveauRaw) ?? niveauRaw,
+    details: cellToString(raw.details),
+    contact: cellToString(raw.contact),
+    contactUrgence: cellToString(raw.contactUrgence),
+    adresse: cellToString(raw.adresse),
+    maux: cellToString(raw.maux),
+  };
+}
+
+/** Charge l’onglet Lecteurs pour prévisualisation / édition (sans rejeter les lignes incomplètes). */
+export function parseLecteurImportWorkbookForPreview(buffer: ArrayBuffer): LecteurImportPreviewResult {
+  const loaded = readWorkbookMatrix(buffer);
+  if (!loaded.ok) return loaded;
+
+  const { sheetName, matrix, columnIndex } = loaded;
+  const rows: EditableLecteurImportRow[] = [];
 
   for (let i = 1; i < matrix.length; i++) {
     const line = matrix[i];
@@ -216,60 +316,82 @@ export function parseLecteurImportWorkbook(buffer: ArrayBuffer): LecteurImportPa
     }
 
     if (isRowEmpty(raw)) continue;
-
-    const dateNaissance = parseExcelDate(raw.dateNaissance);
-    if (!dateNaissance) {
-      return { ok: false, error: `Ligne ${i + 1} : date de naissance invalide.` };
-    }
-
-    const sexe = parseSexe(raw.sexe);
-    if (!sexe) {
-      return { ok: false, error: `Ligne ${i + 1} : sexe invalide (utilisez M ou F).` };
-    }
-
-    const anneeAdhesionText = cellToString(raw.anneeAdhesion);
-    const anneeAdhesion = parseAnnee(raw.anneeAdhesion);
-    if (anneeAdhesionText && anneeAdhesion == null) {
-      return { ok: false, error: `Ligne ${i + 1} : année d'adhésion invalide.` };
-    }
-
-    const nom = cellToString(raw.nom);
-    const prenoms = cellToString(raw.prenoms);
-    const niveauRaw = cellToString(raw.niveau);
-    const niveau = resolveNiveau(niveauRaw);
-    const contact = cellToString(raw.contact);
-    const contactUrgence = cellToString(raw.contactUrgence);
-    const adresse = cellToString(raw.adresse);
-
-    if (!nom || !prenoms || !niveauRaw || !adresse) {
-      return { ok: false, error: `Ligne ${i + 1} : champs obligatoires incomplets.` };
-    }
-
-    if (!niveau) {
-      return {
-        ok: false,
-        error: `Ligne ${i + 1} : niveau scolaire invalide (« ${niveauRaw} »). Choisissez une valeur de la liste.`,
-      };
-    }
-
-    rows.push({
-      nom,
-      prenoms,
-      dateNaissance,
-      sexe,
-      grade: cellToString(raw.grade) || undefined,
-      anneeAdhesion: anneeAdhesion ?? undefined,
-      niveau,
-      details: cellToString(raw.details) || undefined,
-      contact: contact || undefined,
-      contactUrgence: contactUrgence || undefined,
-      adresse,
-      maux: cellToString(raw.maux) || undefined,
-    });
+    rows.push(rawRowToEditable(raw, i + 1));
   }
 
   if (!rows.length) {
     return { ok: false, error: "Aucune ligne de lecteur à importer." };
+  }
+
+  return { ok: true, sheetName, rows };
+}
+
+export function convertEditableToImportRow(row: EditableLecteurImportRow): EditableImportRowConvertResult {
+  const nom = row.nom.trim();
+  const prenoms = row.prenoms.trim();
+  const adresse = row.adresse.trim();
+  const niveauRaw = row.niveau.trim();
+  const niveau = resolveNiveau(niveauRaw);
+  const dateNaissance = parseExcelDate(row.dateNaissance);
+  const sexe = parseSexe(row.sexe);
+  const anneeText = row.anneeAdhesion.trim();
+  const anneeAdhesion = parseAnnee(row.anneeAdhesion);
+  const contact = row.contact.trim() || undefined;
+  const contactUrgence = row.contactUrgence.trim() || undefined;
+
+  if (!nom || !prenoms || !niveauRaw || !adresse) {
+    return { ok: false, message: "Nom, prénoms, niveau et adresse sont requis." };
+  }
+  if (!dateNaissance) {
+    return { ok: false, message: "Date de naissance invalide." };
+  }
+  if (!sexe) {
+    return { ok: false, message: "Sexe invalide (utilisez M ou F)." };
+  }
+  if (anneeText && anneeAdhesion == null) {
+    return { ok: false, message: "Année d'adhésion invalide." };
+  }
+  if (!niveau) {
+    return { ok: false, message: `Niveau invalide (« ${niveauRaw} »).` };
+  }
+  if (contact && contact.length < 8) {
+    return { ok: false, message: "Contact invalide (au moins 8 caractères si renseigné)." };
+  }
+  if (contactUrgence && contactUrgence.length < 8) {
+    return { ok: false, message: "Contact d'urgence invalide (au moins 8 caractères si renseigné)." };
+  }
+  const grade = row.grade.trim() || undefined;
+
+  return {
+    ok: true,
+    data: {
+      nom,
+      prenoms,
+      dateNaissance,
+      sexe,
+      grade,
+      anneeAdhesion: anneeAdhesion ?? undefined,
+      niveau,
+      details: row.details.trim() || undefined,
+      contact,
+      contactUrgence,
+      adresse,
+      maux: row.maux.trim() || undefined,
+    },
+  };
+}
+
+export function parseLecteurImportWorkbook(buffer: ArrayBuffer): LecteurImportParseResult {
+  const preview = parseLecteurImportWorkbookForPreview(buffer);
+  if (!preview.ok) return preview;
+
+  const rows: LecteurImportRow[] = [];
+  for (const editable of preview.rows) {
+    const converted = convertEditableToImportRow(editable);
+    if (!converted.ok) {
+      return { ok: false, error: `Ligne ${editable.excelLine} : ${converted.message}` };
+    }
+    rows.push(converted.data);
   }
 
   return { ok: true, rows };
@@ -299,7 +421,9 @@ export async function buildLecteurImportTemplateWorkbook(
   wsRef.getColumn(2).width = 16;
 
   const ws = wb.addWorksheet("Lecteurs");
-  const headerRow = ws.addRow(LECTEUR_IMPORT_COLUMNS.map((c) => c.header));
+  const headerRow = ws.addRow(
+    LECTEUR_IMPORT_COLUMNS.map((c) => (c.required ? c.header : `${c.header} (facultatif)`))
+  );
   headerRow.font = { bold: true };
   headerRow.eachCell((cell) => {
     cell.fill = {
@@ -348,7 +472,11 @@ export async function buildLecteurImportTemplateWorkbook(
     ["4. Sexe : M (masculin) ou F (féminin)."],
     ["5. Niveau scolaire : utilisez la liste déroulante dans la colonne dédiée."],
     ["6. Grade : nom ou abréviation (voir onglet Référence), laisser vide si aucun."],
-    ["7. Les photos ne sont pas importées via Excel ; complétez-les ensuite dans chaque fiche."],
+    [
+      "7. Colonnes facultatives : année d'adhésion, contact, contact d'urgence, situation professionnelle, maux particuliers.",
+    ],
+    ["8. Si un contact est renseigné, il doit contenir au moins 8 caractères."],
+    ["9. Les photos ne sont pas importées via Excel ; complétez-les ensuite dans chaque fiche."],
   ]);
   wsInstr.getColumn(1).width = 88;
 

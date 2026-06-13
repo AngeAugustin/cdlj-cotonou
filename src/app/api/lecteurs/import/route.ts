@@ -4,27 +4,14 @@ import { authOptions } from "@/lib/auth";
 import { assertParoisseInVicariat } from "@/lib/activiteEnrollmentScope";
 import { LecteurService } from "@/modules/lecteurs/service";
 import { GradeService } from "@/modules/grades/service";
-import { createLecteurSchema } from "@/modules/lecteurs/schema";
+import { createLecteurSchema, lecteurImportRowSchema } from "@/modules/lecteurs/schema";
 import type { LecteurImportRow } from "@/modules/lecteurs/importExcel";
 import { z } from "zod";
 
 const importBodySchema = z.object({
   vicariatId: z.string().min(24, "Vicariat invalide"),
   paroisseId: z.string().min(24, "Paroisse invalide"),
-  rows: z.array(z.object({
-    nom: z.string().min(1),
-    prenoms: z.string().min(1),
-    dateNaissance: z.string().min(1),
-    sexe: z.enum(["M", "F"]),
-    grade: z.string().optional(),
-    anneeAdhesion: z.number().int().optional(),
-    niveau: z.string().min(1),
-    details: z.string().optional(),
-    contact: z.string().optional(),
-    contactUrgence: z.string().optional(),
-    adresse: z.string().min(1),
-    maux: z.string().optional(),
-  })).min(1, "Aucune ligne à importer"),
+  rows: z.array(lecteurImportRowSchema).min(1, "Aucune ligne à importer"),
 });
 
 function canImportLecteurs(roles: string[]) {
