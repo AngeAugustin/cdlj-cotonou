@@ -4,8 +4,9 @@ import { use as usePromise, useCallback, useEffect, useMemo, useRef, useState } 
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Banknote, CheckCircle, Download, Loader2, AlertCircle, CheckCircle2, MapPin } from "lucide-react";
+import { ArrowLeft, Banknote, CheckCircle, Download, Loader2, AlertCircle, CheckCircle2, MapPin, Search } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -79,6 +80,14 @@ function paroisseLabel(ref: unknown): string {
   return "—";
 }
 
+function matchesNameSearch(nom: string, prenoms: string, query: string) {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const nomL = nom.toLowerCase();
+  const prenomsL = prenoms.toLowerCase();
+  return nomL.includes(q) || prenomsL.includes(q) || `${nomL} ${prenomsL}`.includes(q);
+}
+
 function formatMoney(n: number) {
   return new Intl.NumberFormat("fr-FR", { style: "decimal", maximumFractionDigits: 0 }).format(n) + " FCFA";
 }
@@ -149,9 +158,10 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
   const [paroisseFilter, setParoisseFilter] = useState(PAROISSE_FILTER_ALL);
 
   const [partSubTab, setPartSubTab] = useState<"non" | "oui">("non");
+  const [lecteurSearch, setLecteurSearch] = useState("");
   const [lecteurs, setLecteurs] = useState<LecteurRow[]>([]);
   const [partIds, setPartIds] = useState<string[]>([]);
-  const [selectedPay, setSelectedPay] = useState<Record<string, boolean>>({});
+  const [selectedOrder, setSelectedOrder] = useState<string[]>([]);
   const [partLoading, setPartLoading] = useState(false);
   const [paying, setPaying] = useState(false);
   const [participantsRows, setParticipantsRows] = useState<ParticipantRow[]>([]);
@@ -455,13 +465,33 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
     return filteredLecteurs.filter((l) => !setP.has(l._id));
   }, [filteredLecteurs, partIds]);
 
-  const hasSelectedLecteurs = useMemo(
-    () => Object.values(selectedPay).some(Boolean),
-    [selectedPay]
-  );
+  const orderedNonParticipants = useMemo(() => {
+    const selectedSet = new Set(selectedOrder);
+    const selected = selectedOrder
+      .map((id) => nonParticipants.find((l) => l._id === id))
+      .filter((l): l is LecteurRow => Boolean(l));
+    const unselected = nonParticipants.filter((l) => !selectedSet.has(l._id));
+    return [...selected, ...unselected];
+  }, [nonParticipants, selectedOrder]);
+
+  const searchedNonParticipants = useMemo(() => {
+    const q = lecteurSearch.trim();
+    if (!q) return orderedNonParticipants;
+    return orderedNonParticipants.filter((l) => matchesNameSearch(l.nom, l.prenoms, q));
+  }, [orderedNonParticipants, lecteurSearch]);
+
+  const searchedParticipants = useMemo(() => {
+    const q = lecteurSearch.trim();
+    if (!q) return filteredParticipants;
+    return filteredParticipants.filter((p) =>
+      matchesNameSearch(p.lecteur.nom, p.lecteur.prenoms, q)
+    );
+  }, [filteredParticipants, lecteurSearch]);
+
+  const hasSelectedLecteurs = selectedOrder.length > 0;
 
   const togglePay = (id: string) => {
-    setSelectedPay((s) => ({ ...s, [id]: !s[id] }));
+    setSelectedOrder((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const refreshParticipations = async () => {
@@ -475,9 +505,8 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
 
   const submitPayer = async () => {
     if (!activite) return;
-    const ids = Object.entries(selectedPay)
-      .filter(([, v]) => v)
-      .map(([k]) => k);
+    const nonParticipantIds = new Set(nonParticipants.map((l) => l._id));
+    const ids = selectedOrder.filter((id) => nonParticipantIds.has(id));
     if (!ids.length) {
       showToast("Cochez au moins un lecteur", "error");
       return;
@@ -496,13 +525,13 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
       }
       if (data.free) {
         showToast("Participation enregistrée (activité gratuite).");
-        setSelectedPay({});
+        setSelectedOrder([]);
         await refreshParticipations();
         return;
       }
       if (data.alreadyApproved) {
         showToast("Ce paiement a déjà été confirmé. Les participants sont inscrits.");
-        setSelectedPay({});
+        setSelectedOrder([]);
         await refreshParticipations();
         return;
       }
@@ -669,13 +698,26 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
         </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        <TabBtn active={partSubTab === "non"} onClick={() => setPartSubTab("non")}>
-          Non participants
-        </TabBtn>
-        <TabBtn active={partSubTab === "oui"} onClick={() => setPartSubTab("oui")}>
-          Participants
-        </TabBtn>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex gap-2 flex-wrap">
+          <TabBtn active={partSubTab === "non"} onClick={() => setPartSubTab("non")}>
+            Non participants
+          </TabBtn>
+          <TabBtn active={partSubTab === "oui"} onClick={() => setPartSubTab("oui")}>
+            Participants
+          </TabBtn>
+        </div>
+        <div className="relative w-full sm:max-w-sm sm:shrink-0">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            type="search"
+            value={lecteurSearch}
+            onChange={(e) => setLecteurSearch(e.target.value)}
+            placeholder="Rechercher par nom ou prénom…"
+            className="h-10 rounded-xl border-slate-200 bg-white pl-9 text-sm"
+            aria-label="Rechercher un lecteur par nom ou prénom"
+          />
+        </div>
       </div>
 
       {partLoading ? (
@@ -690,13 +732,23 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
                 ? "Tous les lecteurs de cette paroisse sont déjà inscrits."
                 : "Tous les lecteurs du vicariat sont déjà inscrits."}
             </p>
+          ) : searchedNonParticipants.length === 0 ? (
+            <p className="text-sm text-slate-500 py-6 text-center">Aucun lecteur ne correspond à votre recherche.</p>
           ) : (
             <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 max-h-[min(40rem,70vh)] overflow-y-auto border border-slate-200/60 rounded-2xl p-2 sm:p-3">
-              {nonParticipants.map((l) => (
-                <li key={l._id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100/60 min-w-0">
+              {searchedNonParticipants.map((l) => (
+                <li
+                  key={l._id}
+                  className={cn(
+                    "flex items-center gap-3 p-2 rounded-xl min-w-0 transition-colors",
+                    selectedOrder.includes(l._id)
+                      ? "bg-amber-50/80 ring-1 ring-amber-200/80"
+                      : "hover:bg-slate-100/60"
+                  )}
+                >
                   <input
                     type="checkbox"
-                    checked={!!selectedPay[l._id]}
+                    checked={selectedOrder.includes(l._id)}
                     onChange={() => togglePay(l._id)}
                     className="w-4 h-4 rounded border-slate-300 text-amber-900 focus:ring-amber-900"
                   />
@@ -747,9 +799,11 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
                 ? "Aucun participant pour cette paroisse pour le moment."
                 : "Aucun participant pour le moment."}
             </p>
+          ) : searchedParticipants.length === 0 ? (
+            <p className="text-sm text-slate-500 py-6 text-center">Aucun participant ne correspond à votre recherche.</p>
           ) : (
             <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 max-h-[min(40rem,70vh)] overflow-y-auto border border-slate-200/60 rounded-2xl p-2 sm:p-3">
-              {filteredParticipants.map((p) => (
+              {searchedParticipants.map((p) => (
                 <li
                   key={p.lecteur._id}
                   className="flex items-center justify-between gap-2 p-3 rounded-xl bg-emerald-50/50 border border-emerald-100/80 min-w-0"
