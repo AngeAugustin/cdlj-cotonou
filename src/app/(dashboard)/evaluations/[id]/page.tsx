@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { AlertCircle, ArrowLeft, CheckCircle, Loader2, Pencil, Upload } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle, FileSpreadsheet, Loader2, Pencil, Upload } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { downloadEvaluationReadersExcel } from "@/lib/evaluationReadersExport";
 
 type Role = string;
 
@@ -222,6 +223,7 @@ export default function EvaluationDetailsPage() {
   const [publierModalOpen, setPublierModalOpen] = useState(false);
   const [terminating, setTerminating] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   type TerminationMissingByReader = {
     lecteurId: string;
@@ -299,6 +301,33 @@ export default function EvaluationDetailsPage() {
     }
 
     setTermineeModalOpen(true);
+  };
+
+  const handleDownloadExcel = async () => {
+    if (!evaluation) return;
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/evaluations/${id}/export`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Export impossible");
+
+      const members = Array.isArray(data.members) ? data.members : [];
+      const exportEvaluation = data.evaluation ?? {
+        _id: evaluation._id,
+        nom: evaluation.nom,
+        annee: evaluation.annee,
+        nombreNotes: evaluation.nombreNotes,
+        terminee: evaluation.terminee,
+        publiee: evaluation.publiee,
+      };
+
+      downloadEvaluationReadersExcel(exportEvaluation, members);
+      showToast("Export Excel téléchargé");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Erreur", "error");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const confirmPublier = async () => {
@@ -494,7 +523,17 @@ export default function EvaluationDetailsPage() {
         </div>
 
         {canManage ? (
-          <div className="flex flex-wrap gap-2 items-center justify-end">
+          <div className="flex flex-col gap-2 items-stretch sm:items-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl border-slate-200"
+              disabled={exporting}
+              onClick={() => void handleDownloadExcel()}
+            >
+              {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-2" />}
+              Télécharger
+            </Button>
             {!evaluation.terminee ? (
               <Button type="button" className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white" onClick={() => requestTerminer()}>
                 <CheckCircle className="w-4 h-4 mr-2" /> Marquer comme terminée
@@ -504,7 +543,7 @@ export default function EvaluationDetailsPage() {
                 Publier
               </Button>
             ) : (
-              <span className="inline-flex items-center px-4 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-100 font-bold text-sm">
+              <span className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-100 font-bold text-sm">
                 Publiée
               </span>
             )}

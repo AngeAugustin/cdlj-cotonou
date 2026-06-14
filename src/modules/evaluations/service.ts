@@ -24,6 +24,10 @@ export class EvaluationService {
     return this.repo.getEvaluationReaders(evaluationId, opts);
   }
 
+  getEvaluationReadersForExport(evaluationId: string) {
+    return this.repo.getEvaluationReadersForExport(evaluationId);
+  }
+
   createEvaluation(data: CreateEvaluationInput) {
     return this.repo.createEvaluation(data);
   }

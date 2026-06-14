@@ -397,6 +397,158 @@ export class EvaluationRepository {
     };
   }
 
+  async getEvaluationReadersForExport(evaluationId: string) {
+    await connectToDatabase();
+
+    const evaluation = await Evaluation.findById(evaluationId)
+      .populate("gradeId", "name abbreviation level")
+      .populate("activiteId", "nom dateDebut dateFin lieu")
+      .lean() as unknown as
+      | (Pick<IEvaluation, "_id" | "nom" | "annee" | "terminee" | "publiee" | "nombreNotes"> & {
+          _id: mongoose.Types.ObjectId;
+          gradeId?: { _id: mongoose.Types.ObjectId; name: string; abbreviation: string; level: number };
+          activiteId?: { _id: mongoose.Types.ObjectId; nom: string; dateDebut: Date; dateFin: Date; lieu: string };
+        })
+      | null;
+    if (!evaluation) throw new Error("Evaluation introuvable");
+
+    const members = (await EvaluationLecteur.find({ evaluationId: new mongoose.Types.ObjectId(evaluationId) })
+      .select("lecteurId vicariatId paroisseId gradeIdAtEvaluation moyenne decision")
+      .populate(
+        "lecteurId",
+        "nom prenoms uniqueId sexe dateNaissance anneeAdhesion niveau details contact contactUrgence adresse maux"
+      )
+      .populate("vicariatId", "name abbreviation")
+      .populate("paroisseId", "name")
+      .populate("gradeIdAtEvaluation", "name abbreviation level")
+      .sort({ "lecteurId.nom": 1, "lecteurId.prenoms": 1 })
+      .lean()) as unknown as Array<{
+      _id: mongoose.Types.ObjectId;
+      lecteurId: {
+        _id: mongoose.Types.ObjectId;
+        nom: string;
+        prenoms: string;
+        uniqueId: string;
+        sexe: "M" | "F";
+        dateNaissance?: Date;
+        anneeAdhesion?: number;
+        niveau?: string;
+        details?: string;
+        contact?: string;
+        contactUrgence?: string;
+        adresse?: string;
+        maux?: string;
+      };
+      vicariatId?: { _id: mongoose.Types.ObjectId; name: string; abbreviation: string } | mongoose.Types.ObjectId;
+      paroisseId?: { _id: mongoose.Types.ObjectId; name: string } | mongoose.Types.ObjectId;
+      gradeIdAtEvaluation?: { _id: mongoose.Types.ObjectId; name: string; abbreviation: string; level: number } | mongoose.Types.ObjectId;
+      moyenne?: number;
+      decision?: "PROMU" | "MAINTENU";
+    }>;
+
+    const lecteurIds = members.map((m) => m.lecteurId._id.toString());
+    const notes = (await EvaluationNote.find({
+      evaluationId: new mongoose.Types.ObjectId(evaluationId),
+      lecteurId: { $in: lecteurIds.map((x: string) => new mongoose.Types.ObjectId(x)) },
+    })
+      .select("lecteurId noteIndex valeur validatedAt")
+      .lean()) as unknown as EvaluationNoteLean[];
+
+    const notesByLecteur: Record<string, Record<number, EvaluationNoteLean>> = {};
+    for (const n of notes) {
+      const lid = n.lecteurId.toString();
+      notesByLecteur[lid] ??= {};
+      notesByLecteur[lid][n.noteIndex] = n;
+    }
+
+    return {
+      evaluation: {
+        _id: evaluation._id.toString(),
+        nom: evaluation.nom,
+        annee: evaluation.annee,
+        terminee: evaluation.terminee,
+        publiee: evaluation.publiee,
+        nombreNotes: evaluation.nombreNotes,
+        gradeId: evaluation.gradeId
+          ? {
+              _id: evaluation.gradeId._id.toString(),
+              name: evaluation.gradeId.name,
+              abbreviation: evaluation.gradeId.abbreviation,
+            }
+          : undefined,
+        activiteId: evaluation.activiteId
+          ? {
+              _id: evaluation.activiteId._id.toString(),
+              nom: evaluation.activiteId.nom,
+              dateDebut: evaluation.activiteId.dateDebut,
+              dateFin: evaluation.activiteId.dateFin,
+              lieu: evaluation.activiteId.lieu,
+            }
+          : undefined,
+      },
+      members: members.map((m) => {
+        const lid = m.lecteurId._id.toString();
+        const noteSlots = Array.from({ length: evaluation.nombreNotes }, (_, i) => i + 1).map((idx) => {
+          const note = notesByLecteur[lid]?.[idx];
+          return {
+            noteIndex: idx,
+            valeur: note ? note.valeur : undefined,
+            validated: Boolean(note?.validatedAt),
+          };
+        });
+
+        const gradeIdAtEvaluation = (() => {
+          const g = m.gradeIdAtEvaluation as unknown;
+          if (!g || typeof g !== "object") return undefined;
+          if (!("_id" in (g as object)) || !("name" in (g as object))) return undefined;
+          const gg = g as { _id: mongoose.Types.ObjectId; name: string; abbreviation: string; level: number };
+          return { _id: gg._id.toString(), name: gg.name, abbreviation: gg.abbreviation, level: gg.level };
+        })();
+
+        const vicariat = (() => {
+          const v = m.vicariatId as unknown;
+          if (!v || typeof v !== "object") return undefined;
+          if (!("_id" in (v as object)) || !("name" in (v as object)) || !("abbreviation" in (v as object))) return undefined;
+          const vv = v as { _id: mongoose.Types.ObjectId; name: string; abbreviation: string };
+          return { _id: vv._id.toString(), name: vv.name, abbreviation: vv.abbreviation };
+        })();
+
+        const paroisse = (() => {
+          const p = m.paroisseId as unknown;
+          if (!p || typeof p !== "object") return undefined;
+          if (!("_id" in (p as object)) || !("name" in (p as object))) return undefined;
+          const pp = p as { _id: mongoose.Types.ObjectId; name: string };
+          return { _id: pp._id.toString(), name: pp.name };
+        })();
+
+        return {
+          _id: m._id.toString(),
+          lecteur: {
+            _id: lid,
+            nom: m.lecteurId.nom,
+            prenoms: m.lecteurId.prenoms,
+            uniqueId: m.lecteurId.uniqueId,
+            sexe: m.lecteurId.sexe,
+            dateNaissance: m.lecteurId.dateNaissance ? m.lecteurId.dateNaissance.toISOString() : undefined,
+            anneeAdhesion: m.lecteurId.anneeAdhesion,
+            niveau: m.lecteurId.niveau,
+            details: m.lecteurId.details,
+            contact: m.lecteurId.contact,
+            contactUrgence: m.lecteurId.contactUrgence,
+            adresse: m.lecteurId.adresse,
+            maux: m.lecteurId.maux,
+            gradeIdAtEvaluation,
+          },
+          vicariat,
+          paroisse,
+          moyenne: m.moyenne,
+          decision: m.decision,
+          notes: noteSlots,
+        };
+      }),
+    };
+  }
+
   async getLecteurPublishedEvaluations(lecteurId: string) {
     await connectToDatabase();
     if (!mongoose.Types.ObjectId.isValid(lecteurId)) return [];
