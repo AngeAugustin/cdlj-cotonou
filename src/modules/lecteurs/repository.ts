@@ -110,13 +110,13 @@ export class LecteurRepository {
       prenoms: data.prenoms.trim(),
       dateNaissance: data.dateNaissance,
       sexe: data.sexe,
-      gradeId: data.gradeId ? new mongoose.Types.ObjectId(data.gradeId) : undefined,
+      gradeId: new mongoose.Types.ObjectId(data.gradeId),
       anneeAdhesion: data.anneeAdhesion ?? undefined,
-      niveau: data.niveau.trim(),
+      niveau: data.niveau?.trim() || undefined,
       details: data.details?.trim() || undefined,
       contact: data.contact?.trim() || undefined,
       contactUrgence: data.contactUrgence?.trim() || undefined,
-      adresse: data.adresse.trim(),
+      adresse: data.adresse?.trim() || undefined,
       maux: data.maux?.trim() || undefined,
       photo: data.photo,
       photoIdentite: data.photoIdentite,
@@ -144,11 +144,11 @@ export class LecteurRepository {
       patch.gradeId = data.gradeId ? new mongoose.Types.ObjectId(data.gradeId) : null;
     }
     if (data.anneeAdhesion !== undefined) patch.anneeAdhesion = data.anneeAdhesion;
-    if (data.niveau !== undefined) patch.niveau = data.niveau.trim();
+    if (data.niveau !== undefined) patch.niveau = data.niveau.trim() || null;
     if (data.details !== undefined) patch.details = data.details?.trim() || undefined;
     if (data.contact !== undefined) patch.contact = data.contact.trim() || null;
     if (data.contactUrgence !== undefined) patch.contactUrgence = data.contactUrgence.trim() || null;
-    if (data.adresse !== undefined) patch.adresse = data.adresse.trim();
+    if (data.adresse !== undefined) patch.adresse = data.adresse.trim() || null;
     if (data.maux !== undefined) patch.maux = data.maux?.trim() || undefined;
     if (data.photo !== undefined) patch.photo = data.photo;
     if (data.photoIdentite !== undefined) patch.photoIdentite = data.photoIdentite;

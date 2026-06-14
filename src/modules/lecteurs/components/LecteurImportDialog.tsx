@@ -251,7 +251,11 @@ export function LecteurImportDialog({
     const gradeOpts = grades.map((g) => ({ name: g.name, abbreviation: g.abbreviation }));
 
     editableRows.forEach((row, index) => {
-      if (row.grade.trim() && !isKnownGradeName(row.grade, gradeOpts)) {
+      if (!row.grade.trim()) {
+        errors[index] = "Le grade est requis.";
+        return;
+      }
+      if (!isKnownGradeName(row.grade, gradeOpts)) {
         errors[index] = `Grade « ${row.grade} » introuvable. Choisissez un grade dans la liste.`;
         return;
       }
@@ -349,8 +353,8 @@ export function LecteurImportDialog({
                 </>
               ) : (
                 <>
-                  Sélectionnez le vicariat et la paroisse, puis chargez le fichier Excel. L&apos;année
-                  d&apos;adhésion, les contacts et les maux particuliers sont facultatifs.
+                  Sélectionnez le vicariat et la paroisse, puis chargez le fichier Excel. Le grade est
+                  obligatoire, ainsi que le nom, les prénoms, la date de naissance et le sexe.
                 </>
               )}
             </DialogDescription>

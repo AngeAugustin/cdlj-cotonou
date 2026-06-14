@@ -7,13 +7,13 @@ export const LECTEUR_IMPORT_COLUMNS = [
   { key: "prenoms", header: "Prénoms", required: true },
   { key: "dateNaissance", header: "Date de naissance", required: true },
   { key: "sexe", header: "Sexe", required: true },
-  { key: "grade", header: "Grade", required: false },
+  { key: "grade", header: "Grade", required: true },
   { key: "anneeAdhesion", header: "Année d'adhésion", required: false },
-  { key: "niveau", header: "Niveau scolaire ou professionnel", required: true },
+  { key: "niveau", header: "Niveau scolaire ou professionnel", required: false },
   { key: "details", header: "Situation professionnelle", required: false },
   { key: "contact", header: "Contact", required: false },
   { key: "contactUrgence", header: "Contact d'urgence", required: false },
-  { key: "adresse", header: "Adresse", required: true },
+  { key: "adresse", header: "Adresse", required: false },
   { key: "maux", header: "Maux particuliers", required: false },
 ] as const;
 
@@ -22,13 +22,13 @@ export type LecteurImportRow = {
   prenoms: string;
   dateNaissance: string;
   sexe: "M" | "F";
-  grade?: string;
+  grade: string;
   anneeAdhesion?: number;
-  niveau: string;
+  niveau?: string;
   details?: string;
   contact?: string;
   contactUrgence?: string;
-  adresse: string;
+  adresse?: string;
   maux?: string;
 };
 
@@ -220,7 +220,7 @@ function excelColumnLetter(colIndex1Based: number): string {
 const TEMPLATE_DATA_ROWS = 500;
 
 function isRowEmpty(values: Record<string, unknown>): boolean {
-  const keys = ["nom", "prenoms", "dateNaissance", "niveau", "adresse"] as const;
+  const keys = ["nom", "prenoms", "dateNaissance"] as const;
   return keys.every((k) => !cellToString(values[k]));
 }
 
@@ -331,7 +331,6 @@ export function convertEditableToImportRow(row: EditableLecteurImportRow): Edita
   const prenoms = row.prenoms.trim();
   const adresse = row.adresse.trim();
   const niveauRaw = row.niveau.trim();
-  const niveau = resolveNiveau(niveauRaw);
   const dateNaissance = parseExcelDate(row.dateNaissance);
   const sexe = parseSexe(row.sexe);
   const anneeText = row.anneeAdhesion.trim();
@@ -339,8 +338,8 @@ export function convertEditableToImportRow(row: EditableLecteurImportRow): Edita
   const contact = row.contact.trim() || undefined;
   const contactUrgence = row.contactUrgence.trim() || undefined;
 
-  if (!nom || !prenoms || !niveauRaw || !adresse) {
-    return { ok: false, message: "Nom, prénoms, niveau et adresse sont requis." };
+  if (!nom || !prenoms) {
+    return { ok: false, message: "Nom et prénoms sont requis." };
   }
   if (!dateNaissance) {
     return { ok: false, message: "Date de naissance invalide." };
@@ -351,8 +350,16 @@ export function convertEditableToImportRow(row: EditableLecteurImportRow): Edita
   if (anneeText && anneeAdhesion == null) {
     return { ok: false, message: "Année d'adhésion invalide." };
   }
-  if (!niveau) {
-    return { ok: false, message: `Niveau invalide (« ${niveauRaw} »).` };
+  let niveau: string | undefined;
+  if (niveauRaw) {
+    const resolved = resolveNiveau(niveauRaw);
+    if (!resolved) {
+      return { ok: false, message: `Niveau invalide (« ${niveauRaw} »).` };
+    }
+    niveau = resolved;
+  }
+  if (adresse && adresse.length < 5) {
+    return { ok: false, message: "Adresse invalide (au moins 5 caractères si renseignée)." };
   }
   if (contact && contact.length < 8) {
     return { ok: false, message: "Contact invalide (au moins 8 caractères si renseigné)." };
@@ -360,7 +367,10 @@ export function convertEditableToImportRow(row: EditableLecteurImportRow): Edita
   if (contactUrgence && contactUrgence.length < 8) {
     return { ok: false, message: "Contact d'urgence invalide (au moins 8 caractères si renseigné)." };
   }
-  const grade = row.grade.trim() || undefined;
+  const grade = row.grade.trim();
+  if (!grade) {
+    return { ok: false, message: "Le grade est requis." };
+  }
 
   return {
     ok: true,
@@ -375,7 +385,7 @@ export function convertEditableToImportRow(row: EditableLecteurImportRow): Edita
       details: row.details.trim() || undefined,
       contact,
       contactUrgence,
-      adresse,
+      adresse: adresse || undefined,
       maux: row.maux.trim() || undefined,
     },
   };
@@ -410,7 +420,7 @@ export async function buildLecteurImportTemplateWorkbook(
   const niveauLastRow = NIVEAU_SCOLAIRE_OPTIONS.length + 1;
 
   const gradeStartRow = niveauLastRow + 2;
-  wsRef.getCell(`A${gradeStartRow}`).value = "Grades (nom ou abréviation — optionnel)";
+  wsRef.getCell(`A${gradeStartRow}`).value = "Grades (nom ou abréviation — obligatoire)";
   wsRef.getCell(`A${gradeStartRow + 1}`).value = "Nom";
   wsRef.getCell(`B${gradeStartRow + 1}`).value = "Abréviation";
   grades.forEach((g, i) => {
@@ -471,9 +481,9 @@ export async function buildLecteurImportTemplateWorkbook(
     ["3. Date de naissance : JJ/MM/AAAA ou AAAA-MM-JJ."],
     ["4. Sexe : M (masculin) ou F (féminin)."],
     ["5. Niveau scolaire : utilisez la liste déroulante dans la colonne dédiée."],
-    ["6. Grade : nom ou abréviation (voir onglet Référence), laisser vide si aucun."],
+    ["6. Grade : nom ou abréviation (voir onglet Référence) — obligatoire."],
     [
-      "7. Colonnes facultatives : année d'adhésion, contact, contact d'urgence, situation professionnelle, maux particuliers.",
+      "7. Colonnes facultatives : année d'adhésion, niveau scolaire, adresse, contacts, situation professionnelle, maux particuliers.",
     ],
     ["8. Si un contact est renseigné, il doit contenir au moins 8 caractères."],
     ["9. Les photos ne sont pas importées via Excel ; complétez-les ensuite dans chaque fiche."],

@@ -416,7 +416,11 @@ export function LecteurDetailClient({ lecteurId, lecteur }: LecteurDetailClientP
                 </InfoCard>
 
                 <InfoCard icon={MapPin} label="Adresse" className="sm:col-span-2">
-                  {lecteur.adresse}
+                  {lecteur.adresse?.trim() ? (
+                    lecteur.adresse
+                  ) : (
+                    <span className="text-slate-400 font-medium italic">Non renseignée</span>
+                  )}
                 </InfoCard>
               </div>
             </div>

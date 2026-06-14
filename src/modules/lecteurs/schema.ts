@@ -75,21 +75,28 @@ export const optionalUrgencePhoneField = z.preprocess(
     .optional()
 );
 
+export const optionalNiveauField = z.preprocess(
+  emptyToUndefined,
+  z.enum(NIVEAU_SCOLAIRE_OPTIONS, { message: "Niveau invalide" }).optional()
+);
+
+export const optionalAdresseField = z.preprocess(
+  emptyToUndefined,
+  z.string().min(5, "L'adresse doit contenir au moins 5 caractères").optional()
+);
+
 export const createLecteurSchema = z.object({
   nom: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
   prenoms: z.string().min(2, "Les prénoms doivent contenir au moins 2 caractères"),
   dateNaissance: z.coerce.date(),
   sexe: z.enum(["M", "F"]),
-  gradeId: z
-    .string()
-    .optional()
-    .transform((v) => (v && v.length >= 24 ? v : undefined)),
+  gradeId: z.string().min(24, "Le grade est requis"),
   anneeAdhesion: optionalAnneeAdhesionField,
-  niveau: z.enum(NIVEAU_SCOLAIRE_OPTIONS, { message: "Le niveau est requis" }),
+  niveau: optionalNiveauField,
   details: z.string().optional(),
   contact: optionalPhoneField,
   contactUrgence: optionalUrgencePhoneField,
-  adresse: z.string().min(5, "L'adresse est requise"),
+  adresse: optionalAdresseField,
   maux: z.string().optional(),
   photo: optionalUrl,
   photoIdentite: optionalUrl,
@@ -105,13 +112,13 @@ export const lecteurImportRowSchema = z.object({
   prenoms: z.string().min(1),
   dateNaissance: z.string().min(1),
   sexe: z.enum(["M", "F"]),
-  grade: z.string().optional(),
+  grade: z.string().min(1, "Le grade est requis"),
   anneeAdhesion: optionalAnneeAdhesionField,
-  niveau: z.string().min(1),
+  niveau: optionalNiveauField,
   details: z.string().optional(),
   contact: optionalPhoneField,
   contactUrgence: optionalUrgencePhoneField,
-  adresse: z.string().min(1),
+  adresse: optionalAdresseField,
   maux: z.string().optional(),
 });
 

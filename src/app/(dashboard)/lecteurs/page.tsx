@@ -229,10 +229,10 @@ export default function LecteursPage() {
         ageYearsForCsv(l.dateNaissance),
         l.sexe,
         l.anneeAdhesion != null ? String(l.anneeAdhesion) : "",
-        l.niveau,
+        l.niveau ?? "",
         l.contact ?? "",
         l.contactUrgence ?? "",
-        l.adresse.replace(/"/g, '""'),
+        (l.adresse ?? "").replace(/"/g, '""'),
         pn,
         vn,
       ]

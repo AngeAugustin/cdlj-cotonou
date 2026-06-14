@@ -5,7 +5,7 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import {
   BarChart3, Users, Building2, Map, Shield,
-  Activity, FileText, Wallet, Award, GraduationCap,
+  Activity, FileText, Wallet, Award, GraduationCap, CalendarDays,
   PanelLeftClose, PanelLeftOpen, Bell, Search, Newspaper, Menu, X, User, LogOut,
   Image as ImageIcon,
 } from "lucide-react";
@@ -35,6 +35,7 @@ function initialsFromDisplayName(name: string | null | undefined): string {
 const ALL_NAV = [
   { name: "Tableau de Bord", href: "/dashboard",   icon: BarChart3,      roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
   { name: "Lecteurs",        href: "/lecteurs",     icon: Users,          roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
+  { name: "Calendrier",      href: "/calendrier",   icon: CalendarDays,   roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
   { name: "Paroisses",       href: "/paroisses",    icon: Building2,      roles: ["VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
   { name: "Vicariats",       href: "/vicariats",    icon: Map,            roles: ["DIOCESAIN", "SUPERADMIN"] },
   { name: "Activités",       href: "/activites",    icon: Activity,       roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"] },

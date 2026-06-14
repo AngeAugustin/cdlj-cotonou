@@ -5,13 +5,13 @@ export interface ILecteur extends Document {
   prenoms: string;
   dateNaissance: Date;
   sexe: "M" | "F";
-  gradeId?: mongoose.Types.ObjectId;
+  gradeId: mongoose.Types.ObjectId;
   anneeAdhesion?: number;
-  niveau: string;
+  niveau?: string;
   details?: string;
   contact?: string;
   contactUrgence?: string;
-  adresse: string;
+  adresse?: string;
   maux?: string;
   /** Photo de profil (avatar) */
   photo?: string;
@@ -30,13 +30,13 @@ const lecteurSchema = new Schema<ILecteur>(
     prenoms: { type: String, required: true },
     dateNaissance: { type: Date, required: true },
     sexe: { type: String, enum: ["M", "F"], required: true },
-    gradeId: { type: Schema.Types.ObjectId, ref: "Grade" },
+    gradeId: { type: Schema.Types.ObjectId, ref: "Grade", required: true },
     anneeAdhesion: { type: Number },
-    niveau: { type: String, required: true },
+    niveau: { type: String },
     details: { type: String },
     contact: { type: String },
     contactUrgence: { type: String },
-    adresse: { type: String, required: true },
+    adresse: { type: String },
     maux: { type: String },
     photo: { type: String },
     photoIdentite: { type: String },

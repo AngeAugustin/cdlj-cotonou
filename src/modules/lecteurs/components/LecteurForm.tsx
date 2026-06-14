@@ -37,12 +37,12 @@ const lecteurFormInputSchema = z.object({
   prenoms: z.string().min(2, "Les prénoms doivent contenir au moins 2 caractères"),
   dateNaissance: z.string().min(1, "La date de naissance est requise"),
   sexe: z.enum(["M", "F"]),
-  gradeId: z.string().optional(),
+  gradeId: z.string().refine((v) => v.length >= 24, { message: "Le grade est requis" }),
   anneeAdhesion: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
   niveau: z
     .string()
-    .refine((v) => (NIVEAU_SCOLAIRE_OPTIONS as readonly string[]).includes(v), {
-      message: "Le niveau est requis",
+    .refine((v) => v === "" || (NIVEAU_SCOLAIRE_OPTIONS as readonly string[]).includes(v), {
+      message: "Niveau invalide",
     }),
   details: z.string().optional(),
   contact: z
@@ -53,7 +53,11 @@ const lecteurFormInputSchema = z.object({
     .refine((v) => v.trim() === "" || v.trim().length >= 8, {
       message: "Numéro de contact d'urgence invalide",
     }),
-  adresse: z.string().min(5, "L'adresse est requise"),
+  adresse: z
+    .string()
+    .refine((v) => v.trim() === "" || v.trim().length >= 5, {
+      message: "L'adresse doit contenir au moins 5 caractères",
+    }),
   maux: z.string().optional(),
   photoIdentite: z.string().optional(),
   vicariatId: z.string().min(24, "ID du vicariat invalide"),
@@ -117,7 +121,7 @@ async function uploadImage(file: File, maxBytes: number, label: string): Promise
 type GradeOpt = { _id: string; name: string; abbreviation?: string };
 
 function gradeDisplayLabel(value: string, grades: GradeOpt[]): string {
-  if (!value || value === SELECT_EMPTY || value.length < 24) return "Non renseigné";
+  if (!value || value === SELECT_EMPTY || value.length < 24) return "Sélectionner un grade";
   const g = grades.find((x) => x._id === value);
   if (!g) return value;
   return g.abbreviation ? `${g.name} (${g.abbreviation})` : g.name;
@@ -320,10 +324,7 @@ export function LecteurForm({
       dateNaissance: toPersistedBirthDateUtcNoon(dateFromDateInputString(values.dateNaissance)),
       photo: undefined,
       photoIdentite: values.photoIdentite?.trim() || undefined,
-      gradeId:
-        values.gradeId && values.gradeId !== SELECT_EMPTY && values.gradeId.length >= 24
-          ? values.gradeId
-          : undefined,
+      gradeId: values.gradeId,
     });
 
     try {
@@ -633,7 +634,6 @@ export function LecteurForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value={SELECT_EMPTY}>Non renseigné</SelectItem>
                         {grades.map((g) => (
                           <SelectItem key={g._id} value={g._id}>
                             {g.name}
@@ -680,7 +680,7 @@ export function LecteurForm({
                   return (
                     <FormItem>
                       <FormLabel className={cn(isPage && "font-semibold text-slate-700")}>
-                        Niveau scolaire ou professionnel
+                        Niveau scolaire ou professionnel (facultatif)
                       </FormLabel>
                       <Select
                         value={field.value || SELECT_EMPTY}
@@ -877,7 +877,7 @@ export function LecteurForm({
                 name="adresse"
                 render={({ field }) => (
                   <FormItem className="md:col-span-2">
-                    <FormLabel>Adresse</FormLabel>
+                    <FormLabel>Adresse (facultatif)</FormLabel>
                     <FormControl>
                       <Input placeholder="Quartier, repères…" className="rounded-xl" {...field} />
                     </FormControl>

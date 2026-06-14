@@ -105,8 +105,11 @@ export function LecteurImportPreviewTable({
                     className={cn(INPUT_CLASS, "min-w-[11rem]")}
                     value={row.grade}
                     onChange={(e) => onChange(index, "grade", e.target.value)}
+                    required
                   >
-                    <option value="">—</option>
+                    <option value="" disabled>
+                      Choisir un grade…
+                    </option>
                     {row.grade && !isKnownGradeName(row.grade, grades) ? (
                       <option value={row.grade}>{row.grade} (valeur Excel)</option>
                     ) : null}

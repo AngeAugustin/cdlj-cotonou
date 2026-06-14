@@ -13,11 +13,11 @@ export type ApiLecteur = {
   sexe: "M" | "F";
   gradeId?: GradeRef | string | null;
   anneeAdhesion?: number | null;
-  niveau: string;
+  niveau?: string | null;
   details?: string;
   contact?: string | null;
   contactUrgence?: string | null;
-  adresse: string;
+  adresse?: string | null;
   maux?: string;
   photo?: string;
   photoIdentite?: string;

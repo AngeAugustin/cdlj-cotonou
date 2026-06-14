@@ -34,6 +34,7 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/lecteurs/:path*",
+    "/calendrier/:path*",
     "/paroisses/:path*",
     "/vicariats/:path*",
     "/activites/:path*",
