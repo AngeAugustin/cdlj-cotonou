@@ -4,14 +4,14 @@ export const PAYMENT_PENDING_TIMEOUT_MS = 120_000;
 
 export function buildActivitePaymentFingerprint(input: {
   activiteId: string;
-  paroisseId: string;
+  vicariatId: string;
   userId: string;
   lecteurIds: string[];
   montantTotal: number;
 }) {
   const normalized = {
     activiteId: input.activiteId,
-    paroisseId: input.paroisseId,
+    vicariatId: input.vicariatId,
     userId: input.userId,
     lecteurIds: [...new Set(input.lecteurIds)].sort(),
     montantTotal: input.montantTotal,

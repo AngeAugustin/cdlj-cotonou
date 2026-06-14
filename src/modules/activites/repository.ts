@@ -111,21 +111,28 @@ export class ActiviteRepository {
   async addParticipations(
     activiteId: string,
     lecteurIds: string[],
-    allowedParoisseId: string,
+    scope: { vicariatId: string } | { paroisseId: string },
     paiementId?: string
   ) {
     await connectToDatabase();
     const uniqueIds = [...new Set(lecteurIds)];
     const aid = new mongoose.Types.ObjectId(activiteId);
-    const lecteurs = await Lecteur.find({
-      _id: { $in: uniqueIds },
-      paroisseId: allowedParoisseId,
-    })
-      .select("_id paroisseId vicariatId")
-      .lean();
+
+    const lecteurQuery: Record<string, unknown> = { _id: { $in: uniqueIds } };
+    if ("vicariatId" in scope) {
+      lecteurQuery.vicariatId = scope.vicariatId;
+    } else {
+      lecteurQuery.paroisseId = scope.paroisseId;
+    }
+
+    const lecteurs = await Lecteur.find(lecteurQuery).select("_id paroisseId vicariatId").lean();
 
     if (lecteurs.length !== uniqueIds.length) {
-      throw new Error("Certains lecteurs ne sont pas rattachés à votre paroisse");
+      throw new Error(
+        "vicariatId" in scope
+          ? "Certains lecteurs ne sont pas rattachés à votre vicariat"
+          : "Certains lecteurs ne sont pas rattachés à votre paroisse"
+      );
     }
 
     const pid = paiementId ? new mongoose.Types.ObjectId(paiementId) : undefined;
@@ -256,7 +263,8 @@ export class ActiviteRepository {
 
   async createPaiementDoc(data: {
     activiteId: Types.ObjectId;
-    paroisseId: Types.ObjectId;
+    paroisseId?: Types.ObjectId;
+    vicariatId?: Types.ObjectId;
     userId: string;
     userEmail: string;
     lecteurIds: Types.ObjectId[];
@@ -311,14 +319,14 @@ export class ActiviteRepository {
 
   async findReusableOpenPaiement(opts: {
     activiteId: string;
-    paroisseId: string;
+    vicariatId: string;
     userId: string;
     requestFingerprint: string;
   }) {
     await connectToDatabase();
     return ActivitePaiement.findOne({
       activiteId: new mongoose.Types.ObjectId(opts.activiteId),
-      paroisseId: new mongoose.Types.ObjectId(opts.paroisseId),
+      vicariatId: new mongoose.Types.ObjectId(opts.vicariatId),
       userId: opts.userId,
       requestFingerprint: opts.requestFingerprint,
       status: { $in: ["pending", "non_finalized", "approved_pending_registration", "approved"] },
@@ -339,12 +347,17 @@ export class ActiviteRepository {
 
   async listPaiementsForActivite(
     activiteId: string,
-    opts?: { paroisseId?: string | null; paroisseIds?: string[] | null }
+    opts?: { paroisseId?: string | null; paroisseIds?: string[] | null; vicariatId?: string | null }
   ) {
     await connectToDatabase();
     const match: Record<string, unknown> = { activiteId: new mongoose.Types.ObjectId(activiteId) };
-    if (opts?.paroisseId) match.paroisseId = new mongoose.Types.ObjectId(opts.paroisseId);
-    else if (opts?.paroisseIds?.length) {
+    if (opts?.paroisseId) {
+      match.paroisseId = new mongoose.Types.ObjectId(opts.paroisseId);
+    } else if (opts?.vicariatId) {
+      const vicariatOid = new mongoose.Types.ObjectId(opts.vicariatId);
+      const parishOids = (opts.paroisseIds ?? []).map((id) => new mongoose.Types.ObjectId(id));
+      match.$or = [{ vicariatId: vicariatOid }, ...(parishOids.length ? [{ paroisseId: { $in: parishOids } }] : [])];
+    } else if (opts?.paroisseIds?.length) {
       match.paroisseId = { $in: opts.paroisseIds.map((id) => new mongoose.Types.ObjectId(id)) };
     }
 

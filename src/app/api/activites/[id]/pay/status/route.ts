@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { ActiviteService } from "@/modules/activites/service";
 import {
-  assertPaymentParoisseAccessible,
+  assertPaymentAccessible,
   canEnrollLecteurs,
 } from "@/lib/activiteEnrollmentScope";
 import { syncPaymentFromFedapayTransactionId } from "@/lib/activitePaymentFinalize";
@@ -46,9 +46,9 @@ async function getScopedPayment(request: Request, params: Promise<{ id: string }
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
 
-  const paroisseAccess = await assertPaymentParoisseAccessible(session.user, String(payment.paroisseId));
-  if (!paroisseAccess.ok) {
-    return { error: NextResponse.json({ error: paroisseAccess.error }, { status: paroisseAccess.status }) };
+  const paymentAccess = await assertPaymentAccessible(session.user, payment);
+  if (!paymentAccess.ok) {
+    return { error: NextResponse.json({ error: paymentAccess.error }, { status: paymentAccess.status }) };
   }
 
   const sameUser =

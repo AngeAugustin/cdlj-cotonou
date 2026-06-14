@@ -17,6 +17,8 @@ import { PAYMENT_PENDING_TIMEOUT_MS } from "@/lib/activitePayments";
 import { cn } from "@/lib/utils";
 import { computeMontantApplicable } from "@/modules/activites/penalites";
 
+const PAROISSE_FILTER_ALL = "__all__";
+
 type Activite = {
   _id: string;
   nom: string;
@@ -46,6 +48,7 @@ type LecteurRow = {
   uniqueId: string;
   dateNaissance?: string;
   gradeId?: { name?: string; abbreviation?: string } | null;
+  paroisseId?: { _id?: string; name?: string } | string | null;
 };
 
 type ParticipantRow = {
@@ -58,7 +61,23 @@ type ParticipantRow = {
     dateNaissance?: string;
   };
   grade?: { name?: string; abbreviation?: string } | null;
+  paroisseName?: string;
 };
+
+function refId(ref: unknown): string {
+  if (!ref) return "";
+  if (typeof ref === "string") return ref;
+  if (typeof ref === "object" && ref !== null && "_id" in ref) return String((ref as { _id: unknown })._id);
+  return "";
+}
+
+function paroisseLabel(ref: unknown): string {
+  if (ref && typeof ref === "object" && ref !== null && "name" in ref) {
+    const name = (ref as { name?: string }).name;
+    if (name?.trim()) return name.trim();
+  }
+  return "—";
+}
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("fr-FR", { style: "decimal", maximumFractionDigits: 0 }).format(n) + " FCFA";
@@ -127,7 +146,7 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
 
   const [paroisses, setParoisses] = useState<ParoisseOption[]>([]);
   const [paroissesLoading, setParoissesLoading] = useState(false);
-  const [selectedParoisseId, setSelectedParoisseId] = useState("");
+  const [paroisseFilter, setParoisseFilter] = useState(PAROISSE_FILTER_ALL);
 
   const [partSubTab, setPartSubTab] = useState<"non" | "oui">("non");
   const [lecteurs, setLecteurs] = useState<LecteurRow[]>([]);
@@ -148,32 +167,18 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
     window.setTimeout(() => setToast(null), 3500);
   };
 
-  const activeParoisseId = needsParoissePicker ? selectedParoisseId : null;
-
   const montantApplicable = useMemo(() => {
     if (!activite) return 0;
     return computeMontantApplicable(activite.montant, activite.delaiPaiement, activite.grillePenalite);
   }, [activite]);
 
-  const participationsUrl = useMemo(() => {
-    const base = `/api/activites/${encodeURIComponent(activiteId)}/participations`;
-    if (activeParoisseId) {
-      return `${base}?paroisseId=${encodeURIComponent(activeParoisseId)}`;
-    }
-    return base;
-  }, [activiteId, activeParoisseId]);
+  const participationsUrl = `/api/activites/${encodeURIComponent(activiteId)}/participations`;
+  const lecteursUrl = "/api/lecteurs";
 
-  const lecteursUrl = useMemo(() => {
-    if (activeParoisseId) {
-      return `/api/lecteurs?paroisseId=${encodeURIComponent(activeParoisseId)}`;
-    }
-    return "/api/lecteurs";
-  }, [activeParoisseId]);
-
-  const selectedParoisseName = useMemo(
-    () => paroisses.find((p) => p._id === selectedParoisseId)?.name ?? null,
-    [paroisses, selectedParoisseId]
-  );
+  const selectedParoisseName = useMemo(() => {
+    if (paroisseFilter === PAROISSE_FILTER_ALL) return null;
+    return paroisses.find((p) => p._id === paroisseFilter)?.name ?? null;
+  }, [paroisses, paroisseFilter]);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -223,18 +228,12 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
     if (!needsParoissePicker || typeof window === "undefined") return;
     const fromUrl = new URLSearchParams(window.location.search).get("paroisseId");
     if (fromUrl && paroisses.some((p) => p._id === fromUrl)) {
-      setSelectedParoisseId(fromUrl);
+      setParoisseFilter(fromUrl);
     }
   }, [needsParoissePicker, paroisses]);
 
   const loadLecteursEtParticipations = useCallback(async () => {
     if (!activiteId) return;
-    if (needsParoissePicker && !selectedParoisseId) {
-      setLecteurs([]);
-      setPartIds([]);
-      setParticipantsRows([]);
-      return;
-    }
     setPartLoading(true);
     try {
       const [lr, pr] = await Promise.all([fetch(lecteursUrl), fetch(participationsUrl)]);
@@ -250,29 +249,25 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
     } finally {
       setPartLoading(false);
     }
-  }, [activiteId, needsParoissePicker, selectedParoisseId, lecteursUrl, participationsUrl]);
+  }, [activiteId, lecteursUrl, participationsUrl]);
 
   useEffect(() => {
     if (!activite || activite.terminee) return;
     void loadLecteursEtParticipations();
   }, [activite, loadLecteursEtParticipations]);
 
-  useEffect(() => {
-    setSelectedPay({});
-  }, [selectedParoisseId]);
-
   const buildParticiperPath = useCallback(
     (extra?: Record<string, string>) => {
       const qs = new URLSearchParams(extra ?? {});
-      if (needsParoissePicker && selectedParoisseId) {
-        qs.set("paroisseId", selectedParoisseId);
+      if (needsParoissePicker && paroisseFilter !== PAROISSE_FILTER_ALL) {
+        qs.set("paroisseId", paroisseFilter);
       }
       const q = qs.toString();
       return q
         ? `/activites/${encodeURIComponent(activiteId)}/participer?${q}`
         : `/activites/${encodeURIComponent(activiteId)}/participer`;
     },
-    [activiteId, needsParoissePicker, selectedParoisseId]
+    [activiteId, needsParoissePicker, paroisseFilter]
   );
 
   useEffect(() => {
@@ -282,7 +277,7 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
 
     const returnParoisseId = sp.get("paroisseId");
     if (needsParoissePicker && returnParoisseId) {
-      setSelectedParoisseId(returnParoisseId);
+      setParoisseFilter(returnParoisseId);
     }
 
     let pid = sp.get("pid") ?? sp.get("paymentId");
@@ -443,10 +438,22 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
     };
   }, [activite, activiteId, buildParticiperPath, loadLecteursEtParticipations, needsParoissePicker, router]);
 
+  const filteredLecteurs = useMemo(() => {
+    if (paroisseFilter === PAROISSE_FILTER_ALL) return lecteurs;
+    return lecteurs.filter((l) => refId(l.paroisseId) === paroisseFilter);
+  }, [lecteurs, paroisseFilter]);
+
+  const filteredParticipants = useMemo(() => {
+    if (paroisseFilter === PAROISSE_FILTER_ALL) return participantsRows;
+    const name = selectedParoisseName;
+    if (!name) return participantsRows;
+    return participantsRows.filter((p) => p.paroisseName === name);
+  }, [participantsRows, paroisseFilter, selectedParoisseName]);
+
   const nonParticipants = useMemo(() => {
     const setP = new Set(partIds);
-    return lecteurs.filter((l) => !setP.has(l._id));
-  }, [lecteurs, partIds]);
+    return filteredLecteurs.filter((l) => !setP.has(l._id));
+  }, [filteredLecteurs, partIds]);
 
   const hasSelectedLecteurs = useMemo(
     () => Object.values(selectedPay).some(Boolean),
@@ -468,10 +475,6 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
 
   const submitPayer = async () => {
     if (!activite) return;
-    if (needsParoissePicker && !selectedParoisseId) {
-      showToast("Sélectionnez une paroisse", "error");
-      return;
-    }
     const ids = Object.entries(selectedPay)
       .filter(([, v]) => v)
       .map(([k]) => k);
@@ -481,13 +484,10 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
     }
     setPaying(true);
     try {
-      const payload: { lecteurIds: string[]; paroisseId?: string } = { lecteurIds: ids };
-      if (needsParoissePicker) payload.paroisseId = selectedParoisseId;
-
       const res = await fetch(`/api/activites/${activite._id}/pay/init`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ lecteurIds: ids }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -527,11 +527,12 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
 
   const downloadCurrentParticipants = () => {
     if (!activite) return;
-    const header = ["Matricule", "Nom", "Prénoms", "Grade", "Âge"];
-    const rows = participantsRows.map((p) => [
+    const header = ["Matricule", "Nom", "Prénoms", "Paroisse", "Grade", "Âge"];
+    const rows = filteredParticipants.map((p) => [
       p.lecteur.uniqueId,
       p.lecteur.nom,
       p.lecteur.prenoms,
+      p.paroisseName || "—",
       p.grade?.name || p.grade?.abbreviation || "—",
       ageFromBirth(p.lecteur.dateNaissance),
     ]);
@@ -598,7 +599,8 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
             <p className="mt-1 text-base font-bold text-amber-900 sm:text-lg">{activite.nom}</p>
             {needsParoissePicker ? (
               <p className="text-sm text-slate-500 mt-2">
-                Inscrivez les lecteurs par paroisse. Chaque paroisse fait l&apos;objet d&apos;un paiement distinct.
+                Tous les lecteurs du vicariat sont affichés. Vous pouvez filtrer par paroisse et payer plusieurs
+                paroisses en une seule transaction.
               </p>
             ) : null}
           </div>
@@ -607,7 +609,7 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
             {needsParoissePicker ? (
               <div className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:min-w-[18rem] lg:min-w-[22rem]">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Paroisse</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filtrer par paroisse</p>
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-900/10">
                     <MapPin className="h-4 w-4 text-amber-900" />
                   </div>
@@ -620,13 +622,10 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
                 ) : paroisses.length === 0 ? (
                   <p className="text-sm text-slate-500">Aucune paroisse disponible.</p>
                 ) : (
-                  <Select
-                    value={selectedParoisseId}
-                    onValueChange={(value) => setSelectedParoisseId(value ?? "")}
-                  >
+                  <Select value={paroisseFilter} onValueChange={(value) => setParoisseFilter(value ?? PAROISSE_FILTER_ALL)}>
                     <SelectTrigger className="h-auto min-h-10 w-full max-w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm font-medium whitespace-normal [&_[data-slot=select-value]]:line-clamp-none [&_[data-slot=select-value]]:whitespace-normal">
-                      <SelectValue placeholder="Choisir une paroisse">
-                        {selectedParoisseName ?? ""}
+                      <SelectValue placeholder="Toutes les paroisses">
+                        {paroisseFilter === PAROISSE_FILTER_ALL ? "Toutes les paroisses" : (selectedParoisseName ?? "")}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent
@@ -634,6 +633,7 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
                       alignItemWithTrigger={false}
                       className="max-h-72 w-max min-w-[var(--anchor-width)] max-w-[min(24rem,calc(100vw-2rem))]"
                     >
+                      <SelectItem value={PAROISSE_FILTER_ALL}>Toutes les paroisses</SelectItem>
                       {paroisses.map((p) => (
                         <SelectItem
                           key={p._id}
@@ -669,110 +669,106 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
         </div>
       </div>
 
-      {needsParoissePicker && !selectedParoisseId ? (
-        <p className="text-sm text-slate-500 py-8 text-center rounded-2xl border border-dashed border-slate-200">
-          Sélectionnez une paroisse pour afficher les lecteurs et gérer les participations.
-        </p>
-      ) : (
-        <>
-          <div className="flex gap-2 flex-wrap">
-            <TabBtn active={partSubTab === "non"} onClick={() => setPartSubTab("non")}>
-              Non participants
-            </TabBtn>
-            <TabBtn active={partSubTab === "oui"} onClick={() => setPartSubTab("oui")}>
-              Participants
-            </TabBtn>
-          </div>
+      <div className="flex gap-2 flex-wrap">
+        <TabBtn active={partSubTab === "non"} onClick={() => setPartSubTab("non")}>
+          Non participants
+        </TabBtn>
+        <TabBtn active={partSubTab === "oui"} onClick={() => setPartSubTab("oui")}>
+          Participants
+        </TabBtn>
+      </div>
 
-          {partLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-amber-900" />
-            </div>
-          ) : partSubTab === "non" ? (
-            <div className="space-y-3">
-              {nonParticipants.length === 0 ? (
-                <p className="text-sm text-slate-500 py-6 text-center">
-                  {needsParoissePicker
-                    ? "Tous les lecteurs de cette paroisse sont déjà inscrits."
-                    : "Tous vos lecteurs sont déjà inscrits."}
-                </p>
-              ) : (
-                <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 max-h-[min(40rem,70vh)] overflow-y-auto border border-slate-200/60 rounded-2xl p-2 sm:p-3">
-                  {nonParticipants.map((l) => (
-                    <li key={l._id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100/60 min-w-0">
-                      <input
-                        type="checkbox"
-                        checked={!!selectedPay[l._id]}
-                        onChange={() => togglePay(l._id)}
-                        className="w-4 h-4 rounded border-slate-300 text-amber-900 focus:ring-amber-900"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-bold text-slate-900 truncate">
-                          {l.nom} {l.prenoms}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {(l.gradeId as { name?: string; abbreviation?: string })?.name ||
-                            (l.gradeId as { abbreviation?: string })?.abbreviation ||
-                            "—"}{" "}
-                          · {ageFromBirth(l.dateNaissance)}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {hasSelectedLecteurs && (
-                <Button
-                  type="button"
-                  className="w-full sm:w-auto sm:min-w-[12rem] rounded-xl bg-amber-900 hover:bg-amber-800 text-white font-bold"
-                  disabled={paying}
-                  onClick={submitPayer}
-                >
-                  {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : "Payer"}
-                </Button>
-              )}
-            </div>
+      {partLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-amber-900" />
+        </div>
+      ) : partSubTab === "non" ? (
+        <div className="space-y-3">
+          {nonParticipants.length === 0 ? (
+            <p className="text-sm text-slate-500 py-6 text-center">
+              {paroisseFilter !== PAROISSE_FILTER_ALL
+                ? "Tous les lecteurs de cette paroisse sont déjà inscrits."
+                : "Tous les lecteurs du vicariat sont déjà inscrits."}
+            </p>
           ) : (
-            <div className="space-y-3">
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={downloadCurrentParticipants}
-                  disabled={!participantsRows.length}
-                >
-                  <Download className="w-4 h-4 mr-1" /> Télécharger la liste
-                </Button>
-              </div>
-              {participantsRows.length === 0 ? (
-                <p className="text-sm text-slate-500 py-6 text-center">
-                  {needsParoissePicker
-                    ? "Aucun participant pour cette paroisse pour le moment."
-                    : "Aucun participant pour le moment."}
-                </p>
-              ) : (
-                <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 max-h-[min(40rem,70vh)] overflow-y-auto border border-slate-200/60 rounded-2xl p-2 sm:p-3">
-                  {participantsRows.map((p) => (
-                    <li
-                      key={p.lecteur._id}
-                      className="flex items-center justify-between gap-2 p-3 rounded-xl bg-emerald-50/50 border border-emerald-100/80 min-w-0"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-bold text-slate-900 truncate">
-                          {p.lecteur.nom} {p.lecteur.prenoms}
-                        </p>
-                        <p className="text-xs text-slate-600">{p.lecteur.uniqueId}</p>
-                      </div>
-                      <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 max-h-[min(40rem,70vh)] overflow-y-auto border border-slate-200/60 rounded-2xl p-2 sm:p-3">
+              {nonParticipants.map((l) => (
+                <li key={l._id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100/60 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={!!selectedPay[l._id]}
+                    onChange={() => togglePay(l._id)}
+                    className="w-4 h-4 rounded border-slate-300 text-amber-900 focus:ring-amber-900"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-slate-900 truncate">
+                      {l.nom} {l.prenoms}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {(l.gradeId as { name?: string; abbreviation?: string })?.name ||
+                        (l.gradeId as { abbreviation?: string })?.abbreviation ||
+                        "—"}{" "}
+                      · {ageFromBirth(l.dateNaissance)}
+                      {paroisseFilter === PAROISSE_FILTER_ALL ? ` · ${paroisseLabel(l.paroisseId)}` : ""}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
-        </>
+          {hasSelectedLecteurs && (
+            <Button
+              type="button"
+              className="w-full sm:w-auto sm:min-w-[12rem] rounded-xl bg-amber-900 hover:bg-amber-800 text-white font-bold"
+              disabled={paying}
+              onClick={submitPayer}
+            >
+              {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : "Payer"}
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="rounded-xl"
+              onClick={downloadCurrentParticipants}
+              disabled={!filteredParticipants.length}
+            >
+              <Download className="w-4 h-4 mr-1" /> Télécharger la liste
+            </Button>
+          </div>
+          {filteredParticipants.length === 0 ? (
+            <p className="text-sm text-slate-500 py-6 text-center">
+              {paroisseFilter !== PAROISSE_FILTER_ALL
+                ? "Aucun participant pour cette paroisse pour le moment."
+                : "Aucun participant pour le moment."}
+            </p>
+          ) : (
+            <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 max-h-[min(40rem,70vh)] overflow-y-auto border border-slate-200/60 rounded-2xl p-2 sm:p-3">
+              {filteredParticipants.map((p) => (
+                <li
+                  key={p.lecteur._id}
+                  className="flex items-center justify-between gap-2 p-3 rounded-xl bg-emerald-50/50 border border-emerald-100/80 min-w-0"
+                >
+                  <div className="min-w-0">
+                    <p className="font-bold text-slate-900 truncate">
+                      {p.lecteur.nom} {p.lecteur.prenoms}
+                    </p>
+                    <p className="text-xs text-slate-600">
+                      {p.lecteur.uniqueId}
+                      {paroisseFilter === PAROISSE_FILTER_ALL && p.paroisseName ? ` · ${p.paroisseName}` : ""}
+                    </p>
+                  </div>
+                  <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </div>
   );

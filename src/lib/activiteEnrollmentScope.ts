@@ -1,5 +1,6 @@
 import connectToDatabase from "@/lib/mongoose";
 import { Paroisse } from "@/modules/paroisses/model";
+import { Lecteur } from "@/modules/lecteurs/model";
 import mongoose from "mongoose";
 
 export type EnrollmentSessionUser = {
@@ -10,8 +11,8 @@ export type EnrollmentSessionUser = {
   id?: string;
 };
 
-export type EnrollmentScopeResult =
-  | { ok: true; paroisseId: string; role: "VICARIAL" }
+export type EnrollmentLecteursResult =
+  | { ok: true; vicariatId: string; lecteurIds: string[] }
   | { ok: false; status: number; error: string };
 
 export function canEnrollLecteurs(roles: string[]): boolean {
@@ -19,31 +20,49 @@ export function canEnrollLecteurs(roles: string[]): boolean {
 }
 
 /**
- * Détermine la paroisse cible pour une inscription aux activités (rôle VICARIAL uniquement).
- * paroisseId explicite obligatoire, validé contre le vicariat du compte.
+ * Valide les lecteurs sélectionnés pour une inscription vicariale.
+ * La paroisse de chaque lecteur est déduite côté serveur à l'enregistrement.
  */
-export async function resolveEnrollmentParoisseId(
+export async function resolveEnrollmentLecteurs(
   user: EnrollmentSessionUser,
-  requestedParoisseId?: string | null
-): Promise<EnrollmentScopeResult> {
+  lecteurIds: string[]
+): Promise<EnrollmentLecteursResult> {
   const roles = user.roles ?? [];
   if (!roles.includes("VICARIAL")) {
     return { ok: false, status: 403, error: "Forbidden" };
   }
 
-  const vicariatId = user.vicariatId;
+  const vicariatId = user.vicariatId?.trim();
   if (!vicariatId) {
     return { ok: false, status: 400, error: "Vicariat non défini pour ce compte" };
   }
-  if (!requestedParoisseId?.trim()) {
-    return { ok: false, status: 400, error: "Sélectionnez une paroisse pour inscrire des lecteurs" };
+
+  const uniqueIds = [...new Set(lecteurIds.map((id) => id.trim()).filter(Boolean))];
+  if (!uniqueIds.length) {
+    return { ok: false, status: 400, error: "Sélectionnez au moins un lecteur" };
   }
 
-  const inScope = await assertParoisseInVicariat(requestedParoisseId.trim(), vicariatId);
-  if (!inScope) {
-    return { ok: false, status: 403, error: "Cette paroisse n'appartient pas à votre vicariat" };
+  if (!uniqueIds.every((id) => mongoose.Types.ObjectId.isValid(id))) {
+    return { ok: false, status: 400, error: "Identifiant lecteur invalide" };
   }
-  return { ok: true, paroisseId: requestedParoisseId.trim(), role: "VICARIAL" };
+
+  await connectToDatabase();
+  const lecteurs = await Lecteur.find({
+    _id: { $in: uniqueIds },
+    vicariatId,
+  })
+    .select("_id")
+    .lean();
+
+  if (lecteurs.length !== uniqueIds.length) {
+    return {
+      ok: false,
+      status: 403,
+      error: "Certains lecteurs ne sont pas rattachés à votre vicariat",
+    };
+  }
+
+  return { ok: true, vicariatId, lecteurIds: uniqueIds };
 }
 
 export async function assertParoisseInVicariat(paroisseId: string, vicariatId: string): Promise<boolean> {
@@ -62,18 +81,27 @@ export async function listParoisseIdsForVicariat(vicariatId: string): Promise<st
   return rows.map((r) => r._id.toString());
 }
 
-export async function assertPaymentParoisseAccessible(
+export async function assertPaymentAccessible(
   user: EnrollmentSessionUser,
-  paymentParoisseId: string
+  payment: { paroisseId?: unknown; vicariatId?: unknown }
 ): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   const roles = user.roles ?? [];
 
   if (roles.includes("VICARIAL") && user.vicariatId) {
-    const inScope = await assertParoisseInVicariat(String(paymentParoisseId), user.vicariatId);
-    if (!inScope) {
-      return { ok: false, status: 403, error: "Forbidden" };
+    const paymentVicariatId = payment.vicariatId != null ? String(payment.vicariatId) : null;
+    if (paymentVicariatId && paymentVicariatId === user.vicariatId) {
+      return { ok: true };
     }
-    return { ok: true };
+
+    if (payment.paroisseId != null) {
+      const inScope = await assertParoisseInVicariat(String(payment.paroisseId), user.vicariatId);
+      if (!inScope) {
+        return { ok: false, status: 403, error: "Forbidden" };
+      }
+      return { ok: true };
+    }
+
+    return { ok: false, status: 403, error: "Forbidden" };
   }
 
   return { ok: false, status: 403, error: "Forbidden" };

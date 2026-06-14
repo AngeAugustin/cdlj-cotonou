@@ -36,7 +36,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       await connectToDatabase();
       const plist = await Paroisse.find({ vicariatId: vid }).select("_id").lean();
       const paroisseIds = plist.map((p) => p._id.toString());
-      rows = await service.listPaiementsForActivite(activiteId, { paroisseIds });
+      rows = await service.listPaiementsForActivite(activiteId, { vicariatId: vid, paroisseIds });
     } else if (isManager(roles)) {
       rows = await service.listPaiementsForActivite(activiteId);
     } else {
@@ -64,7 +64,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         await connectToDatabase();
         const plist = await Paroisse.find({ vicariatId: vid }).select("_id").lean();
         const paroisseIds = plist.map((p) => p._id.toString());
-        rows = await service.listPaiementsForActivite(activiteId, { paroisseIds });
+        rows = await service.listPaiementsForActivite(activiteId, { vicariatId: vid, paroisseIds });
       } else {
         rows = await service.listPaiementsForActivite(activiteId);
       }

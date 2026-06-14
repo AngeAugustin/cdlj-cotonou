@@ -32,5 +32,4 @@ export type UpdateActiviteInput = z.infer<typeof updateActiviteSchema>;
 
 export const payerParticipationSchema = z.object({
   lecteurIds: z.array(z.string().min(1)).min(1, "Sélectionnez au moins un lecteur"),
-  paroisseId: z.string().min(1, "Sélectionnez une paroisse"),
 });

@@ -61,8 +61,13 @@ export class ActiviteService {
     return this.repo.listParticipationLecteurIds(activiteId, paroisseId);
   }
 
-  enregistrerPaiement(activiteId: string, lecteurIds: string[], paroisseId: string, paiementId?: string) {
-    return this.repo.addParticipations(activiteId, lecteurIds, paroisseId, paiementId);
+  enregistrerPaiement(
+    activiteId: string,
+    lecteurIds: string[],
+    scope: { vicariatId: string } | { paroisseId: string },
+    paiementId?: string
+  ) {
+    return this.repo.addParticipations(activiteId, lecteurIds, scope, paiementId);
   }
 
   annulerParticipationsPourRemboursement(paiementId: string, reason?: string) {

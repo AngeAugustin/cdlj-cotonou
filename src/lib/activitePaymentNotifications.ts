@@ -1,6 +1,5 @@
 import { buildActivitePaymentDetailsUrl } from "@/lib/appBaseUrl";
 import connectToDatabase from "@/lib/mongoose";
-import { Paroisse } from "@/modules/paroisses/model";
 import { Lecteur } from "@/modules/lecteurs/model";
 import {
   sendActivitePaymentAdminNotificationEmail,
@@ -23,25 +22,37 @@ export type ActivitePaymentNotificationInput = {
   nombreLecteurs: number;
   reference: string | null;
   fedapayTransactionId?: number | null;
-  paroisseId: string;
   lecteurIds: string[];
   channel?: "fedapay" | "gratuit";
   processedAt?: Date | null;
 };
 
-async function loadPaymentContext(paroisseId: string, lecteurIds: string[]) {
+async function loadPaymentContext(lecteurIds: string[]) {
   await connectToDatabase();
-  const [paroisse, lecteurs] = await Promise.all([
-    Paroisse.findById(paroisseId).select("name").lean(),
+  const lecteurs =
     lecteurIds.length > 0
-      ? Lecteur.find({ _id: { $in: lecteurIds } })
-          .select("nom prenoms uniqueId")
+      ? await Lecteur.find({ _id: { $in: lecteurIds } })
+          .select("nom prenoms uniqueId paroisseId")
+          .populate("paroisseId", "name")
           .lean()
-      : Promise.resolve([]),
-  ]);
+      : [];
+
+  const paroisseNames = [
+    ...new Set(
+      lecteurs
+        .map((l) => {
+          const p = l.paroisseId as { name?: string } | null;
+          return p?.name?.trim() || null;
+        })
+        .filter((n): n is string => Boolean(n))
+    ),
+  ].sort((a, b) => a.localeCompare(b, "fr"));
+
+  const paroisseName =
+    paroisseNames.length === 0 ? "—" : paroisseNames.length === 1 ? paroisseNames[0] : paroisseNames.join(", ");
 
   return {
-    paroisseName: paroisse?.name ?? "—",
+    paroisseName,
     lecteurs: lecteurs.map((l) => ({
       uniqueId: l.uniqueId,
       nom: l.nom,
@@ -63,7 +74,7 @@ function formatProcessedAt(processedAt?: Date | null): string {
 export async function sendActivitePaymentNotifications(
   input: ActivitePaymentNotificationInput
 ): Promise<void> {
-  const { paroisseName, lecteurs } = await loadPaymentContext(input.paroisseId, input.lecteurIds);
+  const { paroisseName, lecteurs } = await loadPaymentContext(input.lecteurIds);
   const channel = input.channel ?? (input.montantTotal < 1 ? "gratuit" : "fedapay");
   const processedAt = formatProcessedAt(input.processedAt);
   const detailsUrl = buildActivitePaymentDetailsUrl(input.activiteId, input.paymentId);

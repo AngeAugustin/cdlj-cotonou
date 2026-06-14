@@ -8,7 +8,7 @@ import { buildActivitePaymentFingerprint } from "@/lib/activitePayments";
 import { fedapayFindOrCreateCustomer, fedapayCreateTransactionAndPaymentUrl } from "@/lib/fedapay";
 import { sendActivitePaymentNotifications } from "@/lib/activitePaymentNotifications";
 import { syncPaymentFromFedapayTransactionId } from "@/lib/activitePaymentFinalize";
-import { canEnrollLecteurs, resolveEnrollmentParoisseId } from "@/lib/activiteEnrollmentScope";
+import { canEnrollLecteurs, resolveEnrollmentLecteurs } from "@/lib/activiteEnrollmentScope";
 import { computeMontantApplicable } from "@/modules/activites/penalites";
 import mongoose from "mongoose";
 import { ZodError } from "zod";
@@ -51,13 +51,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id: activiteId } = await params;
     const body = await request.json();
     const parsed = payerParticipationSchema.parse(body);
-    const { lecteurIds, paroisseId: requestedParoisseId } = parsed;
+    const { lecteurIds } = parsed;
 
-    const enrollmentScope = await resolveEnrollmentParoisseId(session.user, requestedParoisseId);
+    const enrollmentScope = await resolveEnrollmentLecteurs(session.user, lecteurIds);
     if (!enrollmentScope.ok) {
       return NextResponse.json({ error: enrollmentScope.error }, { status: enrollmentScope.status });
     }
-    const paroisseId = enrollmentScope.paroisseId;
+    const { vicariatId, lecteurIds: selectedLecteurIds } = enrollmentScope;
 
     const service = new ActiviteService();
     const activite = await service.getActivite(activiteId);
@@ -66,8 +66,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "Cette activité est terminée" }, { status: 400 });
     }
 
-    const selectedLecteurIds = [...new Set(lecteurIds)];
-    const existingLecteurIds = new Set(await service.listParticipationLecteurIds(activiteId, paroisseId));
+    const existingLecteurIds = new Set(await service.listParticipationLecteurIds(activiteId));
     const alreadyRegistered = selectedLecteurIds.filter((id) => existingLecteurIds.has(id));
     if (alreadyRegistered.length > 0) {
       return NextResponse.json(
@@ -85,7 +84,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const montantTotal = montantUnitaire * n;
 
     const baseUrl = getAppBaseUrl();
-    const callbackUrlBase = `${baseUrl}/activites/${encodeURIComponent(activiteId)}/participer?payment=return&paroisseId=${encodeURIComponent(paroisseId)}`;
+    const callbackUrlBase = `${baseUrl}/activites/${encodeURIComponent(activiteId)}/participer?payment=return`;
 
     const userId = session.user.id ?? userEmail;
     const { first, last } = splitName(session.user.name);
@@ -94,7 +93,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const requestFingerprint = buildActivitePaymentFingerprint({
       activiteId,
-      paroisseId,
+      vicariatId,
       userId,
       lecteurIds: selectedLecteurIds,
       montantTotal,
@@ -102,7 +101,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const reusable = await service.findReusableOpenPaiement({
       activiteId,
-      paroisseId,
+      vicariatId,
       userId,
       requestFingerprint,
     });
@@ -151,7 +150,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const paymentBase = {
       activiteId: new mongoose.Types.ObjectId(activiteId),
-      paroisseId: new mongoose.Types.ObjectId(paroisseId),
+      vicariatId: new mongoose.Types.ObjectId(vicariatId),
       userId,
       userEmail,
       lecteurIds: lecteurOids,
@@ -166,9 +165,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       metadata: {
         activiteNom: activite.nom,
         source: "cdlj-activite",
-        ...(enrollmentScope.role === "VICARIAL"
-          ? { enrolledByRole: "VICARIAL", enrolledByUserId: userId }
-          : {}),
+        enrolledByRole: "VICARIAL",
+        enrolledByUserId: userId,
       } as Record<string, unknown>,
     };
 
@@ -180,7 +178,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         metadata: { ...paymentBase.metadata, channel: "gratuit" },
       });
       const pid = (created as { _id: mongoose.Types.ObjectId })._id.toString();
-      await service.enregistrerPaiement(activiteId, selectedLecteurIds, paroisseId, pid);
+      await service.enregistrerPaiement(activiteId, selectedLecteurIds, { vicariatId }, pid);
       await service.updatePaiementById(pid, {
         processedAt: new Date(),
         lastWebhookEvent: "free_activity",
@@ -196,7 +194,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           nombreLecteurs: n,
           reference: null,
           fedapayTransactionId: null,
-          paroisseId,
           lecteurIds: selectedLecteurIds,
           channel: "gratuit",
           processedAt: new Date(),
@@ -247,7 +244,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       metadata: {
         internalPaymentId: paymentId,
         activiteId,
-        paroisseId,
+        vicariatId,
       },
     });
 

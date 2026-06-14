@@ -131,7 +131,10 @@ export type ActivitePaiementStatus =
 
 export interface IActivitePaiement extends Document {
   activiteId: mongoose.Types.ObjectId;
-  paroisseId: mongoose.Types.ObjectId;
+  /** Définie pour les anciens paiements mono-paroisse ; absente pour les paiements multi-paroisses vicariaux */
+  paroisseId?: mongoose.Types.ObjectId;
+  /** Périmètre vicarial pour les paiements multi-paroisses */
+  vicariatId?: mongoose.Types.ObjectId;
   userId: string;
   userEmail: string;
   lecteurIds: mongoose.Types.ObjectId[];
@@ -160,7 +163,8 @@ export interface IActivitePaiement extends Document {
 const activitePaiementSchema = new Schema<IActivitePaiement>(
   {
     activiteId: { type: Schema.Types.ObjectId, ref: "Activite", required: true },
-    paroisseId: { type: Schema.Types.ObjectId, ref: "Paroisse", required: true },
+    paroisseId: { type: Schema.Types.ObjectId, ref: "Paroisse" },
+    vicariatId: { type: Schema.Types.ObjectId, ref: "Vicariat" },
     userId: { type: String, required: true },
     userEmail: { type: String, required: true },
     lecteurIds: [{ type: Schema.Types.ObjectId, ref: "Lecteur" }],

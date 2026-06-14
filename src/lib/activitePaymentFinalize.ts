@@ -32,6 +32,30 @@ function matchesGatewayStatus(rawStatus: string, tokens: string[], allowed: Set<
   return tokens.some((t) => allowed.has(t)) || allowed.has(rawStatus);
 }
 
+function paymentEnrollmentScope(payment: {
+  paroisseId?: { toString: () => string } | null;
+  vicariatId?: { toString: () => string } | null;
+}): { vicariatId: string } | { paroisseId: string } {
+  if (payment.vicariatId != null) {
+    return { vicariatId: payment.vicariatId.toString() };
+  }
+  if (payment.paroisseId != null) {
+    return { paroisseId: payment.paroisseId.toString() };
+  }
+  throw new Error("Paiement sans périmètre d'inscription");
+}
+
+async function registerPaymentParticipations(
+  service: ActiviteService,
+  payment: NonNullable<Awaited<ReturnType<ActiviteService["findPaiementById"]>>>,
+  paymentId: string
+) {
+  const lecteurIds = (payment.lecteurIds as { toString: () => string }[]).map((x) => x.toString());
+  const activiteId = payment.activiteId.toString();
+  const scope = paymentEnrollmentScope(payment);
+  await service.enregistrerPaiement(activiteId, lecteurIds, scope, paymentId);
+}
+
 async function syncKnownPayment(
   payment: Awaited<ReturnType<ActiviteService["findPaiementById"]>>,
   eventHint: string,
@@ -111,12 +135,8 @@ async function syncKnownPayment(
     const partialRefundReason = "partial_refund_not_supported";
 
     if (payment.status !== "approved" && payment.status !== "refunded") {
-      const lecteurIds = (payment.lecteurIds as { toString: () => string }[]).map((x) => x.toString());
-      const paroisseId = payment.paroisseId.toString();
-      const activiteId = payment.activiteId.toString();
-
       try {
-        await service.enregistrerPaiement(activiteId, lecteurIds, paroisseId, paymentId);
+        await registerPaymentParticipations(service, payment, paymentId);
       } catch (e) {
         const reason = e instanceof Error ? e.message.slice(0, 500) : "Participation failed";
         await service.updatePaiementById(paymentId, {
@@ -166,11 +186,10 @@ async function syncKnownPayment(
   }
 
   const lecteurIds = (payment.lecteurIds as { toString: () => string }[]).map((x) => x.toString());
-  const paroisseId = payment.paroisseId.toString();
   const activiteId = payment.activiteId.toString();
 
   try {
-    await service.enregistrerPaiement(activiteId, lecteurIds, paroisseId, paymentId);
+    await registerPaymentParticipations(service, payment, paymentId);
   } catch (e) {
     const reason = e instanceof Error ? e.message.slice(0, 500) : "Participation failed";
     await service.updatePaiementById(paymentId, {
@@ -205,7 +224,6 @@ async function syncKnownPayment(
         nombreLecteurs: payment.nombreLecteurs,
         reference: ref ?? null,
         fedapayTransactionId: fedapayTxId,
-        paroisseId,
         lecteurIds,
         channel: payment.montantTotal < 1 ? "gratuit" : "fedapay",
         processedAt: payment.processedAt ?? new Date(),
