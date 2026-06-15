@@ -1329,11 +1329,16 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                   <h2 className="font-bold text-slate-900 flex items-center gap-2">
                     <Users className="w-4 h-4" /> Participants
                   </h2>
-                  <div className="flex flex-wrap gap-2 shrink-0">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    {!participantsLoading ? (
+                      <span className="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
+                        {participants.length} participant{participants.length > 1 ? "s" : ""}
+                      </span>
+                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
                       className="rounded-xl"
                       onClick={() => downloadParticipantsExcel(filteredParticipants)}
                       disabled={!filteredParticipants.length || participantsLoading}
