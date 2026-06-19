@@ -19,12 +19,11 @@ import {
   AlertTriangle,
   BarChart3,
 } from "lucide-react";
-import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  buildParticipantExportTable,
+  generateActiviteParticipantsExcel,
   generateActiviteParticipantsPdf,
 } from "@/lib/activiteParticipantsExport";
 import { computeMontantApplicable } from "@/modules/activites/penalites";
@@ -539,18 +538,15 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
 
   const downloadParticipantsExcel = (rows: ParticipantRow[]) => {
     if (!activite || !rows.length) return;
-    const { header, rows: dataRows } = buildParticipantExportTable(rows);
-    const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Participants");
+    const blob = generateActiviteParticipantsExcel(rows, {
+      filterVicariat: selectedVicariat !== PARTICIPANT_FILTER_ALL ? selectedVicariat : null,
+      filterParoisse: selectedParoisse !== PARTICIPANT_FILTER_ALL ? selectedParoisse : null,
+      accountVicariat: meData?.vicariatName ?? null,
+      accountParoisse: meData?.paroisseName ?? null,
+    });
     const base = safeExportFileName(activite.nom);
     const scopeSuffix = buildParticipantExportScopeSuffix(selectedVicariat, selectedParoisse);
-    const filename = `participants-${base}${scopeSuffix}.xlsx`;
-    const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([buf], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    triggerBrowserDownload(blob, filename);
+    triggerBrowserDownload(blob, `participants-${base}${scopeSuffix}.xlsx`);
   };
 
   const downloadParticipantsPdf = async (rows: ParticipantRow[]) => {

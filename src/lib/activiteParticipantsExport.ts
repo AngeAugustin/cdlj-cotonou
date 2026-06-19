@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import * as XLSX from "xlsx";
 import { CDLJ_LOGO_SRC } from "@/config/brand";
 
 export type ParticipantExportRow = {
@@ -146,9 +147,8 @@ export function buildHeaderScopeLines(scope: ParticipantExportScope, participant
     return lines;
   }
 
-  const accountVicariat = scope.accountVicariat ?? participants.find((p) => p.vicariatName)?.vicariatName ?? null;
-  if (accountVicariat) {
-    return [`Vicariat : ${accountVicariat}`];
+  if (scope.accountVicariat) {
+    return [`Vicariat : ${scope.accountVicariat}`];
   }
 
   return [];
@@ -180,9 +180,13 @@ export function buildParticipantTableSections(
 
   if (vicariatNames.length <= 1) {
     const vicariatTitle =
-      vicariatNames[0] !== "—"
-        ? vicariatNames[0]
-        : scope.accountVicariat ?? participants.find((p) => p.vicariatName)?.vicariatName ?? undefined;
+      scope.filterVicariat ??
+      scope.accountVicariat ??
+      (scope.filterParoisse || scope.accountParoisse
+        ? vicariatNames[0] !== "—"
+          ? vicariatNames[0]
+          : undefined
+        : undefined);
 
     const byParoisse = groupBy(participants, (p) => p.paroisseName ?? "—");
     const paroisseNames = sortLabels(byParoisse.keys());
@@ -251,6 +255,124 @@ export function buildParticipantExportTable(
     formatPaidAt(p.paidAt),
   ]);
   return { header, rows };
+}
+
+const EXCEL_SHEET_NAME_MAX = 31;
+const EXCEL_INVALID_SHEET_CHARS = /[\\/?*[\]:]/g;
+const EXCEL_INVALID_XML_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g;
+const EXCEL_RESERVED_SHEET_NAMES = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
+
+function sanitizeExcelCellValue(value: string | number): string | number {
+  if (typeof value !== "string") return value;
+  return value.replace(EXCEL_INVALID_XML_CHARS, "");
+}
+
+function normalizeVicariatSheetLabel(name: string) {
+  const trimmed = name.trim();
+  const withoutPrefix = trimmed
+    .replace(/^Vicariat Forain\s+/i, "")
+    .replace(/^Vicariat\s+/i, "")
+    .trim();
+  return withoutPrefix || trimmed || "Vicariat";
+}
+
+function sanitizeExcelSheetName(name: string, usedNames: Set<string>) {
+  let base = normalizeVicariatSheetLabel(name)
+    .normalize("NFKC")
+    .replace(EXCEL_INVALID_XML_CHARS, "")
+    .replace(EXCEL_INVALID_SHEET_CHARS, " ")
+    .replace(/[''`´]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^['"]+|['"]+$/g, "")
+    .slice(0, EXCEL_SHEET_NAME_MAX)
+    .trim()
+    .replace(/^['"]+|['"]+$/g, "");
+
+  if (!base) base = "Vicariat";
+  if (EXCEL_RESERVED_SHEET_NAMES.test(base)) base = `_${base}`.slice(0, EXCEL_SHEET_NAME_MAX);
+
+  let candidate = base;
+  let index = 2;
+  while (usedNames.has(candidate)) {
+    const suffix = ` (${index})`;
+    const prefixMax = Math.max(1, EXCEL_SHEET_NAME_MAX - suffix.length);
+    candidate = `${base.slice(0, prefixMax).trim().replace(/[-\s]+$/g, "")}${suffix}`;
+    if (!candidate.trim()) candidate = `Vicariat${suffix}`.slice(0, EXCEL_SHEET_NAME_MAX);
+    index += 1;
+  }
+
+  usedNames.add(candidate);
+  return candidate;
+}
+
+export type ParticipantExcelSheet = {
+  sheetName: string;
+  header: string[];
+  rows: (string | number)[][];
+};
+
+export function buildParticipantExcelSheets(
+  participants: ParticipantExportRow[],
+  scope: ParticipantExportScope = {}
+): ParticipantExcelSheet[] {
+  if (participants.length === 0) return [];
+
+  const usedNames = new Set<string>();
+
+  function sheetForGroup(vicariatLabel: string, group: ParticipantExportRow[]): ParticipantExcelSheet {
+    const { header, rows } = buildParticipantExportTable(group, { hideVicariat: true });
+    return {
+      sheetName: sanitizeExcelSheetName(vicariatLabel, usedNames),
+      header,
+      rows,
+    };
+  }
+
+  if (scope.filterParoisse || scope.accountParoisse) {
+    const label =
+      resolveVicariatName(scope, participants) ??
+      participants.find((p) => p.vicariatName)?.vicariatName ??
+      "Participants";
+    return [sheetForGroup(label, participants)];
+  }
+
+  if (scope.filterVicariat || scope.accountVicariat) {
+    const label = scope.filterVicariat ?? scope.accountVicariat ?? "Participants";
+    return [sheetForGroup(label, participants)];
+  }
+
+  const byVicariat = groupBy(participants, (p) => p.vicariatName ?? "—");
+  const vicariatNames = sortLabels(byVicariat.keys());
+
+  return vicariatNames.map((vicariatName) =>
+    sheetForGroup(
+      vicariatName === "—" ? "Sans vicariat" : vicariatName,
+      byVicariat.get(vicariatName) ?? []
+    )
+  );
+}
+
+export function generateActiviteParticipantsExcel(
+  participants: ParticipantExportRow[],
+  scope: ParticipantExportScope = {}
+): Blob {
+  const sheets = buildParticipantExcelSheets(participants, scope);
+  if (sheets.length === 0) {
+    throw new Error("Aucun participant à exporter.");
+  }
+
+  const wb = XLSX.utils.book_new();
+  for (const sheet of sheets) {
+    const rows = sheet.rows.map((row) => row.map(sanitizeExcelCellValue));
+    const ws = XLSX.utils.aoa_to_sheet([sheet.header, ...rows]);
+    XLSX.utils.book_append_sheet(wb, ws, sheet.sheetName);
+  }
+
+  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  return new Blob([buf], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
 }
 
 function buildColumnStyles(header: string[], tableWidth: number): Record<number, { cellWidth: number; halign?: "center" | "left" | "right" }> {
