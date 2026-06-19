@@ -575,6 +575,112 @@ export class ActiviteRepository {
     });
   }
 
+  async countApprovedParticipantsForActivite(activiteId: string, vicariatId?: string | null) {
+    await connectToDatabase();
+    const match: Record<string, unknown> = {
+      activiteId: new mongoose.Types.ObjectId(activiteId),
+      status: ACTIVE_PARTICIPATION_MATCH,
+      paiementId: { $exists: true, $ne: null },
+    };
+    if (vicariatId) match.vicariatId = new mongoose.Types.ObjectId(vicariatId);
+
+    const paiementsColl = ActivitePaiement.collection.name;
+
+    const rows = await ActiviteParticipation.aggregate([
+      { $match: match },
+      {
+        $lookup: {
+          from: paiementsColl,
+          localField: "paiementId",
+          foreignField: "_id",
+          as: "_paiement",
+        },
+      },
+      { $unwind: { path: "$_paiement", preserveNullAndEmptyArrays: false } },
+      { $match: { "_paiement.status": "approved" } },
+      { $count: "total" },
+    ]);
+
+    return rows[0]?.total ?? 0;
+  }
+
+  async sumApprovedPaymentsForActivite(activiteId: string, vicariatId?: string | null) {
+    await connectToDatabase();
+    const match: Record<string, unknown> = {
+      activiteId: new mongoose.Types.ObjectId(activiteId),
+      status: "approved",
+    };
+    if (vicariatId) match.vicariatId = new mongoose.Types.ObjectId(vicariatId);
+
+    const rows = await ActivitePaiement.aggregate([
+      { $match: match },
+      { $group: { _id: null, total: { $sum: "$montantTotal" } } },
+    ]);
+
+    return rows[0]?.total ?? 0;
+  }
+
+  async countApprovedPaymentsByMontantUnitaire(activiteId: string, vicariatId?: string | null) {
+    await connectToDatabase();
+    const match: Record<string, unknown> = {
+      activiteId: new mongoose.Types.ObjectId(activiteId),
+      status: "approved",
+    };
+    if (vicariatId) match.vicariatId = new mongoose.Types.ObjectId(vicariatId);
+
+    return ActivitePaiement.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: "$montantUnitaire",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+      {
+        $project: {
+          _id: 0,
+          montantUnitaire: "$_id",
+          count: 1,
+        },
+      },
+    ]);
+  }
+
+  async paymentEvolutionByDay(activiteId: string, vicariatId?: string | null) {
+    await connectToDatabase();
+    const match: Record<string, unknown> = {
+      activiteId: new mongoose.Types.ObjectId(activiteId),
+      status: "approved",
+    };
+    if (vicariatId) match.vicariatId = new mongoose.Types.ObjectId(vicariatId);
+
+    return ActivitePaiement.aggregate([
+      { $match: match },
+      {
+        $addFields: {
+          payDate: { $ifNull: ["$processedAt", "$createdAt"] },
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$payDate" } },
+          montant: { $sum: "$montantTotal" },
+          participations: { $sum: "$nombreLecteurs" },
+        },
+      },
+      { $sort: { _id: 1 } },
+      {
+        $project: {
+          _id: 0,
+          date: "$_id",
+          montant: 1,
+          participations: 1,
+        },
+      },
+    ]);
+  }
+
   async statsByParoisse(activiteId: string, vicariatId?: string | null) {
     await connectToDatabase();
     const match: Record<string, unknown> = { activiteId: new mongoose.Types.ObjectId(activiteId), status: ACTIVE_PARTICIPATION_MATCH };

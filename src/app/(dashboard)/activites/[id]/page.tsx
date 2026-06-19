@@ -17,6 +17,7 @@ import {
   FileText,
   Banknote,
   AlertTriangle,
+  BarChart3,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ import {
 } from "@/lib/activiteParticipantsExport";
 import { computeMontantApplicable } from "@/modules/activites/penalites";
 import { GrillePenaliteDisplay } from "@/modules/activites/components/GrillePenaliteDisplay";
+import { ActiviteStatsPanel } from "@/modules/activites/components/ActiviteStatsPanel";
 
 type Activite = {
   _id: string;
@@ -191,6 +193,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const { data: session, status } = useSession();
   const roles: string[] = ((session?.user as { roles?: string[] } | undefined)?.roles ?? []) as string[];
   const isManager = roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
+  const isDiocesain = isManager;
   const isSuperAdmin = roles.includes("SUPERADMIN");
   const isVicarial = roles.includes("VICARIAL");
   const isParoissial = roles.includes("PAROISSIAL");
@@ -206,7 +209,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const [confirmTermineeOpen, setConfirmTermineeOpen] = useState(false);
   const [terminating, setTerminating] = useState(false);
 
-  const [tab, setTab] = useState<"infos" | "participation" | "presence" | "paiements" | "anomalies">("infos");
+  const [tab, setTab] = useState<"infos" | "statistiques" | "participation" | "presence" | "paiements" | "anomalies">("infos");
   const [paiements, setPaiements] = useState<PaiementRow[]>([]);
   const [paiementsLoading, setPaiementsLoading] = useState(false);
   const [selectedPaiementId, setSelectedPaiementId] = useState<string | null>(null);
@@ -481,6 +484,12 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   }, [canSeePresence, tab]);
 
   useEffect(() => {
+    if (!isDiocesain && tab === "statistiques") {
+      setTab("infos");
+    }
+  }, [isDiocesain, tab]);
+
+  useEffect(() => {
     if (!selectedPaiementId) return;
     const stillVisible = listedPaiements.some((p) => p._id === selectedPaiementId && p.status === "approved");
     if (!stillVisible) {
@@ -728,6 +737,18 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
             <Calendar className="w-4 h-4" />
             Informations
           </button>
+          {isDiocesain ? (
+            <button
+              type="button"
+              onClick={() => setTab("statistiques")}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                tab === "statistiques" ? "bg-white text-amber-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              Statistiques
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setTab("participation")}
@@ -1321,6 +1342,13 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
               />
             </div>
           </div>
+        ) : tab === "statistiques" && isDiocesain ? (
+          <ActiviteStatsPanel
+            activiteId={activiteId}
+            montantInitial={activite.montant}
+            delaiPaiement={activite.delaiPaiement}
+            grillePenalite={activite.grillePenalite}
+          />
         ) : (
           <div className="space-y-6">
             {canSeeParticipants ? (

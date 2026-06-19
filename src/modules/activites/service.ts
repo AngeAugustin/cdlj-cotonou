@@ -125,9 +125,12 @@ export class ActiviteService {
 
   async getStats(activiteId: string, vicariatId?: string | null) {
     const totalLecteurs = await this.repo.countLecteurs(vicariatId ?? undefined);
-    const totalParticipants = await this.repo.countParticipantsForActivite(activiteId, vicariatId);
+    const totalParticipants = await this.repo.countApprovedParticipantsForActivite(activiteId, vicariatId);
+    const totalMontant = await this.repo.sumApprovedPaymentsForActivite(activiteId, vicariatId);
+    const paymentsByDay = await this.repo.paymentEvolutionByDay(activiteId, vicariatId);
+    const paymentsByTarif = await this.repo.countApprovedPaymentsByMontantUnitaire(activiteId, vicariatId);
     const byParoisse = await this.repo.statsByParoisse(activiteId, vicariatId);
-    return { totalLecteurs, totalParticipants, byParoisse };
+    return { totalLecteurs, totalParticipants, totalMontant, paymentsByDay, paymentsByTarif, byParoisse };
   }
 
   countParticipantsForParoisse(activiteId: string, paroisseId: string) {
