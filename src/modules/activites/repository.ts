@@ -634,6 +634,7 @@ export class ActiviteRepository {
         $group: {
           _id: "$montantUnitaire",
           count: { $sum: 1 },
+          lecteurs: { $sum: "$nombreLecteurs" },
         },
       },
       { $sort: { _id: 1 } },
@@ -642,6 +643,7 @@ export class ActiviteRepository {
           _id: 0,
           montantUnitaire: "$_id",
           count: 1,
+          lecteurs: 1,
         },
       },
     ]);

@@ -24,6 +24,7 @@ type PaymentDayRow = {
 type PaymentTarifRow = {
   montantUnitaire: number;
   count: number;
+  lecteurs: number;
 };
 
 type ActiviteStats = {
@@ -39,6 +40,7 @@ type TarifCountRow = {
   period: string;
   montant: number;
   count: number;
+  lecteurs: number;
 };
 
 function formatMoney(n: number) {
@@ -91,34 +93,48 @@ function buildTarifBreakdown(
   grille: PalierPenalite[] | null | undefined,
   paymentsByTarif: PaymentTarifRow[]
 ): TarifCountRow[] {
-  const countMap = new Map(paymentsByTarif.map((row) => [row.montantUnitaire, row.count]));
+  const statsByMontant = new Map(
+    paymentsByTarif.map((row) => [
+      row.montantUnitaire,
+      { count: row.count, lecteurs: row.lecteurs },
+    ])
+  );
   const usedMontants = new Set<number>();
   const rows: TarifCountRow[] = [];
 
+  function statsFor(montant: number) {
+    return statsByMontant.get(montant) ?? { count: 0, lecteurs: 0 };
+  }
+
   if (montantInitial === 0) {
+    const stats = statsFor(0);
     return [
       {
         key: "free",
         label: "Gratuit",
         period: "—",
         montant: 0,
-        count: countMap.get(0) ?? 0,
+        count: stats.count,
+        lecteurs: stats.lecteurs,
       },
     ];
   }
 
+  const initialStats = statsFor(montantInitial);
   rows.push({
     key: "initial",
     label: "Tarif initial",
     period: `Jusqu'au ${format(new Date(delaiPaiement), "d MMM yyyy · HH:mm", { locale: fr })}`,
     montant: montantInitial,
-    count: countMap.get(montantInitial) ?? 0,
+    count: initialStats.count,
+    lecteurs: initialStats.lecteurs,
   });
   usedMontants.add(montantInitial);
 
   const paliers = sortPaliers(grille ?? []);
   paliers.forEach((palier, index) => {
     const montant = montantInitial + palier.montantSupplementaire;
+    const stats = statsFor(montant);
     usedMontants.add(montant);
     const periodStart = format(new Date(palierDateToInput(palier.dateDebut)), "d MMM yyyy", { locale: fr });
     const periodEnd = format(new Date(palierDateToInput(palier.dateFin)), "d MMM yyyy", { locale: fr });
@@ -127,18 +143,20 @@ function buildTarifBreakdown(
       label: paliers.length > 1 ? `Pénalité — palier ${index + 1}` : "Pénalité",
       period: index === paliers.length - 1 ? `${periodStart} → puis indéfini` : `${periodStart} → ${periodEnd}`,
       montant,
-      count: countMap.get(montant) ?? 0,
+      count: stats.count,
+      lecteurs: stats.lecteurs,
     });
   });
 
-  for (const [montant, count] of countMap) {
-    if (!usedMontants.has(montant) && count > 0) {
+  for (const [montant, stats] of statsByMontant) {
+    if (!usedMontants.has(montant) && stats.count > 0) {
       rows.push({
         key: `other-${montant}`,
         label: "Autre tarif",
         period: "Tarif non répertorié dans la grille actuelle",
         montant,
-        count,
+        count: stats.count,
+        lecteurs: stats.lecteurs,
       });
     }
   }
@@ -207,7 +225,13 @@ export function ActiviteStatsPanel({
         totalParticipants: Number(data.totalParticipants ?? 0),
         totalMontant: Number(data.totalMontant ?? 0),
         paymentsByDay: Array.isArray(data.paymentsByDay) ? data.paymentsByDay : [],
-        paymentsByTarif: Array.isArray(data.paymentsByTarif) ? data.paymentsByTarif : [],
+        paymentsByTarif: Array.isArray(data.paymentsByTarif)
+          ? data.paymentsByTarif.map((row: PaymentTarifRow) => ({
+              montantUnitaire: Number(row.montantUnitaire ?? 0),
+              count: Number(row.count ?? 0),
+              lecteurs: Number(row.lecteurs ?? 0),
+            }))
+          : [],
       });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erreur de chargement");
@@ -229,6 +253,10 @@ export function ActiviteStatsPanel({
   );
   const totalPaiements = useMemo(
     () => tarifBreakdown.reduce((sum, row) => sum + row.count, 0),
+    [tarifBreakdown]
+  );
+  const totalLecteursTarifs = useMemo(
+    () => tarifBreakdown.reduce((sum, row) => sum + row.lecteurs, 0),
     [tarifBreakdown]
   );
 
@@ -336,12 +364,17 @@ export function ActiviteStatsPanel({
               <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Répartition par tarif</h2>
             </div>
             <p className="text-xs text-slate-500">
-              Nombre de paiements approuvés pour le tarif initial et chaque palier de pénalité
+              Paiements approuvés et lecteurs inscrits pour le tarif initial et chaque palier de pénalité
             </p>
           </div>
-          <span className="inline-flex w-fit items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-            {totalPaiements} paiement{totalPaiements > 1 ? "s" : ""} au total
-          </span>
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex w-fit items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+              {totalPaiements} paiement{totalPaiements > 1 ? "s" : ""}
+            </span>
+            <span className="inline-flex w-fit items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
+              {totalLecteursTarifs} lecteur{totalLecteursTarifs > 1 ? "s" : ""}
+            </span>
+          </div>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-slate-100">
@@ -352,6 +385,7 @@ export function ActiviteStatsPanel({
                 <th className="px-4 py-3 hidden sm:table-cell">Période</th>
                 <th className="px-4 py-3">Montant unitaire</th>
                 <th className="px-4 py-3 text-right">Paiements</th>
+                <th className="px-4 py-3 text-right">Lecteurs</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -368,10 +402,19 @@ export function ActiviteStatsPanel({
                   <td className="px-4 py-3 text-right">
                     <span
                       className={`inline-flex min-w-[2rem] justify-center rounded-full px-2.5 py-1 text-xs font-extrabold tabular-nums ${
-                        row.count > 0 ? "bg-amber-50 text-amber-900" : "bg-slate-100 text-slate-400"
+                        row.count > 0 ? "bg-slate-100 text-slate-700" : "bg-slate-100 text-slate-400"
                       }`}
                     >
                       {row.count}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <span
+                      className={`inline-flex min-w-[2rem] justify-center rounded-full px-2.5 py-1 text-xs font-extrabold tabular-nums ${
+                        row.lecteurs > 0 ? "bg-amber-50 text-amber-900" : "bg-slate-100 text-slate-400"
+                      }`}
+                    >
+                      {row.lecteurs}
                     </span>
                   </td>
                 </tr>
