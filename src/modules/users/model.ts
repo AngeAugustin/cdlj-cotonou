@@ -25,7 +25,7 @@ const userSchema = new Schema<IUser>(
     password: { type: String },
     roles: {
       type: [String],
-      enum: ["SUPERADMIN", "DIOCESAIN", "VICARIAL", "PAROISSIAL"],
+      enum: ["SUPERADMIN", "DIOCESAIN", "VICARIAL", "PAROISSIAL", "DIRECTION_SPIRITUELLE"],
       default: ["PAROISSIAL"],
     },
     parishId: { type: Schema.Types.ObjectId, ref: "Paroisse" },

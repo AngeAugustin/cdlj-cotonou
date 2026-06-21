@@ -4,6 +4,7 @@ import connectToDatabase from "./mongoose";
 import { User } from "@/modules/users/model";
 import { Paroisse } from "@/modules/paroisses/model";
 import bcryptjs from "bcryptjs";
+import { normalizeRoles } from "@/lib/rolePermissions";
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -35,7 +36,7 @@ export const authOptions: NextAuthOptions = {
           id: user._id.toString(),
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
-          roles: user.roles,
+          roles: normalizeRoles(user.roles),
           parishId: user.parishId?.toString() || null,
           vicariatId: user.vicariatId?.toString() || null,
           paroisseName,
@@ -48,17 +49,20 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }: any) {
       if (user) {
         token.id = user.id;
-        token.roles = user.roles;
+        token.roles = normalizeRoles(user.roles);
         token.parishId = user.parishId;
         token.vicariatId = user.vicariatId;
         token.paroisseName = user.paroisseName ?? null;
+      }
+      if (token.roles) {
+        token.roles = normalizeRoles(token.roles as string[]);
       }
       return token;
     },
     async session({ session, token }: any) {
       if (session.user) {
         session.user.id = token.id;
-        session.user.roles = token.roles;
+        session.user.roles = normalizeRoles(token.roles as string[] | undefined);
         session.user.parishId = token.parishId;
         session.user.vicariatId = token.vicariatId;
         session.user.paroisseName = token.paroisseName ?? null;

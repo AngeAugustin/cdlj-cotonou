@@ -7,9 +7,10 @@ import { DashboardPageShell } from "@/components/dashboard/page-shell";
 import { BirthdayCalendar } from "@/modules/calendrier/components/BirthdayCalendar";
 import { CalendrierFilters } from "@/modules/calendrier/components/CalendrierFilters";
 import { type ApiLecteur, gradeLabel, refId } from "@/modules/lecteurs/lecteurViewUtils";
+import { isDioceseScopeReader } from "@/lib/rolePermissions";
 
 function scopeDescription(roles: string[]): string {
-  if (roles.some((r) => ["DIOCESAIN", "SUPERADMIN"].includes(r))) {
+  if (isDioceseScopeReader(roles)) {
     return "Anniversaires de tous les lecteurs du diocèse.";
   }
   if (roles.includes("VICARIAL")) {
@@ -30,7 +31,7 @@ export default function CalendrierPage() {
   const [vicariatFilter, setVicariatFilter] = useState("");
   const [paroisseFilter, setParoisseFilter] = useState("");
 
-  const canFilter = roles.some((r) => ["DIOCESAIN", "SUPERADMIN"].includes(r));
+  const canFilter = isDioceseScopeReader(roles);
   const description = useMemo(() => scopeDescription(roles), [roles]);
 
   const loadList = useCallback(async () => {

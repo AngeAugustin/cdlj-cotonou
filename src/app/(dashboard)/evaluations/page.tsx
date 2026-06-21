@@ -30,6 +30,7 @@ import {
 import { createEvaluationSchema, updateEvaluationSchema } from "@/modules/evaluations/schema";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { canManageEvaluations, isReadOnlyRole } from "@/lib/rolePermissions";
 
 const SELECT_EMPTY = "__cdlj_empty__";
 
@@ -66,7 +67,8 @@ export default function EvaluationsPage() {
   const user = session?.user as { roles?: string[] } | undefined;
   const roles: string[] = user?.roles ?? [];
 
-  const isManager = roles.some((r) => ["DIOCESAIN", "SUPERADMIN"].includes(r));
+  const isManager = canManageEvaluations(roles);
+  const isReadOnly = isReadOnlyRole(roles);
 
   const getEvaluationStatus = (ev: EvaluationNode) => {
     if (ev.terminee && ev.publiee) return { label: "Terminée & publiée", badge: "bg-emerald-50 text-emerald-700 border-emerald-200" };
@@ -375,7 +377,9 @@ export default function EvaluationsPage() {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Évaluations</h1>
-          <p className="text-slate-500 mt-2 text-lg">Créez et gérez les évaluations.</p>
+          <p className="text-slate-500 mt-2 text-lg">
+            {isReadOnly ? "Consultez les évaluations annuelles publiées." : "Créez et gérez les évaluations."}
+          </p>
         </div>
         {isManager ? (
           <>

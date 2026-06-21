@@ -10,7 +10,7 @@ import { sendUserWelcomeEmail } from "@/lib/resendMail";
 import { User } from "./model";
 import { UserRepository } from "./repository";
 
-const ROLE_ENUM = z.enum(["SUPERADMIN", "DIOCESAIN", "VICARIAL", "PAROISSIAL"]);
+const ROLE_ENUM = z.enum(["SUPERADMIN", "DIOCESAIN", "VICARIAL", "PAROISSIAL", "DIRECTION_SPIRITUELLE"]);
 
 /** Tout utilisateur doit être rattaché à une paroisse ; le vicariat est déduit de la paroisse. */
 export const createUserSchema = z.object({

@@ -5,6 +5,11 @@ import { LecteurService } from "@/modules/lecteurs/service";
 import { createLecteurSchema } from "@/modules/lecteurs/schema";
 import { serializeLecteur } from "@/modules/lecteurs/serializeApi";
 import { assertParoisseInVicariat } from "@/lib/activiteEnrollmentScope";
+import {
+  canManageLecteurs,
+  canViewLecteurs,
+  isDioceseScopeReader,
+} from "@/lib/rolePermissions";
 
 export async function GET(request: Request) {
   try {
@@ -15,6 +20,9 @@ export async function GET(request: Request) {
     }
 
     const roles: string[] = Array.isArray(session.user?.roles) ? session.user.roles : [];
+    if (!canViewLecteurs(roles)) {
+      return NextResponse.json({ error: "Forbidden access" }, { status: 403 });
+    }
 
     const { searchParams } = new URL(request.url);
     const paroisseId = searchParams.get("paroisseId");
@@ -23,7 +31,7 @@ export async function GET(request: Request) {
     const service = new LecteurService();
     let result;
 
-    if (roles.includes("SUPERADMIN") || roles.includes("DIOCESAIN")) {
+    if (isDioceseScopeReader(roles)) {
       if (paroisseId) result = await service.getLecteursByParish(paroisseId);
       else if (vicariatId) result = await service.getLecteursByVicariat(vicariatId);
       else result = await service.getLecteurs();
@@ -70,20 +78,17 @@ export async function POST(request: Request) {
     }
 
     const roles: string[] = Array.isArray(session.user?.roles) ? session.user.roles : [];
+    if (!canManageLecteurs(roles)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
-    // Check role, at least Paroissial or above can create
     const isParoissial = roles.includes("PAROISSIAL");
     const isVicarial = roles.includes("VICARIAL");
     const isDiocesain = roles.includes("DIOCESAIN");
     const isSuperAdmin = roles.includes("SUPERADMIN");
-    
-    if (!isParoissial && !isVicarial && !isDiocesain && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const body = await request.json();
 
-    // Force inject context from auth if needed
     if (isParoissial && session.user.parishId) body.paroisseId = session.user.parishId;
     if (isParoissial && session.user.vicariatId) body.vicariatId = session.user.vicariatId;
 

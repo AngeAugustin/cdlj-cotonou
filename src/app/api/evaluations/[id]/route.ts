@@ -3,10 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { EvaluationService } from "@/modules/evaluations/service";
 import { updateEvaluationSchema } from "@/modules/evaluations/schema";
-
-function isEvaluationManager(roles: string[]) {
-  return roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
-}
+import { canManageEvaluations, canViewEvaluations, isDirectionSpirituelle } from "@/lib/rolePermissions";
 
 export async function GET(
   _request: Request,
@@ -16,12 +13,17 @@ export async function GET(
     const session = (await getServerSession(authOptions)) as { user?: { roles?: string[] } } | null;
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const roles = session.user.roles ?? [];
-    if (!isEvaluationManager(roles)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!canViewEvaluations(roles)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const { id } = await params;
     const service = new EvaluationService();
     const evaluation = await service.getEvaluationDetails(id);
     if (!evaluation) return NextResponse.json({ error: "Évaluation introuvable" }, { status: 404 });
+
+    if (isDirectionSpirituelle(roles) && !canManageEvaluations(roles) && !evaluation.publiee) {
+      return NextResponse.json({ error: "Évaluation non publiée" }, { status: 403 });
+    }
+
     return NextResponse.json(evaluation);
   } catch (error: unknown) {
     return NextResponse.json(
@@ -39,7 +41,7 @@ export async function PUT(
     const session = (await getServerSession(authOptions)) as { user?: { roles?: string[] } } | null;
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const roles = session.user.roles ?? [];
-    if (!isEvaluationManager(roles)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!canManageEvaluations(roles)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const { id } = await params;
     const body = await request.json();
@@ -65,7 +67,7 @@ export async function DELETE(
     const session = (await getServerSession(authOptions)) as { user?: { roles?: string[] } } | null;
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const roles = session.user.roles ?? [];
-    if (!isEvaluationManager(roles)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!canManageEvaluations(roles)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const { id } = await params;
     const service = new EvaluationService();
@@ -79,4 +81,3 @@ export async function DELETE(
     );
   }
 }
-

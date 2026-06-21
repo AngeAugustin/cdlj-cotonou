@@ -16,6 +16,18 @@ export class EvaluationService {
     return this.repo.findFirstOpenEvaluation();
   }
 
+  getPublishedEvaluations() {
+    return this.repo.getPublishedEvaluations();
+  }
+
+  countPublishedEvaluations() {
+    return this.repo.countPublishedEvaluations();
+  }
+
+  findFirstPublishedEvaluation() {
+    return this.repo.findFirstPublishedEvaluation();
+  }
+
   getEvaluationDetails(evaluationId: string) {
     return this.repo.getEvaluationFull(evaluationId);
   }

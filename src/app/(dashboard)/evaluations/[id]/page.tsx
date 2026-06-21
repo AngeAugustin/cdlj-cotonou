@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { downloadEvaluationReadersExcel } from "@/lib/evaluationReadersExport";
+import { canManageEvaluations, canViewEvaluations, isReadOnlyRole } from "@/lib/rolePermissions";
 
 type Role = string;
 
@@ -91,7 +92,9 @@ export default function EvaluationDetailsPage() {
   const { data: session, status } = useSession();
   const user = session?.user as { roles?: Role[] } | undefined;
   const roles = user?.roles ?? [];
-  const canManage = roles.some((r) => ["DIOCESAIN", "SUPERADMIN"].includes(r));
+  const canManage = canManageEvaluations(roles);
+  const canViewReaders = canViewEvaluations(roles);
+  const isReadOnly = isReadOnlyRole(roles);
 
   const [evaluation, setEvaluation] = useState<EvaluationDetails | null>(null);
   const [readers, setReaders] = useState<ReaderRow[]>([]);
@@ -179,7 +182,7 @@ export default function EvaluationDetailsPage() {
 
         hasFetchedInitialReadersRef.current = true;
 
-        if (canManage) {
+        if (canViewReaders) {
           void (async () => {
             try {
               await fetchVicariats();
@@ -202,12 +205,12 @@ export default function EvaluationDetailsPage() {
   }, [id]);
 
   useEffect(() => {
-    if (!canManage) return;
+    if (!canViewReaders) return;
     void (async () => {
       await fetchParoisses(vicariatId);
       setParoisseId("");
     })();
-  }, [vicariatId, canManage, fetchParoisses]);
+  }, [vicariatId, canViewReaders, fetchParoisses]);
 
   useEffect(() => {
     if (!id) return;

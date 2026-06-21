@@ -3,6 +3,7 @@ import { ParoisseService } from "@/modules/paroisses/service";
 import { ActiviteService } from "@/modules/activites/service";
 import { EvaluationService } from "@/modules/evaluations/service";
 import { AssembleeGeneraleService } from "@/modules/assemblees/service";
+import { isDioceseScopeReader, isDirectionSpirituelle, primaryRoleLabel } from "@/lib/rolePermissions";
 
 export type DashboardSessionUser = {
   roles?: string[];
@@ -41,15 +42,12 @@ export type DashboardData = {
   isManager: boolean;
   isVicarial: boolean;
   isParoissial: boolean;
+  isSpiritualDirection: boolean;
   canViewAssemblees: boolean;
 };
 
 function primaryRole(roles: string[]): string {
-  const order = ["SUPERADMIN", "DIOCESAIN", "VICARIAL", "PAROISSIAL"];
-  for (const r of order) {
-    if (roles.includes(r)) return r;
-  }
-  return roles[0] ?? "UTILISATEUR";
+  return primaryRoleLabel(roles);
 }
 
 export function dashboardPrimaryRole(roles: string[] | undefined): string {
@@ -59,13 +57,12 @@ export function dashboardPrimaryRole(roles: string[] | undefined): string {
 async function countLecteursForUser(
   lecteurService: LecteurService,
   user: DashboardSessionUser | undefined,
-  isSuper: boolean,
-  isDioc: boolean,
+  isDioceseReader: boolean,
   isVicarial: boolean,
   isParoissial: boolean
 ): Promise<number> {
   try {
-    if (isSuper || isDioc) return await lecteurService.countLecteurs();
+    if (isDioceseReader) return await lecteurService.countLecteurs();
     if (isVicarial && user?.vicariatId) return await lecteurService.countLecteursByVicariat(user.vicariatId);
     if (isParoissial && user?.parishId) return await lecteurService.countLecteursByParish(user.parishId);
   } catch {
@@ -78,13 +75,14 @@ async function countParoissesForUser(
   paroisseService: ParoisseService,
   user: DashboardSessionUser | undefined,
   isManager: boolean,
+  isDioceseReader: boolean,
   isVicarial: boolean
 ): Promise<number | null> {
   try {
     if (isVicarial && user?.vicariatId) return await paroisseService.countParoisses({ vicariatId: user.vicariatId });
-    if (isManager) return await paroisseService.countParoisses();
+    if (isManager || isDioceseReader) return await paroisseService.countParoisses();
   } catch {
-    return isManager || isVicarial ? 0 : null;
+    return isManager || isVicarial || isDioceseReader ? 0 : null;
   }
   return null;
 }
@@ -93,12 +91,12 @@ async function countParticipantsForActivite(
   activiteService: ActiviteService,
   activiteId: string,
   user: DashboardSessionUser | undefined,
-  isManager: boolean,
+  isDioceseReader: boolean,
   isVicarial: boolean,
   isParoissial: boolean
 ): Promise<{ participants: number; participantsScope: DashboardRecentActivite["participantsScope"] }> {
   try {
-    if (isManager) {
+    if (isDioceseReader) {
       const participants = await activiteService.countParticipantsForActivite(activiteId);
       return { participants, participantsScope: "diocèse" };
     }
@@ -121,6 +119,8 @@ export async function getDashboardData(user: DashboardSessionUser | undefined): 
   const isSuper = roles.includes("SUPERADMIN");
   const isDioc = roles.includes("DIOCESAIN");
   const isManager = isSuper || isDioc;
+  const isSpiritual = isDirectionSpirituelle(roles) && !isManager;
+  const isDioceseReader = isDioceseScopeReader(roles);
   const isVicarial = roles.includes("VICARIAL");
   const isParoissial = roles.includes("PAROISSIAL");
   const canViewAssemblees = isManager || isVicarial;
@@ -139,8 +139,8 @@ export async function getDashboardData(user: DashboardSessionUser | undefined): 
     evaluationSummary,
     assembleesEnCours,
   ] = await Promise.all([
-    countLecteursForUser(lecteurService, user, isSuper, isDioc, isVicarial, isParoissial),
-    countParoissesForUser(paroisseService, user, isManager, isVicarial),
+    countLecteursForUser(lecteurService, user, isDioceseReader, isVicarial, isParoissial),
+    countParoissesForUser(paroisseService, user, isManager, isDioceseReader, isVicarial),
     activiteService.countOpenActivites().catch(() => 0),
     activiteService.findRecentActivites(5).catch(() => [] as Array<{
       _id: unknown;
@@ -171,7 +171,26 @@ export async function getDashboardData(user: DashboardSessionUser | undefined): 
                 }
               : null,
         }))
-      : Promise.resolve({ evaluationsEnCours: 0, highlightEvaluation: null }),
+      : isSpiritual
+        ? Promise.all([
+            evaluationService.countPublishedEvaluations().catch(() => 0),
+            evaluationService.findFirstPublishedEvaluation().catch(() => null),
+          ]).then(([count, first]) => ({
+            evaluationsEnCours: count,
+            highlightEvaluation:
+              first && first._id
+                ? {
+                    _id: String(first._id),
+                    nom: first.nom,
+                    annee: first.annee,
+                    gradeLabel:
+                      (first.gradeId as { name?: string; abbreviation?: string } | undefined)?.name ??
+                      (first.gradeId as { name?: string; abbreviation?: string } | undefined)?.abbreviation ??
+                      "Grade",
+                  }
+                : null,
+          }))
+        : Promise.resolve({ evaluationsEnCours: 0, highlightEvaluation: null }),
     canViewAssemblees ? assembleeService.countOpenAssemblees().catch(() => 0) : Promise.resolve(0),
   ]);
 
@@ -182,7 +201,7 @@ export async function getDashboardData(user: DashboardSessionUser | undefined): 
         activiteService,
         id,
         user,
-        isManager,
+        isDioceseReader,
         isVicarial,
         isParoissial
       );
@@ -213,6 +232,7 @@ export async function getDashboardData(user: DashboardSessionUser | undefined): 
     isManager,
     isVicarial,
     isParoissial,
+    isSpiritualDirection: isSpiritual,
     canViewAssemblees,
   };
 }

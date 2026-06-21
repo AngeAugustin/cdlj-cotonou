@@ -6,10 +6,7 @@ import {
   assertParoisseInVicariat,
   listParoisseIdsForVicariat,
 } from "@/lib/activiteEnrollmentScope";
-
-function isActiviteManager(roles: string[]) {
-  return roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
-}
+import { isDioceseScopeReader } from "@/lib/rolePermissions";
 
 export async function GET(
   request: Request,
@@ -59,12 +56,12 @@ export async function GET(
       return NextResponse.json(rows);
     }
 
-    if (isActiviteManager(roles) && paroisseIdParam) {
+    if (isDioceseScopeReader(roles) && paroisseIdParam) {
       const rows = await service.listParticipantsDetail(id, { paroisseId: paroisseIdParam });
       return NextResponse.json(rows);
     }
 
-    if (isActiviteManager(roles) && !paroisseIdParam) {
+    if (isDioceseScopeReader(roles) && !paroisseIdParam) {
       const rows = await service.listParticipantsDetail(id);
       return NextResponse.json(rows);
     }
@@ -78,9 +75,7 @@ export async function GET(
 
 export async function POST() {
   return NextResponse.json(
-    {
-      error: "Utilisez le paiement FedaPay : POST /api/activites/[id]/pay/init depuis la page Participer.",
-    },
-    { status: 403 }
+    { error: "Utilisez l'endpoint de paiement pour inscrire des lecteurs" },
+    { status: 405 }
   );
 }

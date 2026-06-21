@@ -41,6 +41,7 @@ import {
 } from "@/modules/lecteurs/lecteurViewUtils";
 import { downloadLecteurImportTemplate } from "@/modules/lecteurs/importExcel";
 import { LecteurImportDialog } from "@/modules/lecteurs/components/LecteurImportDialog";
+import { canManageLecteurs, isDioceseScopeReader, isReadOnlyRole } from "@/lib/rolePermissions";
 
 export type { ApiLecteur } from "@/modules/lecteurs/lecteurViewUtils";
 
@@ -64,8 +65,10 @@ export default function LecteursPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [templateLoading, setTemplateLoading] = useState(false);
 
-  const canCreate = roles.some((r) => ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"].includes(r));
+  const canCreate = canManageLecteurs(roles);
   const canBulkImport = roles.some((r) => ["VICARIAL", "DIOCESAIN", "SUPERADMIN"].includes(r));
+  const isReadOnly = isReadOnlyRole(roles);
+  const canFilterDiocese = isDioceseScopeReader(roles);
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -276,8 +279,9 @@ export default function LecteursPage() {
   return (
     <DashboardPageShell
       title="Lecteurs"
-      description="Créez et Gérez vos lecteurs"
+      description={isReadOnly ? "Consultez les lecteurs de la communauté diocésaine." : "Créez et Gérez vos lecteurs"}
       actions={
+        isReadOnly ? undefined : (
         <>
           {canBulkImport ? (
             <>
@@ -363,6 +367,7 @@ export default function LecteursPage() {
             </>
           ) : null}
         </>
+        )
       }
     >
 

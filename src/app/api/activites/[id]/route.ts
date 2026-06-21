@@ -3,17 +3,14 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { ActiviteService } from "@/modules/activites/service";
 import { updateActiviteSchema } from "@/modules/activites/schema";
+import { canManageActivites, canViewActivites } from "@/lib/rolePermissions";
 
 function isActiviteManager(roles: string[]) {
-  return roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
+  return canManageActivites(roles);
 }
 
-function canViewActivites(roles: string[]) {
-  return (
-    roles.includes("PAROISSIAL") ||
-    roles.includes("VICARIAL") ||
-    isActiviteManager(roles)
-  );
+function canViewActivitesRoute(roles: string[]) {
+  return canViewActivites(roles);
 }
 
 export async function GET(
@@ -23,7 +20,7 @@ export async function GET(
   try {
     const session: any = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (!canViewActivites(session.user.roles ?? [])) {
+    if (!canViewActivitesRoute(session.user.roles ?? [])) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const { id } = await params;

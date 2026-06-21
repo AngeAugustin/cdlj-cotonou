@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { normalizeRoles } from "@/lib/rolePermissions";
 
 function initialsFromDisplayName(name: string | null | undefined): string {
   const n = (name ?? "U").trim();
@@ -33,23 +34,23 @@ function initialsFromDisplayName(name: string | null | undefined): string {
 }
 
 const ALL_NAV = [
-  { name: "Tableau de Bord", href: "/dashboard",   icon: BarChart3,      roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
-  { name: "Lecteurs",        href: "/lecteurs",     icon: Users,          roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
-  { name: "Calendrier",      href: "/calendrier",   icon: CalendarDays,   roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
+  { name: "Tableau de Bord", href: "/dashboard",   icon: BarChart3,      roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN", "DIRECTION_SPIRITUELLE"] },
+  { name: "Lecteurs",        href: "/lecteurs",     icon: Users,          roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN", "DIRECTION_SPIRITUELLE"] },
+  { name: "Calendrier",      href: "/calendrier",   icon: CalendarDays,   roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN", "DIRECTION_SPIRITUELLE"] },
   { name: "Paroisses",       href: "/paroisses",    icon: Building2,      roles: ["VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
   { name: "Vicariats",       href: "/vicariats",    icon: Map,            roles: ["DIOCESAIN", "SUPERADMIN"] },
-  { name: "Activités",       href: "/activites",    icon: Activity,       roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
+  { name: "Activités",       href: "/activites",    icon: Activity,       roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN", "DIRECTION_SPIRITUELLE"] },
   { name: "Conseils Dioc.",    href: "/assemblees",   icon: FileText,       roles: ["VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
  // { name: "Cotisations",     href: "/cotisations",  icon: Wallet,         roles: ["VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
   { name: "Grades",          href: "/grades",       icon: Award,          roles: ["DIOCESAIN", "SUPERADMIN"] },
-  { name: "Évaluations",     href: "/evaluations",  icon: GraduationCap,  roles: ["DIOCESAIN", "SUPERADMIN"] },
-  { name: "Actualités",      href: "/actualites",   icon: Newspaper,      roles: ["DIOCESAIN", "SUPERADMIN"] },
+  { name: "Évaluations",     href: "/evaluations",  icon: GraduationCap,  roles: ["DIOCESAIN", "SUPERADMIN", "DIRECTION_SPIRITUELLE"] },
+  { name: "Actualités",      href: "/actualites",   icon: Newspaper,      roles: ["DIOCESAIN", "SUPERADMIN", "DIRECTION_SPIRITUELLE"] },
   { name: "Médiathèque",     href: "/gestion-mediatheque", icon: ImageIcon, roles: ["DIOCESAIN", "SUPERADMIN"] },
   { name: "Utilisateurs",    href: "/utilisateurs", icon: Shield,         roles: ["DIOCESAIN", "SUPERADMIN"] },
 ];
 
 interface SidebarShellProps {
-  user: { name?: string | null; roles: string[]; paroisseName?: string | null };
+  user: { name?: string | null; roles: string[]; roleLabel?: string; paroisseName?: string | null };
   children: React.ReactNode;
 }
 
@@ -70,7 +71,8 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileUserMenuOpen, setMobileUserMenuOpen] = useState(false);
   const [mobileLogoutConfirmOpen, setMobileLogoutConfirmOpen] = useState(false);
-  const normalizedUserRoles = (user.roles ?? []).map((role) => role.trim().toUpperCase());
+  const normalizedUserRoles = normalizeRoles(user.roles);
+  const roleLabel = user.roleLabel ?? user.roles[0] ?? "Paroissial";
   const hasVicarialRole = normalizedUserRoles.includes("VICARIAL");
 
   const navigation = ALL_NAV.filter((item) => {
@@ -109,7 +111,7 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
               <div className="min-w-0">
                 <p className="font-extrabold text-amber-50 truncate">Portail CDLJ</p>
                 <p className="text-[10px] font-medium text-amber-300/90 uppercase tracking-widest">
-                  {user.roles[0] || "Paroissial"}
+                  {roleLabel}
                 </p>
               </div>
             </Link>
@@ -174,7 +176,7 @@ export default function SidebarShell({ user, children }: SidebarShellProps) {
                     Portail CDLJ
                   </h1>
                   <span className="text-xs font-medium text-amber-300/90 uppercase tracking-widest">
-                    {user.roles[0] || "Paroissial"}
+                    {roleLabel}
                   </span>
                 </div>
               </Link>

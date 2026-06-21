@@ -86,6 +86,30 @@ export class EvaluationRepository {
       .lean();
   }
 
+  async getPublishedEvaluations(): Promise<unknown[]> {
+    await connectToDatabase();
+    const rows = await Evaluation.find({ publiee: true })
+      .populate("gradeId", "name abbreviation level")
+      .populate("activiteId", "nom dateDebut dateFin lieu montant terminee image")
+      .sort({ annee: -1, createdAt: -1 })
+      .lean();
+    return rows;
+  }
+
+  async countPublishedEvaluations(): Promise<number> {
+    await connectToDatabase();
+    return Evaluation.countDocuments({ publiee: true });
+  }
+
+  async findFirstPublishedEvaluation() {
+    await connectToDatabase();
+    return Evaluation.findOne({ publiee: true })
+      .populate("gradeId", "name abbreviation")
+      .select("nom annee gradeId")
+      .sort({ annee: -1, createdAt: -1 })
+      .lean();
+  }
+
   async getEvaluationById(id: string): Promise<IEvaluation | null> {
     if (!mongoose.Types.ObjectId.isValid(id)) return null;
     await connectToDatabase();

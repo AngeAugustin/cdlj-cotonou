@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { ActiviteService } from "@/modules/activites/service";
-
-function isActiviteManager(roles: string[]) {
-  return roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
-}
+import { isDioceseScopeReader } from "@/lib/rolePermissions";
 
 export async function GET(
   request: Request,
@@ -31,7 +28,7 @@ export async function GET(
       return NextResponse.json(stats);
     }
 
-    if (isActiviteManager(roles)) {
+    if (isDioceseScopeReader(roles)) {
       const stats = await service.getStats(id, vicariatFilter ?? null);
       return NextResponse.json(stats);
     }

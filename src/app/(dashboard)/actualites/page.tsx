@@ -20,6 +20,7 @@ import {
 import {
   type Actualite,
 } from "@/modules/actualites/components/ArticleForm";
+import { canManageActualites, isReadOnlyRole } from "@/lib/rolePermissions";
 
 type Toast = { message: string; type: "success" | "error" };
 
@@ -43,7 +44,8 @@ export default function ActualitesPage() {
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const roles: string[] = (session?.user as any)?.roles ?? [];
-  const isAdmin = roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
+  const isAdmin = canManageActualites(roles);
+  const isReadOnly = isReadOnlyRole(roles);
 
   const [actualites, setActualites] = useState<Actualite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,7 +72,7 @@ export default function ActualitesPage() {
   const fetchActualites = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/actualites?all=true");
+      const res = await fetch(isAdmin ? "/api/actualites?all=true" : "/api/actualites");
       if (res.ok) setActualites(await res.json());
     } catch {
       showToast("Erreur lors du chargement des actualités", "error");
@@ -164,7 +166,9 @@ export default function ActualitesPage() {
   const featured  = actualites.filter((a) => a.featured).length;
   const drafts    = actualites.filter((a) => !a.published).length;
 
-  if (!isAdmin) {
+  const canAccessPage = isAdmin || isReadOnly;
+
+  if (!canAccessPage) {
     return (
       <div className="flex items-center justify-center h-64 text-slate-400">
         Accès réservé aux administrateurs diocésains.
@@ -196,9 +200,10 @@ export default function ActualitesPage() {
             Actualités
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">
-            Créez et gérez les articles.
+            {isReadOnly ? "Consultez les actualités publiées de la communauté." : "Créez et gérez les articles."}
           </p>
         </div>
+        {isAdmin ? (
         <>
           <Link
             href="/actualites/new"
@@ -222,16 +227,19 @@ export default function ActualitesPage() {
             Nouvel article
           </Link>
         </>
+        ) : null}
       </div>
 
       {/* ── Stats ────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
+        {(isReadOnly
+          ? [{ label: "Publiés", value: published, color: "text-green-700", bg: "bg-green-50 border-green-200" }]
+          : [
           { label: "Total",      value: actualites.length, color: "text-slate-800",  bg: "bg-slate-50 border-slate-200" },
           { label: "Publiés",    value: published,          color: "text-green-700",  bg: "bg-green-50 border-green-200" },
           { label: "Brouillons", value: drafts,             color: "text-amber-700",  bg: "bg-amber-50 border-amber-200" },
           { label: "À la une",   value: featured,           color: "text-purple-700", bg: "bg-purple-50 border-purple-200" },
-        ].map((s) => (
+        ]).map((s) => (
           <div key={s.label} className={`rounded-2xl border px-5 py-4 ${s.bg}`}>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{s.label}</p>
             <p className={`text-3xl font-extrabold mt-1 ${s.color}`}>{s.value}</p>
@@ -261,12 +269,14 @@ export default function ActualitesPage() {
         <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
           <Newspaper className="w-10 h-10 opacity-30" />
           <p className="text-sm font-medium">Aucun article trouvé</p>
+          {isAdmin ? (
           <Link
             href="/actualites/new"
             className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-2 gap-1.5 inline-flex")}
           >
             <Plus className="w-3.5 h-3.5" /> Créer le premier article
           </Link>
+          ) : null}
         </div>
       ) : (
           <>
@@ -306,6 +316,7 @@ export default function ActualitesPage() {
                     {a.published ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                     {a.published ? "Publié" : "Brouillon"}
                   </span>
+                  {isAdmin ? (
                   <button
                     onClick={() =>
                       setConfirmAction(
@@ -334,6 +345,11 @@ export default function ActualitesPage() {
                     {a.featured ? <Star className="w-3 h-3 fill-amber-400" /> : <StarOff className="w-3 h-3" />}
                     {a.featured ? "À la une" : "Standard"}
                   </button>
+                  ) : a.featured ? (
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border text-amber-700 bg-amber-50 border-amber-200">
+                      <Star className="w-3 h-3 fill-amber-400" /> À la une
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2 space-y-2">
@@ -364,6 +380,8 @@ export default function ActualitesPage() {
                 </div>
 
                 <div className="flex items-center justify-end gap-1.5 pt-1">
+                  {isAdmin ? (
+                    <>
                   {!a.published && (
                     <button
                       onClick={() =>
@@ -388,13 +406,6 @@ export default function ActualitesPage() {
                     <BarChart3 className="w-4 h-4" />
                   </Link>
                   <Link
-                    href={`/actualites/${a._id}`}
-                    className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all"
-                    title="Détail"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Link>
-                  <Link
                     href={`/actualites/${a._id}/edit`}
                     className="p-2 text-slate-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-all"
                     title="Modifier"
@@ -408,6 +419,15 @@ export default function ActualitesPage() {
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
+                    </>
+                  ) : null}
+                  <Link
+                    href={`/actualites/${a._id}`}
+                    className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all"
+                    title="Lire l'article"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Link>
                 </div>
               </article>
             ))}

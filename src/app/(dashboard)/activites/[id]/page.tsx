@@ -29,6 +29,7 @@ import {
 import { computeMontantApplicable } from "@/modules/activites/penalites";
 import { GrillePenaliteDisplay } from "@/modules/activites/components/GrillePenaliteDisplay";
 import { ActiviteStatsPanel } from "@/modules/activites/components/ActiviteStatsPanel";
+import { isDioceseScopeReader } from "@/lib/rolePermissions";
 
 type Activite = {
   _id: string;
@@ -192,7 +193,8 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const { data: session, status } = useSession();
   const roles: string[] = ((session?.user as { roles?: string[] } | undefined)?.roles ?? []) as string[];
   const isManager = roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
-  const isDiocesain = isManager;
+  const isDioceseReader = isDioceseScopeReader(roles);
+  const isDiocesain = isDioceseReader;
   const isSuperAdmin = roles.includes("SUPERADMIN");
   const isVicarial = roles.includes("VICARIAL");
   const isParoissial = roles.includes("PAROISSIAL");
@@ -272,7 +274,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       .catch(() => {});
   }, [isParoissial]);
 
-  const canSeeParticipants = isParoissial || isManager || isVicarial;
+  const canSeeParticipants = isParoissial || isDioceseReader || isVicarial;
   const canSeePresence = isManager;
 
   const vicariatOptions = useMemo(

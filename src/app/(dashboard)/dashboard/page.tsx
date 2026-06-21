@@ -34,14 +34,17 @@ export default async function DashboardPage() {
   const role = dashboardPrimaryRole(roles);
   const data = await getDashboardData(user);
 
-  const showParoissesCard = data.isManager || data.isVicarial;
-  const showEvaluationsKpi = data.isManager;
+  const showParoissesCard = data.isManager || data.isVicarial || data.isSpiritualDirection;
+  const showEvaluationsKpi = data.isManager || data.isSpiritualDirection;
   const showAssembleesKpi = data.isVicarial && !data.isManager;
+  const dashboardDescription = data.isSpiritualDirection
+    ? "Consultez la vie de la communauté diocésaine en lecture seule."
+    : "Suivez l'activité et l'évolution de votre juridiction en un coup d'œil.";
 
   return (
     <DashboardPageShell
       title={`Vue globale ${role.toLowerCase()}`}
-      description="Suivez l'activité et l'évolution de votre juridiction en un coup d'œil."
+      description={dashboardDescription}
     >
       <div className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -92,7 +95,9 @@ export default async function DashboardPage() {
               <GraduationCap className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-slate-500 text-xs font-medium leading-tight">Évaluations en cours</h3>
+              <h3 className="text-slate-500 text-xs font-medium leading-tight">
+                {data.isSpiritualDirection ? "Évaluations publiées" : "Évaluations en cours"}
+              </h3>
               <p className="text-xl font-black text-slate-900 leading-tight tabular-nums">{formatInt(data.evaluationsEnCours)}</p>
             </div>
           </div>

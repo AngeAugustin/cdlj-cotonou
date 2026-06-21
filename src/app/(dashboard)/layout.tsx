@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import SidebarShell from "@/components/SidebarShell";
+import { normalizeRoles, primaryRoleLabel } from "@/lib/rolePermissions";
 
 export default async function DashboardLayout({
   children,
@@ -19,10 +20,19 @@ export default async function DashboardLayout({
     roles?: string[];
     paroisseName?: string | null;
   };
-  const roles = Array.isArray(user.roles) && user.roles.length > 0 ? user.roles : ["PAROISSIAL"];
+  const roles = normalizeRoles(
+    Array.isArray(user.roles) && user.roles.length > 0 ? user.roles : ["PAROISSIAL"]
+  );
 
   return (
-    <SidebarShell user={{ name: user.name, roles, paroisseName: user.paroisseName ?? null }}>
+    <SidebarShell
+      user={{
+        name: user.name,
+        roles,
+        roleLabel: primaryRoleLabel(roles),
+        paroisseName: user.paroisseName ?? null,
+      }}
+    >
       {children}
     </SidebarShell>
   );

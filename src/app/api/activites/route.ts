@@ -3,17 +3,10 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { ActiviteService } from "@/modules/activites/service";
 import { createActiviteSchema } from "@/modules/activites/schema";
+import { canManageActivites, canViewActivites } from "@/lib/rolePermissions";
 
 function isActiviteManager(roles: string[]) {
-  return roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
-}
-
-function canViewActivites(roles: string[]) {
-  return (
-    roles.includes("PAROISSIAL") ||
-    roles.includes("VICARIAL") ||
-    isActiviteManager(roles)
-  );
+  return canManageActivites(roles);
 }
 
 export async function GET() {

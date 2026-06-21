@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { ParoisseService } from "@/modules/paroisses/service";
 import { createParoisseSchema } from "@/modules/paroisses/schema";
+import { isDioceseScopeReader } from "@/lib/rolePermissions";
 
 export async function GET(request: Request) {
   try {
@@ -13,12 +14,11 @@ export async function GET(request: Request) {
     const service = new ParoisseService();
 
     if (roles.includes("VICARIAL")) {
-      // VICARIAL : uniquement ses paroisses
       const data = await service.getParoisses({ vicariatId: session.user.vicariatId });
       return NextResponse.json(data);
     }
 
-    if (roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN")) {
+    if (isDioceseScopeReader(roles)) {
       const { searchParams } = new URL(request.url);
       const vicariatId = searchParams.get("vicariatId") ?? undefined;
       const data = await service.getParoisses(vicariatId ? { vicariatId } : undefined);

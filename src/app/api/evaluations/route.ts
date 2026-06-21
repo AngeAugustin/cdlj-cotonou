@@ -3,19 +3,19 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { EvaluationService } from "@/modules/evaluations/service";
 import { createEvaluationSchema } from "@/modules/evaluations/schema";
-
-function isEvaluationManager(roles: string[]) {
-  return roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
-}
+import { canManageEvaluations, canViewEvaluations, isDirectionSpirituelle } from "@/lib/rolePermissions";
 
 export async function GET() {
   try {
     const session = (await getServerSession(authOptions)) as { user?: { roles?: string[] } } | null;
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const roles = session.user.roles ?? [];
-    if (!isEvaluationManager(roles)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!canViewEvaluations(roles)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const service = new EvaluationService();
+    if (isDirectionSpirituelle(roles) && !canManageEvaluations(roles)) {
+      return NextResponse.json(await service.getPublishedEvaluations());
+    }
     return NextResponse.json(await service.getEvaluations());
   } catch (error: unknown) {
     return NextResponse.json(
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     const session = (await getServerSession(authOptions)) as { user?: { roles?: string[] } } | null;
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const roles = session.user.roles ?? [];
-    if (!isEvaluationManager(roles)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!canManageEvaluations(roles)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await request.json();
     const validated = createEvaluationSchema.parse(body);
@@ -45,4 +45,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

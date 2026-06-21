@@ -1,5 +1,9 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import {
+  isDirectionSpirituelle,
+  isSpiritualDirectionForbiddenPath,
+} from "@/lib/rolePermissions";
 
 export default withAuth(
   function middleware(req) {
@@ -10,6 +14,10 @@ export default withAuth(
     const isVicarial = roles.includes("VICARIAL");
 
     if (isVicariatPage && isVicarial) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+
+    if (isDirectionSpirituelle(roles) && isSpiritualDirectionForbiddenPath(req.nextUrl.pathname)) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
 

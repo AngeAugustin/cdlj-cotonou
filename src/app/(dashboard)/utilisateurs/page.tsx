@@ -37,7 +37,7 @@ import { ListPagination } from "@/components/ui/list-pagination";
 import { usePaginatedList } from "@/lib/pagination";
 import { canManageUsers } from "@/lib/userAdminAccess";
 
-const AVAILABLE_ROLES = ["SUPERADMIN", "DIOCESAIN", "VICARIAL", "PAROISSIAL"] as const;
+const AVAILABLE_ROLES = ["SUPERADMIN", "DIOCESAIN", "VICARIAL", "PAROISSIAL", "DIRECTION_SPIRITUELLE"] as const;
 
 type ApiUser = {
   _id: string;
@@ -475,6 +475,8 @@ export default function UtilisateursPage() {
                             ? "bg-blue-50 text-blue-700 border-blue-200"
                             : role === "VICARIAL"
                               ? "bg-purple-50 text-purple-700 border-purple-200"
+                              : role === "DIRECTION_SPIRITUELLE"
+                                ? "bg-amber-50 text-amber-800 border-amber-200"
                               : "bg-emerald-50 text-emerald-700 border-emerald-200"
                       }`}
                     >
@@ -567,6 +569,8 @@ export default function UtilisateursPage() {
                                   ? "bg-blue-50 text-blue-700 border-blue-200"
                                   : role === "VICARIAL"
                                     ? "bg-purple-50 text-purple-700 border-purple-200"
+                                    : role === "DIRECTION_SPIRITUELLE"
+                                      ? "bg-amber-50 text-amber-800 border-amber-200"
                                     : "bg-emerald-50 text-emerald-700 border-emerald-200"
                             }`}
                           >
