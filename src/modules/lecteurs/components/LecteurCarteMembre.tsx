@@ -116,17 +116,17 @@ export function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; 
       ══════════════════════════════════════ */}
       <div className="relative z-10 flex flex-col flex-1 px-4 pt-2.5 pb-2.5 gap-0 min-h-0">
 
-        {/* Ligne principale : moitié gauche | moitié droite (50/50) */}
-        <div className="flex gap-0 flex-1 min-h-0">
+        {/* Ligne principale */}
+        <div className="flex min-h-0 flex-1 gap-0">
 
-          {/* ── Moitié gauche (50%) : photo | champs + Rattachement en bas ── */}
-          <div className="flex min-w-0 shrink-0 flex-col gap-0 overflow-hidden pr-3" style={{ flex: "0 0 50%" }}>
+          {/* Colonne gauche : identité + rattachement */}
+          <div className="flex min-w-0 flex-1 flex-col pr-1">
 
-            {/* Photo + champs côte à côte */}
-            <div className="flex min-w-0 gap-3" style={{ flex: "0 0 auto" }}>
+            {/* Photo + champs identité — zone élargie vers le QR */}
+            <div className="flex min-w-0 gap-2">
 
               {/* Matricule + photo */}
-              <div className="flex flex-col items-center gap-1 shrink-0" style={{ width: 104 }}>
+              <div className="flex shrink-0 flex-col items-center gap-1" style={{ width: 98 }}>
                 <p className="font-mono text-[10px] font-extrabold tracking-widest text-amber-900 text-center leading-none">
                   {lecteur.uniqueId}
                 </p>
@@ -141,8 +141,8 @@ export function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; 
                 </div>
               </div>
 
-              {/* Champs identité — même hauteur que la photo, alignés sur elle */}
-              <div className="flex min-w-0 flex-1 flex-col justify-between overflow-hidden" style={{ height: 116, marginTop: 14 }}>
+              {/* Champs identité */}
+              <div className="flex min-w-0 flex-1 flex-col justify-between" style={{ height: 116, marginTop: 14 }}>
                 {(
                   [
                     { label: "Nom :",        value: lecteur.nom.toUpperCase(), bold: true },
@@ -154,10 +154,10 @@ export function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; 
                   ] as { label: string; value: string; bold: boolean }[]
                 ).map(({ label, value, bold }) => (
                   <div key={label} className="flex min-w-0 items-baseline gap-1 leading-none">
-                    <span className="shrink-0 text-[10px] font-semibold text-slate-500" style={{ width: 66 }}>
+                    <span className="shrink-0 text-[10px] font-semibold text-slate-500" style={{ width: 58 }}>
                       {label}
                     </span>
-                    <span className={cn("min-w-0 truncate text-[11px] text-slate-900", bold ? "font-extrabold" : "font-semibold")}>
+                    <span className={cn("min-w-0 text-[11px] leading-none text-slate-900 whitespace-nowrap", bold ? "font-extrabold" : "font-semibold")}>
                       {value || "—"}
                     </span>
                   </div>
@@ -184,10 +184,9 @@ export function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; 
             </div>
           </div>
 
-          {/* ── Moitié droite (50%) : QR + signature (colonne isolée) ── */}
+          {/* Colonne droite : QR + signature (inchangée) */}
           <div
-            className="relative z-20 flex min-h-0 min-w-0 shrink-0 flex-col items-center overflow-hidden pl-3"
-            style={{ flex: "0 0 50%" }}
+            className="relative z-20 flex w-[118px] shrink-0 flex-col items-center overflow-hidden pl-1"
           >
 
             {/* QR code de l'identifiant */}
