@@ -201,13 +201,13 @@ export function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; 
             </div>
 
             {/* Signatures officielles — hauteur et position fixes dans la colonne droite */}
-            <div className="mt-auto flex h-[88px] w-full shrink-0 pr-2">
+            <div className="mt-auto flex h-[108px] w-full shrink-0 overflow-hidden">
               <img
                 src={LECTEUR_CARTE_SIGNATURE_SRC}
                 alt=""
                 crossOrigin="anonymous"
                 draggable={false}
-                className="h-full w-full object-contain object-[28%_center] mix-blend-screen"
+                className="h-full w-full origin-[28%_center] scale-[1.14] object-contain object-[28%_center] mix-blend-screen"
               />
             </div>
           </div>
