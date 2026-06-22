@@ -7,17 +7,22 @@ import {
   LECTEUR_CARTE_MM_H,
   LECTEUR_CARTE_MM_W,
 } from "@/modules/lecteurs/components/LecteurCarteMembre";
+import { LECTEUR_CARTE_SIGNATURE_SRC } from "@/config/brand";
+import { absolutePublicUrl } from "@/lib/mediaUrl";
 
 export const PARTICIPANT_CARDS_PDF_FORMAT = "a4" as const;
 export const PARTICIPANT_CARDS_PDF_ORIENTATION = "landscape" as const;
 export const PARTICIPANT_CARDS_CAPTURE_BATCH_SIZE = 12;
 /** Suffisant pour l’impression carte (~510 CSS px × 2). */
 export const PARTICIPANT_CARDS_BULK_PIXEL_RATIO = 2;
+/** Agrandissement sur page A4 (taille réelle ID-1 × facteur). */
+export const PARTICIPANT_CARDS_PDF_SCALE = 1.22;
 
 const BRAND_LOGO_URLS = [
   "https://i.postimg.cc/zGGW7CSV/EM.png",
   "https://i.postimg.cc/BnnDpTc2/CDLJ.png",
-];
+  absolutePublicUrl(LECTEUR_CARTE_SIGNATURE_SRC) ?? LECTEUR_CARTE_SIGNATURE_SRC,
+].filter(Boolean);
 
 let exportModulesPromise: Promise<{
   jsPDF: typeof import("jspdf").jsPDF;
@@ -97,11 +102,13 @@ export async function captureLecteurCartePng(
 }
 
 export function centeredCardRect(pageWidth: number, pageHeight: number) {
+  const w = LECTEUR_CARTE_MM_W * PARTICIPANT_CARDS_PDF_SCALE;
+  const h = LECTEUR_CARTE_MM_H * PARTICIPANT_CARDS_PDF_SCALE;
   return {
-    x: (pageWidth - LECTEUR_CARTE_MM_W) / 2,
-    y: (pageHeight - LECTEUR_CARTE_MM_H) / 2,
-    w: LECTEUR_CARTE_MM_W,
-    h: LECTEUR_CARTE_MM_H,
+    x: (pageWidth - w) / 2,
+    y: (pageHeight - h) / 2,
+    w,
+    h,
   };
 }
 

@@ -21,6 +21,7 @@ import {
   rattachementLines,
 } from "@/modules/lecteurs/lecteurViewUtils";
 import { cn } from "@/lib/utils";
+import { LECTEUR_CARTE_SIGNATURE_SRC } from "@/config/brand";
 
 /** Dimensions cible ISO ID-1 (mm) — le PDF utilise cette taille page. */
 export const LECTEUR_CARTE_MM_W = 85.6;
@@ -119,10 +120,10 @@ export function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; 
         <div className="flex gap-0 flex-1 min-h-0">
 
           {/* ── Moitié gauche (50%) : photo | champs + Rattachement en bas ── */}
-          <div className="flex flex-col gap-0 pr-3" style={{ flex: "0 0 50%", overflow: "visible" }}>
+          <div className="flex min-w-0 shrink-0 flex-col gap-0 overflow-hidden pr-3" style={{ flex: "0 0 50%" }}>
 
             {/* Photo + champs côte à côte */}
-            <div className="flex gap-3" style={{ flex: "0 0 auto" }}>
+            <div className="flex min-w-0 gap-3" style={{ flex: "0 0 auto" }}>
 
               {/* Matricule + photo */}
               <div className="flex flex-col items-center gap-1 shrink-0" style={{ width: 104 }}>
@@ -141,7 +142,7 @@ export function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; 
               </div>
 
               {/* Champs identité — même hauteur que la photo, alignés sur elle */}
-              <div className="flex flex-col justify-between" style={{ height: 116, marginTop: 14, overflow: "visible" }}>
+              <div className="flex min-w-0 flex-1 flex-col justify-between overflow-hidden" style={{ height: 116, marginTop: 14 }}>
                 {(
                   [
                     { label: "Nom :",        value: lecteur.nom.toUpperCase(), bold: true },
@@ -152,11 +153,11 @@ export function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; 
                     { label: "Contact :",   value: lecteur.contact ?? "", bold: false },
                   ] as { label: string; value: string; bold: boolean }[]
                 ).map(({ label, value, bold }) => (
-                  <div key={label} className="flex items-baseline gap-1 leading-none">
+                  <div key={label} className="flex min-w-0 items-baseline gap-1 leading-none">
                     <span className="shrink-0 text-[10px] font-semibold text-slate-500" style={{ width: 66 }}>
                       {label}
                     </span>
-                    <span className={cn("text-[11px] text-slate-900 whitespace-nowrap", bold ? "font-extrabold" : "font-semibold")}>
+                    <span className={cn("min-w-0 truncate text-[11px] text-slate-900", bold ? "font-extrabold" : "font-semibold")}>
                       {value || "—"}
                     </span>
                   </div>
@@ -165,29 +166,32 @@ export function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; 
             </div>
 
             {/* ── Rattachement — sous la photo et les champs ── */}
-            <div className="mt-6 pt-0">
+            <div className="mt-6 min-w-0 overflow-hidden pt-0">
               <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 mb-1">
                 Rattachement{" "}
                 <span className="inline-block border-b border-slate-300 align-middle ml-1 w-24" />
               </p>
               <div className="flex flex-col gap-[4px]">
-                <div className="flex items-baseline gap-1">
+                <div className="flex min-w-0 items-baseline gap-1">
                   <span className="text-[10px] font-semibold text-slate-500 shrink-0">Vicariat :</span>
-                  <span className="text-[11px] font-semibold text-slate-900 whitespace-nowrap">{vicariat || "—"}</span>
+                  <span className="min-w-0 truncate text-[11px] font-semibold text-slate-900">{vicariat || "—"}</span>
                 </div>
-                <div className="flex items-baseline gap-1">
+                <div className="flex min-w-0 items-baseline gap-1">
                   <span className="text-[10px] font-semibold text-slate-500 shrink-0">Paroisse :</span>
-                  <span className="text-[11px] font-semibold text-slate-900 whitespace-nowrap">{paroisse || "—"}</span>
+                  <span className="min-w-0 truncate text-[11px] font-semibold text-slate-900">{paroisse || "—"}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ── Moitié droite (50%) : séparateur + QR + signatures ── */}
-          <div className="flex flex-col items-center gap-2.5 pl-3" style={{ flex: "0 0 50%" }}>
+          {/* ── Moitié droite (50%) : QR + signature (colonne isolée) ── */}
+          <div
+            className="relative z-20 flex min-h-0 min-w-0 shrink-0 flex-col items-center overflow-hidden pl-3"
+            style={{ flex: "0 0 50%" }}
+          >
 
             {/* QR code de l'identifiant */}
-            <div className="rounded-md border border-slate-200 bg-white p-1 shadow-sm">
+            <div className="shrink-0 rounded-md border border-slate-200 bg-white p-1 shadow-sm">
               <QRCodeCanvas
                 value={lecteur.uniqueId}
                 size={110}
@@ -197,20 +201,15 @@ export function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; 
               />
             </div>
 
-            {/* Signatures horizontales avec séparateur vertical */}
-            <div className="mt-auto w-full flex items-end gap-0">
-              {/* Aumônier */}
-              <div className="flex-1 text-center px-1">
-                <p className="text-[8px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Aumônier</p>
-                <div className="border-b border-slate-500 mx-1" />
-              </div>
-              {/* Séparateur vertical */}
-              <div className="w-px bg-slate-300 self-stretch mx-0.5" />
-              {/* Coordonnateur */}
-              <div className="flex-1 text-center px-1">
-                <p className="text-[8px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Coordonnateur</p>
-                <div className="border-b border-slate-500 mx-1" />
-              </div>
+            {/* Signatures officielles — hauteur et position fixes dans la colonne droite */}
+            <div className="mt-auto flex h-[88px] w-full shrink-0 pr-2">
+              <img
+                src={LECTEUR_CARTE_SIGNATURE_SRC}
+                alt=""
+                crossOrigin="anonymous"
+                draggable={false}
+                className="h-full w-full object-contain object-[28%_center] mix-blend-screen"
+              />
             </div>
           </div>
         </div>
