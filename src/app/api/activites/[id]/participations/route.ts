@@ -7,6 +7,31 @@ import {
   listParoisseIdsForVicariat,
 } from "@/lib/activiteEnrollmentScope";
 import { isDioceseScopeReader } from "@/lib/rolePermissions";
+import { serializeLecteur } from "@/modules/lecteurs/serializeApi";
+
+type ParticipantScope = {
+  paroisseId?: string;
+  paroisseIds?: string[];
+  forCards?: boolean;
+};
+
+function serializeParticipantRows(rows: unknown[], forCards: boolean) {
+  if (!forCards) return rows;
+  return rows.map((row) => {
+    if (!row || typeof row !== "object") return row;
+    const r = row as Record<string, unknown>;
+    const lecteur = r.lecteur;
+    return {
+      ...r,
+      lecteur: lecteur ? serializeLecteur(lecteur) : lecteur,
+    };
+  });
+}
+
+async function listScopedParticipants(service: ActiviteService, activiteId: string, scope: ParticipantScope) {
+  const rows = await service.listParticipantsDetail(activiteId, scope);
+  return serializeParticipantRows(rows as unknown[], Boolean(scope.forCards));
+}
 
 export async function GET(
   request: Request,
@@ -26,15 +51,22 @@ export async function GET(
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const paroisseIdParam = searchParams.get("paroisseId") || undefined;
+    const forCards = searchParams.get("cards") === "1";
+
+    if (forCards && !roles.includes("VICARIAL") && !isDioceseScopeReader(roles)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const service = new ActiviteService();
     const a = await service.getActivite(id);
     if (!a) return NextResponse.json({ error: "Activité introuvable" }, { status: 404 });
 
+    const cardScope = forCards ? { forCards: true as const } : {};
+
     if (roles.includes("PAROISSIAL")) {
       const pid = session.user.parishId;
       if (!pid) return NextResponse.json({ error: "Paroisse non définie pour ce compte" }, { status: 400 });
-      const rows = await service.listParticipantsDetail(id, { paroisseId: pid });
+      const rows = await listScopedParticipants(service, id, { paroisseId: pid, ...cardScope });
       return NextResponse.json(rows);
     }
 
@@ -47,22 +79,22 @@ export async function GET(
         if (!inScope) {
           return NextResponse.json({ error: "Cette paroisse n'appartient pas à votre vicariat" }, { status: 403 });
         }
-        const rows = await service.listParticipantsDetail(id, { paroisseId: paroisseIdParam });
+        const rows = await listScopedParticipants(service, id, { paroisseId: paroisseIdParam, ...cardScope });
         return NextResponse.json(rows);
       }
 
       const paroisseIds = await listParoisseIdsForVicariat(vid);
-      const rows = await service.listParticipantsDetail(id, { paroisseIds });
+      const rows = await listScopedParticipants(service, id, { paroisseIds, ...cardScope });
       return NextResponse.json(rows);
     }
 
     if (isDioceseScopeReader(roles) && paroisseIdParam) {
-      const rows = await service.listParticipantsDetail(id, { paroisseId: paroisseIdParam });
+      const rows = await listScopedParticipants(service, id, { paroisseId: paroisseIdParam, ...cardScope });
       return NextResponse.json(rows);
     }
 
     if (isDioceseScopeReader(roles) && !paroisseIdParam) {
-      const rows = await service.listParticipantsDetail(id);
+      const rows = await listScopedParticipants(service, id, cardScope);
       return NextResponse.json(rows);
     }
 

@@ -18,6 +18,7 @@ import {
   Banknote,
   AlertTriangle,
   BarChart3,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,6 +30,7 @@ import {
 import { computeMontantApplicable } from "@/modules/activites/penalites";
 import { GrillePenaliteDisplay } from "@/modules/activites/components/GrillePenaliteDisplay";
 import { ActiviteStatsPanel } from "@/modules/activites/components/ActiviteStatsPanel";
+import { ActiviteCartesParticipantsPanel } from "@/modules/activites/components/ActiviteCartesParticipantsPanel";
 import { isDioceseScopeReader } from "@/lib/rolePermissions";
 
 type Activite = {
@@ -210,7 +212,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const [confirmTermineeOpen, setConfirmTermineeOpen] = useState(false);
   const [terminating, setTerminating] = useState(false);
 
-  const [tab, setTab] = useState<"infos" | "statistiques" | "participation" | "presence" | "paiements" | "anomalies">("infos");
+  const [tab, setTab] = useState<"infos" | "statistiques" | "participation" | "cartes" | "presence" | "paiements" | "anomalies">("infos");
   const [paiements, setPaiements] = useState<PaiementRow[]>([]);
   const [paiementsLoading, setPaiementsLoading] = useState(false);
   const [selectedPaiementId, setSelectedPaiementId] = useState<string | null>(null);
@@ -275,6 +277,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   }, [isParoissial]);
 
   const canSeeParticipants = isParoissial || isDioceseReader || isVicarial;
+  const canSeeCartesParticipants = isDiocesain || isVicarial;
   const canSeePresence = isManager;
 
   const vicariatOptions = useMemo(
@@ -489,6 +492,12 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       setTab("infos");
     }
   }, [isDiocesain, tab]);
+
+  useEffect(() => {
+    if (!canSeeCartesParticipants && tab === "cartes") {
+      setTab("infos");
+    }
+  }, [canSeeCartesParticipants, tab]);
 
   useEffect(() => {
     if (!selectedPaiementId) return;
@@ -757,6 +766,18 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
             <Users className="w-4 h-4" />
             Participation
           </button>
+          {canSeeCartesParticipants ? (
+            <button
+              type="button"
+              onClick={() => setTab("cartes")}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                tab === "cartes" ? "bg-white text-amber-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <CreditCard className="w-4 h-4" />
+              Cartes participants
+            </button>
+          ) : null}
           {isManager ? (
             <button
               type="button"
@@ -1310,6 +1331,12 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
               </div>
             ) : null}
           </div>
+        ) : tab === "cartes" && canSeeCartesParticipants ? (
+          <ActiviteCartesParticipantsPanel
+            activiteId={activiteId}
+            activiteNom={activite.nom}
+            canFilterVicariat={isDiocesain}
+          />
         ) : tab === "infos" ? (
           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
             <h2 className="text-base font-extrabold text-slate-900 tracking-tight mb-5">Résumé de l’activité</h2>
@@ -1347,7 +1374,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
             delaiPaiement={activite.delaiPaiement}
             grillePenalite={activite.grillePenalite}
           />
-        ) : (
+        ) : tab === "participation" ? (
           <div className="space-y-6">
             {canSeeParticipants ? (
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
@@ -1477,7 +1504,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
               </div>
             ) : null}
           </div>
-        )}
+        ) : null}
       </div>
 
       <Dialog open={confirmTermineeOpen} onOpenChange={setConfirmTermineeOpen}>

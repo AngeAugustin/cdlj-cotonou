@@ -106,7 +106,7 @@ export class ActiviteService {
 
   listParticipantsDetail(
     activiteId: string,
-    scope?: { paroisseId?: string; paroisseIds?: string[] }
+    scope?: { paroisseId?: string; paroisseIds?: string[]; forCards?: boolean }
   ) {
     return this.repo.listParticipantsWithLecteur(activiteId, scope);
   }

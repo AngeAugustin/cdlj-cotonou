@@ -402,7 +402,7 @@ export class ActiviteRepository {
    */
   async listParticipantsWithLecteur(
     activiteId: string,
-    scope?: { paroisseId?: string; paroisseIds?: string[] }
+    scope?: { paroisseId?: string; paroisseIds?: string[]; forCards?: boolean }
   ) {
     await connectToDatabase();
     const match: Record<string, unknown> = {
@@ -470,18 +470,45 @@ export class ActiviteRepository {
       { $unwind: { path: "$vicariat", preserveNullAndEmptyArrays: true } },
       { $sort: { "lecteur.nom": 1, "lecteur.prenoms": 1 } },
       {
-        $project: {
-          paidAt: 1,
-          "lecteur._id": 1,
-          "lecteur.nom": 1,
-          "lecteur.prenoms": 1,
-          "lecteur.uniqueId": 1,
-          "lecteur.dateNaissance": 1,
-          "grade.name": 1,
-          "grade.abbreviation": 1,
-          paroisseName: "$paroisse.name",
-          vicariatName: "$vicariat.name",
-        },
+        $project: scope?.forCards
+          ? {
+              paidAt: 1,
+              paroisseName: "$paroisse.name",
+              vicariatName: "$vicariat.name",
+              lecteur: {
+                _id: "$lecteur._id",
+                nom: "$lecteur.nom",
+                prenoms: "$lecteur.prenoms",
+                uniqueId: "$lecteur.uniqueId",
+                dateNaissance: "$lecteur.dateNaissance",
+                sexe: "$lecteur.sexe",
+                anneeAdhesion: "$lecteur.anneeAdhesion",
+                contact: "$lecteur.contact",
+                photo: "$lecteur.photo",
+                photoIdentite: "$lecteur.photoIdentite",
+                paroisseId: {
+                  _id: "$paroisse._id",
+                  name: "$paroisse.name",
+                },
+                vicariatId: {
+                  _id: "$vicariat._id",
+                  name: "$vicariat.name",
+                  abbreviation: "$vicariat.abbreviation",
+                },
+              },
+            }
+          : {
+              paidAt: 1,
+              "lecteur._id": 1,
+              "lecteur.nom": 1,
+              "lecteur.prenoms": 1,
+              "lecteur.uniqueId": 1,
+              "lecteur.dateNaissance": 1,
+              "grade.name": 1,
+              "grade.abbreviation": 1,
+              paroisseName: "$paroisse.name",
+              vicariatName: "$vicariat.name",
+            },
       },
     ]);
 

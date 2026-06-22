@@ -23,8 +23,11 @@ import {
 import { cn } from "@/lib/utils";
 
 /** Dimensions cible ISO ID-1 (mm) — le PDF utilise cette taille page. */
-const CARD_MM_W = 85.6;
-const CARD_MM_H = 53.98;
+export const LECTEUR_CARTE_MM_W = 85.6;
+export const LECTEUR_CARTE_MM_H = 53.98;
+
+const CARD_MM_W = LECTEUR_CARTE_MM_W;
+const CARD_MM_H = LECTEUR_CARTE_MM_H;
 
 const BARCODE_L = [2,1,3,1,2,3,1,2,1,3,2,1,3,1,2,1,2,3,1,2,1,3,1,2];
 const BARCODE_R = [1,3,2,1,3,1,2,3,1,2,1,3,2,1,3,1,2,1,3,2,1,3,1,2];
@@ -43,7 +46,7 @@ function BarcodeStrip({ bars, className }: { bars: number[]; className?: string 
   );
 }
 
-function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; className?: string }) {
+export function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; className?: string }) {
   const photoSrc = displayIdPhotoSrc(lecteur) ?? displayAvatarSrc(lecteur);
   const initials = lecteurInitials(lecteur);
   const { paroisse, vicariat } = rattachementLines(lecteur);

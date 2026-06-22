@@ -470,42 +470,74 @@ export async function generateActiviteParticipantsPdf(
 
   function drawPageContext(startY: number) {
     let y = startY + 7;
+    const centerX = pageWidth / 2;
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(...PALETTE.ink);
-    doc.text("Liste des participants", MARGIN_X, y);
+    doc.text("Liste des participants", centerX, y, { align: "center" });
     y += 5;
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
     doc.setTextColor(...PALETTE.inkSoft);
     const activityLines = doc.splitTextToSize(activite.nom, contentWidth);
-    doc.text(activityLines, MARGIN_X, y);
+    doc.text(activityLines, centerX, y, { align: "center", maxWidth: contentWidth });
+    y += activityLines.length * 4.5 + 3;
 
-    return y + activityLines.length * 4.5 + 4;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...PALETTE.muted);
+    const countLabel = `${participants.length} participant${participants.length !== 1 ? "s" : ""} inscrit${participants.length !== 1 ? "s" : ""}`;
+    doc.text(countLabel, centerX, y, { align: "center" });
+
+    return y + 5;
   }
 
-  function drawSectionHeading(startY: number, section: TableSection) {
-    let y = startY + 2;
+  function drawVicariatBand(startY: number, vicariatTitle: string) {
+    const bandHeight = 8;
+    const y = startY + 4;
+    const centerX = pageWidth / 2;
+
+    doc.setFillColor(254, 243, 199);
+    doc.rect(MARGIN_X, y, contentWidth, bandHeight, "F");
+
+    doc.setDrawColor(...PALETTE.line);
+    doc.setLineWidth(0.2);
+    doc.rect(MARGIN_X, y, contentWidth, bandHeight, "S");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...PALETTE.accent);
+    doc.text(`Vicariat : ${vicariatTitle}`, centerX, y + bandHeight / 2 + 1.2, { align: "center" });
+
+    return y + bandHeight + 5;
+  }
+
+  function drawParoisseHeading(startY: number, paroisseTitle: string) {
+    const bandHeight = 7;
+    const y = startY + 3;
+    const centerX = pageWidth / 2;
+
+    doc.setFillColor(...PALETTE.surface);
+    doc.rect(MARGIN_X, y, contentWidth, bandHeight, "F");
+
+    doc.setDrawColor(...PALETTE.line);
+    doc.setLineWidth(0.15);
+    doc.rect(MARGIN_X, y, contentWidth, bandHeight, "S");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(...PALETTE.inkSoft);
+    doc.text(`Paroisse : ${paroisseTitle}`, centerX, y + bandHeight / 2 + 1, { align: "center" });
 
-    if (section.vicariatTitle) {
-      doc.text(`Vicariat : ${section.vicariatTitle}`, MARGIN_X, y);
-      y += 4.5;
-    }
-    if (section.paroisseTitle) {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8.5);
-      doc.setTextColor(...PALETTE.muted);
-      doc.text(`Paroisse : ${section.paroisseTitle}`, MARGIN_X, y);
-      y += 4.5;
-    }
+    return y + bandHeight + 3;
+  }
 
-    return y + 1;
+  function startContentOnNewPage() {
+    doc.addPage();
+    drawBrandHeader();
+    return BRAND_HEADER_H + 4;
   }
 
   function drawFooter(pageNumber: number, totalPages: number) {
@@ -529,13 +561,33 @@ export async function generateActiviteParticipantsPdf(
 
   drawBrandHeader();
   let currentY = drawPageContext(BRAND_HEADER_H);
+  let lastVicariatTitle: string | undefined;
+  let lastParoisseTitle: string | undefined;
 
   for (let index = 0; index < sections.length; index += 1) {
     const section = sections[index];
     if (section.participants.length === 0) continue;
 
     if (showSectionHeadings) {
-      currentY = drawSectionHeading(currentY, section);
+      const isNewVicariat = Boolean(section.vicariatTitle && section.vicariatTitle !== lastVicariatTitle);
+
+      if (isNewVicariat && section.vicariatTitle) {
+        if (lastVicariatTitle !== undefined) {
+          currentY = startContentOnNewPage();
+        }
+        currentY = drawVicariatBand(currentY, section.vicariatTitle);
+        lastVicariatTitle = section.vicariatTitle;
+        lastParoisseTitle = undefined;
+      }
+
+      if (section.paroisseTitle) {
+        const isNewParoisse = section.paroisseTitle !== lastParoisseTitle;
+        if (isNewParoisse && lastParoisseTitle !== undefined && !isNewVicariat) {
+          currentY = startContentOnNewPage();
+        }
+        currentY = drawParoisseHeading(currentY, section.paroisseTitle);
+        lastParoisseTitle = section.paroisseTitle;
+      }
     }
 
     const hideParoisse = Boolean(section.paroisseTitle) || Boolean(scope.filterParoisse);
@@ -582,16 +634,7 @@ export async function generateActiviteParticipantsPdf(
     });
 
     currentY = getLastAutoTableFinalY(doc, currentY + 10);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(...PALETTE.muted);
-    doc.text(
-      `${section.participants.length} participant${section.participants.length !== 1 ? "s" : ""} dans ce tableau`,
-      MARGIN_X,
-      currentY + 4
-    );
-    currentY += 9;
+    currentY += 4;
   }
 
   doc.setFont("helvetica", "bold");
