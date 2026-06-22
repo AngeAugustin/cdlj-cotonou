@@ -3,8 +3,9 @@ import { HeroSection } from "@/components/landing/HeroSection";
 import { MarqueeStrip } from "@/components/landing/MarqueeStrip";
 import { FeaturesBento } from "@/components/landing/FeaturesBento";
 import { MediathequeSectionAsync } from "@/components/landing/MediathequeSectionAsync";
+import { NewsSectionAsync } from "@/components/landing/NewsSectionAsync";
 import FaqSection from "@/components/FaqSection";
-import { MediathequeGridSkeleton } from "@/components/public/PublicPageSkeleton";
+import { MediathequeGridSkeleton, NewsSectionSkeleton } from "@/components/public/PublicPageSkeleton";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { PAGE_SEO } from "@/config/page-seo";
 import { createPageMetadata } from "@/lib/seo";
@@ -37,6 +38,9 @@ export default function LandingPage() {
       <HeroSection />
       <MarqueeStrip />
       <FeaturesBento />
+      <Suspense fallback={<NewsSectionSkeleton />}>
+        <NewsSectionAsync />
+      </Suspense>
       <Suspense fallback={<MediathequeGridSkeleton />}>
         <MediathequeSectionAsync />
       </Suspense>

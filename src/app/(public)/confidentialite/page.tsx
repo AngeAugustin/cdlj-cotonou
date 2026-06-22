@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { PAGE_SEO } from "@/config/page-seo";
 import { createPageMetadata } from "@/lib/seo";
-import { breadcrumbSchema } from "@/lib/seo-schemas";
+import { breadcrumbSchema, webPageSchema } from "@/lib/seo-schemas";
 
 const seo = PAGE_SEO.confidentialite;
 
@@ -15,30 +16,47 @@ export const metadata = createPageMetadata({
 
 export default function ConfidentialitePage() {
   return (
-    <div className="bg-slate-50 min-h-screen py-12 md:py-16">
+    <div className="bg-slate-50 min-h-screen py-16">
       <JsonLd
         data={[
           breadcrumbSchema([
             { name: "Accueil", path: "/" },
             { name: "Confidentialité", path: "/confidentialite" },
           ]),
+          webPageSchema({
+            name: seo.title,
+            description: seo.description,
+            path: "/confidentialite",
+          }),
         ]}
       />
 
-      <div className="container mx-auto px-4 md:px-8 max-w-3xl">
-        <article className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/30 p-8 md:p-12 max-w-none text-slate-700 leading-relaxed">
-          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
-            Politique de confidentialité & cookies
+      <div className="container mx-auto px-4 md:px-8 max-w-7xl">
+        <div className="flex flex-col mb-12 text-center md:text-left">
+          <Badge className="bg-amber-100 text-amber-900 w-max mb-4 hover:bg-amber-200 mx-auto md:mx-0">
+            Informations légales
+          </Badge>
+          <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight">
+            Confidentialité & cookies — CDLJ Cotonou
           </h1>
-          <p className="text-slate-500 text-sm mb-10">
+          <p className="mt-4 text-xl text-slate-500 max-w-2xl mx-auto md:mx-0">
+            {seo.description}
+          </p>
+        </div>
+
+        <article className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 md:p-12 text-slate-700 leading-relaxed">
+          <p className="text-slate-500 text-sm mb-10 pb-8 border-b border-slate-100">
             Communauté Diocésaine des Lecteurs Juniors (CDLJ) — Cotonou, Bénin
           </p>
 
-          <h2 className="text-xl font-extrabold text-slate-900 mt-8 mb-3">1. Responsable du traitement</h2>
+          <h2 className="text-xl font-extrabold text-slate-900 mt-0 mb-3">1. Responsable du traitement</h2>
           <p>
             Le site CDLJ WEBAPP est édité par la Communauté Diocésaine des Lecteurs Juniors de
             l&apos;Archidiocèse de Cotonou. Pour toute question :{" "}
-            <a href="mailto:contact@cdlj-cotonou.com">contact@cdlj-cotonou.com</a>.
+            <a href="mailto:contact@cdlj-cotonou.com" className="text-amber-900 font-semibold hover:underline">
+              contact@cdlj-cotonou.com
+            </a>
+            .
           </p>
 
           <h2 className="text-xl font-extrabold text-slate-900 mt-8 mb-3">2. Cookies utilisés</h2>
@@ -108,8 +126,8 @@ export default function ConfidentialitePage() {
             concerné est publié, sauf suppression par un administrateur.
           </p>
 
-          <p className="pt-6 border-t border-slate-100 mt-10">
-            <Link href="/" className="text-amber-900 font-semibold hover:underline">
+          <p className="pt-8 border-t border-slate-100 mt-10">
+            <Link href="/" prefetch className="text-amber-900 font-semibold hover:underline">
               ← Retour à l&apos;accueil
             </Link>
           </p>

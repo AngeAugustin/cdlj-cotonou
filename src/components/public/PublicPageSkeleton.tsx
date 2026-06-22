@@ -46,6 +46,31 @@ export function MediathequeGridSkeleton({ compact = false }: { compact?: boolean
   );
 }
 
+export function NewsSectionSkeleton() {
+  return (
+    <div className="animate-pulse py-10 sm:py-12 md:py-14 lg:py-16 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto w-full">
+        <div className="space-y-3 mb-8">
+          <div className="h-4 w-24 rounded bg-slate-200" />
+          <div className="h-8 w-80 max-w-full rounded-lg bg-slate-200" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-2xl bg-white border border-slate-100 overflow-hidden">
+              <div className="h-48 sm:h-52 bg-slate-200" />
+              <div className="p-5 space-y-3">
+                <div className="h-5 w-4/5 rounded bg-slate-200" />
+                <div className="h-4 w-full rounded bg-slate-100" />
+                <div className="h-4 w-5/6 rounded bg-slate-100" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function NewsListSkeleton() {
   return (
     <div className="animate-pulse space-y-12">

@@ -30,25 +30,25 @@ export function TeamMemberCard({
     return (
       <article
         className={cn(
-          "group flex items-stretch gap-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-3 shadow-sm",
+          "group flex items-stretch gap-5 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-sm",
           "border-l-[3px] transition-all duration-300 hover:border-amber-200/70 hover:shadow-md",
           borderAccent,
         )}
       >
-        <div className="relative h-[5.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-xl ring-1 ring-slate-200/80">
+        <div className="relative h-28 w-24 sm:h-32 sm:w-28 shrink-0 overflow-hidden rounded-xl ring-1 ring-slate-200/80">
           <Image
             src={image}
             alt={name}
             fill
-            sizes="72px"
+            sizes="112px"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             unoptimized
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/25 to-transparent" />
         </div>
-        <div className="flex min-w-0 flex-col justify-center py-0.5">
-          <h3 className="text-sm font-bold leading-tight text-slate-800">{name}</h3>
-          <span className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+        <div className="flex min-w-0 flex-col justify-center py-1">
+          <h3 className="text-base sm:text-lg font-bold leading-tight text-slate-800">{name}</h3>
+          <span className="mt-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
             {role}
           </span>
         </div>
