@@ -512,6 +512,7 @@ export class ActiviteRepository {
               "lecteur.prenoms": 1,
               "lecteur.uniqueId": 1,
               "lecteur.dateNaissance": 1,
+              "lecteur.sexe": 1,
               "grade.name": 1,
               "grade.abbreviation": 1,
               paroisseName: "$paroisse.name",

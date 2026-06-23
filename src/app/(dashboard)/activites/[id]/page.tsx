@@ -28,6 +28,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import {
   generateActiviteParticipantsExcel,
   generateActiviteParticipantsPdf,
+  PARTICIPANT_GRADE_FILTER_NONE,
+  formatParticipantGradeFilterLabel,
+  formatParticipantSexeFilterLabel,
+  participantGradeKey,
 } from "@/lib/activiteParticipantsExport";
 import { computeMontantApplicable } from "@/modules/activites/penalites";
 import { GrillePenaliteDisplay } from "@/modules/activites/components/GrillePenaliteDisplay";
@@ -63,6 +67,7 @@ type ParticipantRow = {
     prenoms: string;
     uniqueId: string;
     dateNaissance?: string;
+    sexe?: "M" | "F";
   };
   grade?: { name?: string; abbreviation?: string } | null;
 };
@@ -185,10 +190,21 @@ function triggerBrowserDownload(blob: Blob, filename: string) {
 
 const PARTICIPANT_FILTER_ALL = "__all__";
 
-function buildParticipantExportScopeSuffix(selectedVicariat: string, selectedParoisse: string) {
+function buildParticipantExportScopeSuffix(
+  selectedVicariat: string,
+  selectedParoisse: string,
+  selectedSexe: string,
+  selectedGrade: string
+) {
   const parts: string[] = [];
   if (selectedVicariat !== PARTICIPANT_FILTER_ALL) parts.push(safeExportFileName(selectedVicariat));
   if (selectedParoisse !== PARTICIPANT_FILTER_ALL) parts.push(safeExportFileName(selectedParoisse));
+  if (selectedSexe !== PARTICIPANT_FILTER_ALL) {
+    parts.push(selectedSexe === "M" ? "masculin" : "feminin");
+  }
+  if (selectedGrade !== PARTICIPANT_FILTER_ALL) {
+    parts.push(safeExportFileName(formatParticipantGradeFilterLabel(selectedGrade)));
+  }
   return parts.length ? `-${parts.join("-")}` : "";
 }
 
@@ -227,6 +243,8 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const [meData, setMeData] = useState<{ paroisseName?: string; vicariatName?: string } | null>(null);
   const [selectedVicariat, setSelectedVicariat] = useState(PARTICIPANT_FILTER_ALL);
   const [selectedParoisse, setSelectedParoisse] = useState(PARTICIPANT_FILTER_ALL);
+  const [selectedSexe, setSelectedSexe] = useState(PARTICIPANT_FILTER_ALL);
+  const [selectedGrade, setSelectedGrade] = useState(PARTICIPANT_FILTER_ALL);
   const [presencesLoading, setPresencesLoading] = useState(false);
   const [presences, setPresences] = useState<PresenceRow[]>([]);
   const [selectedPresenceVicariat, setSelectedPresenceVicariat] = useState(PARTICIPANT_FILTER_ALL);
@@ -303,7 +321,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
     );
   }, [participants, selectedVicariat]);
 
-  const filteredParticipants = useMemo(
+  const participantsForSexeOptions = useMemo(
     () =>
       participants.filter((p) => {
         if (selectedVicariat !== PARTICIPANT_FILTER_ALL && p.vicariatName !== selectedVicariat) return false;
@@ -311,6 +329,49 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
         return true;
       }),
     [participants, selectedVicariat, selectedParoisse]
+  );
+
+  const sexeOptions = useMemo(() => {
+    const values = new Set<"M" | "F">();
+    for (const participant of participantsForSexeOptions) {
+      if (participant.lecteur.sexe) values.add(participant.lecteur.sexe);
+    }
+    return Array.from(values).sort();
+  }, [participantsForSexeOptions]);
+
+  const participantsForGradeOptions = useMemo(
+    () =>
+      participantsForSexeOptions.filter((p) => {
+        if (selectedSexe !== PARTICIPANT_FILTER_ALL && p.lecteur.sexe !== selectedSexe) return false;
+        return true;
+      }),
+    [participantsForSexeOptions, selectedSexe]
+  );
+
+  const gradeOptions = useMemo(() => {
+    const values = new Set<string>();
+    for (const participant of participantsForGradeOptions) {
+      values.add(participantGradeKey(participant.grade));
+    }
+    return Array.from(values).sort((a, b) => {
+      if (a === PARTICIPANT_GRADE_FILTER_NONE) return 1;
+      if (b === PARTICIPANT_GRADE_FILTER_NONE) return -1;
+      return a.localeCompare(b, "fr");
+    });
+  }, [participantsForGradeOptions]);
+
+  const filteredParticipants = useMemo(
+    () =>
+      participants.filter((p) => {
+        if (selectedVicariat !== PARTICIPANT_FILTER_ALL && p.vicariatName !== selectedVicariat) return false;
+        if (selectedParoisse !== PARTICIPANT_FILTER_ALL && p.paroisseName !== selectedParoisse) return false;
+        if (isManager && selectedSexe !== PARTICIPANT_FILTER_ALL && p.lecteur.sexe !== selectedSexe) return false;
+        if (isManager && selectedGrade !== PARTICIPANT_FILTER_ALL && participantGradeKey(p.grade) !== selectedGrade) {
+          return false;
+        }
+        return true;
+      }),
+    [participants, selectedVicariat, selectedParoisse, selectedSexe, selectedGrade, isManager]
   );
 
   const presenceVicariatOptions = useMemo(
@@ -408,6 +469,20 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       setSelectedParoisse(PARTICIPANT_FILTER_ALL);
     }
   }, [selectedParoisse, paroisseOptions]);
+
+  useEffect(() => {
+    if (!isManager || selectedSexe === PARTICIPANT_FILTER_ALL) return;
+    if (!sexeOptions.includes(selectedSexe as "M" | "F")) {
+      setSelectedSexe(PARTICIPANT_FILTER_ALL);
+    }
+  }, [isManager, selectedSexe, sexeOptions]);
+
+  useEffect(() => {
+    if (!isManager || selectedGrade === PARTICIPANT_FILTER_ALL) return;
+    if (!gradeOptions.includes(selectedGrade)) {
+      setSelectedGrade(PARTICIPANT_FILTER_ALL);
+    }
+  }, [isManager, selectedGrade, gradeOptions]);
 
   useEffect(() => {
     if (selectedPresenceVicariat === PARTICIPANT_FILTER_ALL) return;
@@ -595,11 +670,18 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
     const blob = generateActiviteParticipantsExcel(rows, {
       filterVicariat: selectedVicariat !== PARTICIPANT_FILTER_ALL ? selectedVicariat : null,
       filterParoisse: selectedParoisse !== PARTICIPANT_FILTER_ALL ? selectedParoisse : null,
+      filterSexe: isManager && selectedSexe !== PARTICIPANT_FILTER_ALL ? (selectedSexe as "M" | "F") : null,
+      filterGrade: isManager && selectedGrade !== PARTICIPANT_FILTER_ALL ? selectedGrade : null,
       accountVicariat: meData?.vicariatName ?? null,
       accountParoisse: meData?.paroisseName ?? null,
     });
     const base = safeExportFileName(activite.nom);
-    const scopeSuffix = buildParticipantExportScopeSuffix(selectedVicariat, selectedParoisse);
+    const scopeSuffix = buildParticipantExportScopeSuffix(
+      selectedVicariat,
+      selectedParoisse,
+      selectedSexe,
+      selectedGrade
+    );
     triggerBrowserDownload(blob, `participants-${base}${scopeSuffix}.xlsx`);
   };
 
@@ -619,15 +701,32 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       {
         filterVicariat: selectedVicariat !== PARTICIPANT_FILTER_ALL ? selectedVicariat : null,
         filterParoisse: selectedParoisse !== PARTICIPANT_FILTER_ALL ? selectedParoisse : null,
+        filterSexe: isManager && selectedSexe !== PARTICIPANT_FILTER_ALL ? (selectedSexe as "M" | "F") : null,
+        filterGrade: isManager && selectedGrade !== PARTICIPANT_FILTER_ALL ? selectedGrade : null,
         accountVicariat: meData?.vicariatName ?? null,
         accountParoisse: meData?.paroisseName ?? null,
       }
     );
 
     const base = safeExportFileName(activite.nom);
-    const scopeSuffix = buildParticipantExportScopeSuffix(selectedVicariat, selectedParoisse);
+    const scopeSuffix = buildParticipantExportScopeSuffix(
+      selectedVicariat,
+      selectedParoisse,
+      selectedSexe,
+      selectedGrade
+    );
     triggerBrowserDownload(blob, `participants-${base}${scopeSuffix}.pdf`);
   };
+
+  const hasParticipantFilters =
+    selectedVicariat !== PARTICIPANT_FILTER_ALL ||
+    selectedParoisse !== PARTICIPANT_FILTER_ALL ||
+    (isManager && selectedSexe !== PARTICIPANT_FILTER_ALL) ||
+    (isManager && selectedGrade !== PARTICIPANT_FILTER_ALL);
+
+  const participantCountLabel = hasParticipantFilters
+    ? `${filteredParticipants.length} / ${participants.length} participant${participants.length > 1 ? "s" : ""}`
+    : `${participants.length} participant${participants.length > 1 ? "s" : ""}`;
 
   if (status === "loading" || loading) {
     return (
@@ -1460,7 +1559,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
                     {!participantsLoading ? (
                       <span className="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
-                        {participants.length} participant{participants.length > 1 ? "s" : ""}
+                        {participantCountLabel}
                       </span>
                     ) : null}
                     <Button
@@ -1486,7 +1585,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                 </div>
                 </div>
                 {isManager && participants.length > 0 ? (
-                  <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <div>
                       <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-400">Vicariat</p>
                       <Select
@@ -1494,6 +1593,8 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                         onValueChange={(value) => {
                           setSelectedVicariat(value ?? PARTICIPANT_FILTER_ALL);
                           setSelectedParoisse(PARTICIPANT_FILTER_ALL);
+                          setSelectedSexe(PARTICIPANT_FILTER_ALL);
+                          setSelectedGrade(PARTICIPANT_FILTER_ALL);
                         }}
                       >
                         <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 justify-between">
@@ -1511,7 +1612,14 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                     </div>
                     <div>
                       <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-400">Paroisse</p>
-                      <Select value={selectedParoisse} onValueChange={(value) => setSelectedParoisse(value ?? PARTICIPANT_FILTER_ALL)}>
+                      <Select
+                        value={selectedParoisse}
+                        onValueChange={(value) => {
+                          setSelectedParoisse(value ?? PARTICIPANT_FILTER_ALL);
+                          setSelectedSexe(PARTICIPANT_FILTER_ALL);
+                          setSelectedGrade(PARTICIPANT_FILTER_ALL);
+                        }}
+                      >
                         <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 justify-between">
                           <SelectValue>{selectedParoisse === PARTICIPANT_FILTER_ALL ? "Toutes les paroisses" : selectedParoisse}</SelectValue>
                         </SelectTrigger>
@@ -1520,6 +1628,52 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                           {paroisseOptions.map((paroisse) => (
                             <SelectItem key={paroisse} value={paroisse}>
                               {paroisse}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-400">Sexe</p>
+                      <Select
+                        value={selectedSexe}
+                        onValueChange={(value) => {
+                          setSelectedSexe(value ?? PARTICIPANT_FILTER_ALL);
+                          setSelectedGrade(PARTICIPANT_FILTER_ALL);
+                        }}
+                      >
+                        <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 justify-between">
+                          <SelectValue>
+                            {selectedSexe === PARTICIPANT_FILTER_ALL
+                              ? "Tous les sexes"
+                              : formatParticipantSexeFilterLabel(selectedSexe as "M" | "F")}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={PARTICIPANT_FILTER_ALL}>Tous les sexes</SelectItem>
+                          {sexeOptions.map((sexe) => (
+                            <SelectItem key={sexe} value={sexe}>
+                              {formatParticipantSexeFilterLabel(sexe)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-400">Grade</p>
+                      <Select value={selectedGrade} onValueChange={(value) => setSelectedGrade(value ?? PARTICIPANT_FILTER_ALL)}>
+                        <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 justify-between">
+                          <SelectValue>
+                            {selectedGrade === PARTICIPANT_FILTER_ALL
+                              ? "Tous les grades"
+                              : formatParticipantGradeFilterLabel(selectedGrade)}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={PARTICIPANT_FILTER_ALL}>Tous les grades</SelectItem>
+                          {gradeOptions.map((grade) => (
+                            <SelectItem key={grade} value={grade}>
+                              {formatParticipantGradeFilterLabel(grade)}
                             </SelectItem>
                           ))}
                         </SelectContent>

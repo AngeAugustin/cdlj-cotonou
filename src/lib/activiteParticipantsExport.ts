@@ -3,6 +3,8 @@ import { fr } from "date-fns/locale";
 import * as XLSX from "xlsx";
 import { CDLJ_LOGO_SRC } from "@/config/brand";
 
+export const PARTICIPANT_GRADE_FILTER_NONE = "__no_grade__";
+
 export type ParticipantExportRow = {
   paidAt: string;
   paroisseName?: string;
@@ -13,6 +15,7 @@ export type ParticipantExportRow = {
     prenoms: string;
     uniqueId: string;
     dateNaissance?: string;
+    sexe?: "M" | "F";
   };
   grade?: { name?: string; abbreviation?: string } | null;
 };
@@ -29,6 +32,8 @@ export type ActiviteExportMeta = {
 export type ParticipantExportScope = {
   filterVicariat?: string | null;
   filterParoisse?: string | null;
+  filterSexe?: "M" | "F" | null;
+  filterGrade?: string | null;
   accountVicariat?: string | null;
   accountParoisse?: string | null;
 };
@@ -42,7 +47,27 @@ type TableSection = {
 type BuildTableOptions = {
   hideParoisse?: boolean;
   hideVicariat?: boolean;
+  hideGrade?: boolean;
+  hideSexe?: boolean;
 };
+
+export function participantGradeKey(grade?: { name?: string; abbreviation?: string } | null) {
+  return grade?.name || grade?.abbreviation || PARTICIPANT_GRADE_FILTER_NONE;
+}
+
+export function formatParticipantGradeFilterLabel(key: string) {
+  if (key === PARTICIPANT_GRADE_FILTER_NONE) return "Non renseigné";
+  return key;
+}
+
+export function formatParticipantSexeFilterLabel(sexe: "M" | "F") {
+  return sexe === "M" ? "Masculin" : "Féminin";
+}
+
+function formatSexeCell(sexe?: "M" | "F") {
+  if (sexe === "M" || sexe === "F") return formatParticipantSexeFilterLabel(sexe);
+  return "—";
+}
 
 const MARGIN_X = 14;
 const MARGIN_BOTTOM = 14;
@@ -127,31 +152,30 @@ function resolveVicariatName(scope: ParticipantExportScope, participants: Partic
 }
 
 export function buildHeaderScopeLines(scope: ParticipantExportScope, participants: ParticipantExportRow[]) {
+  const lines: string[] = [];
+
   if (scope.filterParoisse) {
     const vicariat = resolveVicariatName(scope, participants);
-    const lines: string[] = [];
     if (vicariat) lines.push(`Vicariat : ${vicariat}`);
     lines.push(`Paroisse : ${scope.filterParoisse}`);
-    return lines;
-  }
-
-  if (scope.filterVicariat) {
-    return [`Vicariat : ${scope.filterVicariat}`];
-  }
-
-  if (scope.accountParoisse) {
+  } else if (scope.filterVicariat) {
+    lines.push(`Vicariat : ${scope.filterVicariat}`);
+  } else if (scope.accountParoisse) {
     const vicariat = resolveVicariatName(scope, participants);
-    const lines: string[] = [];
     if (vicariat) lines.push(`Vicariat : ${vicariat}`);
     lines.push(`Paroisse : ${scope.accountParoisse}`);
-    return lines;
+  } else if (scope.accountVicariat) {
+    lines.push(`Vicariat : ${scope.accountVicariat}`);
   }
 
-  if (scope.accountVicariat) {
-    return [`Vicariat : ${scope.accountVicariat}`];
+  if (scope.filterSexe) {
+    lines.push(`Sexe : ${formatParticipantSexeFilterLabel(scope.filterSexe)}`);
+  }
+  if (scope.filterGrade) {
+    lines.push(`Grade : ${formatParticipantGradeFilterLabel(scope.filterGrade)}`);
   }
 
-  return [];
+  return lines;
 }
 
 export function buildParticipantTableSections(
@@ -234,13 +258,16 @@ export function buildParticipantExportTable(
 ) {
   const includeParoisse = !options.hideParoisse && participants.some((p) => Boolean(p.paroisseName));
   const includeVicariat = !options.hideVicariat && participants.some((p) => Boolean(p.vicariatName));
+  const includeSexe = !options.hideSexe && participants.some((p) => Boolean(p.lecteur.sexe));
+  const includeGrade = !options.hideGrade;
   const header = [
     "Matricule",
     "Nom",
     "Prénoms",
     ...(includeParoisse ? ["Paroisse"] : []),
     ...(includeVicariat ? ["Vicariat"] : []),
-    "Grade",
+    ...(includeSexe ? ["Sexe"] : []),
+    ...(includeGrade ? ["Grade"] : []),
     "Âge",
     "Date de paiement",
   ];
@@ -250,7 +277,8 @@ export function buildParticipantExportTable(
     p.lecteur.prenoms,
     ...(includeParoisse ? [p.paroisseName || "—"] : []),
     ...(includeVicariat ? [p.vicariatName || "—"] : []),
-    p.grade?.name || p.grade?.abbreviation || "—",
+    ...(includeSexe ? [formatSexeCell(p.lecteur.sexe)] : []),
+    ...(includeGrade ? [p.grade?.name || p.grade?.abbreviation || "—"] : []),
     ageFromBirth(p.lecteur.dateNaissance),
     formatPaidAt(p.paidAt),
   ]);
@@ -319,9 +347,15 @@ export function buildParticipantExcelSheets(
   if (participants.length === 0) return [];
 
   const usedNames = new Set<string>();
+  const tableOptions: BuildTableOptions = {
+    hideVicariat: true,
+    hideParoisse: Boolean(scope.filterParoisse || scope.accountParoisse),
+    hideGrade: Boolean(scope.filterGrade),
+    hideSexe: Boolean(scope.filterSexe),
+  };
 
   function sheetForGroup(vicariatLabel: string, group: ParticipantExportRow[]): ParticipantExcelSheet {
-    const { header, rows } = buildParticipantExportTable(group, { hideVicariat: true });
+    const { header, rows } = buildParticipantExportTable(group, tableOptions);
     return {
       sheetName: sanitizeExcelSheetName(vicariatLabel, usedNames),
       header,
@@ -383,6 +417,7 @@ function buildColumnStyles(header: string[], tableWidth: number): Record<number,
     Prénoms: 1.45,
     Paroisse: 1.35,
     Vicariat: 1.25,
+    Sexe: 0.7,
     Grade: 1,
     Âge: 0.55,
     "Date de paiement": 1.35,
@@ -490,8 +525,15 @@ export async function generateActiviteParticipantsPdf(
     doc.setTextColor(...PALETTE.muted);
     const countLabel = `${participants.length} participant${participants.length !== 1 ? "s" : ""} inscrit${participants.length !== 1 ? "s" : ""}`;
     doc.text(countLabel, centerX, y, { align: "center" });
+    y += 5;
 
-    return y + 5;
+    if (headerScopeLines.length > 0) {
+      doc.setFontSize(8);
+      doc.text(headerScopeLines.join(" · "), centerX, y, { align: "center", maxWidth: contentWidth });
+      y += 5;
+    }
+
+    return y;
   }
 
   function drawVicariatBand(startY: number, vicariatTitle: string) {
@@ -594,8 +636,15 @@ export async function generateActiviteParticipantsPdf(
     const hideVicariat =
       Boolean(section.vicariatTitle && !section.paroisseTitle && sections.length === 1) ||
       Boolean(scope.filterVicariat && !scope.filterParoisse);
+    const hideGrade = Boolean(scope.filterGrade);
+    const hideSexe = Boolean(scope.filterSexe);
 
-    const { header, rows } = buildParticipantExportTable(section.participants, { hideParoisse, hideVicariat });
+    const { header, rows } = buildParticipantExportTable(section.participants, {
+      hideParoisse,
+      hideVicariat,
+      hideGrade,
+      hideSexe,
+    });
     const tableHeader = ["N°", ...header];
     const tableRows = rows.map((row, rowIndex) => [String(rowIndex + 1), ...row]);
     const columnStyles = buildColumnStyles(tableHeader, tableWidth);
