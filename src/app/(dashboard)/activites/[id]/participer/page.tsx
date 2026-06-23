@@ -35,6 +35,7 @@ type Activite = {
   }[];
   image?: string;
   terminee: boolean;
+  suspendue?: boolean;
 };
 
 type ParoisseOption = {
@@ -204,7 +205,7 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data?._id) throw new Error(data?.error ?? "Impossible de charger l'activité");
         setActivite(data as Activite);
-        if (data.terminee) {
+        if (data.terminee || data.suspendue) {
           router.replace(`/activites/${encodeURIComponent(activiteId)}`);
         }
       })
@@ -262,7 +263,7 @@ export default function ParticiperActivitePage({ params }: { params: Promise<{ i
   }, [activiteId, lecteursUrl, participationsUrl]);
 
   useEffect(() => {
-    if (!activite || activite.terminee) return;
+    if (!activite || activite.terminee || activite.suspendue) return;
     void loadLecteursEtParticipations();
   }, [activite, loadLecteursEtParticipations]);
 

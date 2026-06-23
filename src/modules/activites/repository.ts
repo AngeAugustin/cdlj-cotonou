@@ -64,6 +64,7 @@ export class ActiviteRepository {
       })),
       image: data.image,
       terminee: false,
+      suspendue: false,
     });
     return Activite.findById(doc._id).lean();
   }
@@ -90,7 +91,14 @@ export class ActiviteRepository {
 
   async setTerminee(id: string, terminee: boolean) {
     await connectToDatabase();
-    return Activite.findByIdAndUpdate(id, { terminee }, { new: true }).lean();
+    const patch: Record<string, boolean> = { terminee };
+    if (terminee) patch.suspendue = false;
+    return Activite.findByIdAndUpdate(id, patch, { new: true }).lean();
+  }
+
+  async setSuspendue(id: string, suspendue: boolean) {
+    await connectToDatabase();
+    return Activite.findByIdAndUpdate(id, { suspendue }, { new: true }).lean();
   }
 
   async delete(id: string) {

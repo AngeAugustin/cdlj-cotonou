@@ -18,6 +18,8 @@ export interface IActivite extends Document {
   numeroPaiement?: string;
   image?: string;
   terminee: boolean;
+  /** Inscriptions vicariales temporairement bloquées */
+  suspendue: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -43,6 +45,7 @@ const activiteSchema = new Schema<IActivite>(
     numeroPaiement: { type: String, default: "" },
     image: { type: String },
     terminee: { type: Boolean, default: false },
+    suspendue: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

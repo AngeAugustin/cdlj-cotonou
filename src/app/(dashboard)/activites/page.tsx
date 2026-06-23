@@ -53,6 +53,7 @@ type Activite = {
   }[];
   image?: string;
   terminee: boolean;
+  suspendue?: boolean;
 };
 
 type Toast = { message: string; type: "success" | "error" };
@@ -233,11 +234,15 @@ export default function ActivitesPage() {
             <span
               className={cn(
                 "absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm",
-                a.terminee ? "bg-white/90 text-slate-600" : "bg-white/95 text-amber-900 shadow-sm"
+                a.terminee
+                  ? "bg-white/90 text-slate-600"
+                  : a.suspendue
+                    ? "bg-white/95 text-orange-900 shadow-sm"
+                    : "bg-white/95 text-amber-900 shadow-sm"
               )}
             >
-              {!a.terminee && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-              {a.terminee ? "Terminée" : "En cours"}
+              {!a.terminee && !a.suspendue && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+              {a.terminee ? "Terminée" : a.suspendue ? "Inscription suspendue" : "En cours"}
             </span>
           </div>
 
@@ -299,16 +304,29 @@ export default function ActivitesPage() {
               </Link>
 
               {isVicarial && !a.terminee ? (
-                <Link
-                  href={`/activites/${a._id}/participer`}
-                  className={cn(
-                    buttonVariants({ size: "sm" }),
-                    "h-8 justify-center rounded-lg bg-amber-900 px-3 font-semibold text-white hover:bg-amber-800"
-                  )}
-                >
-                  <UserPlus className="mr-1.5 h-3.5 w-3.5" />
-                  Participer
-                </Link>
+                a.suspendue ? (
+                  <span
+                    title="Inscriptions suspendues"
+                    className={cn(
+                      buttonVariants({ size: "sm" }),
+                      "h-8 cursor-not-allowed justify-center rounded-lg border border-slate-200 bg-slate-100 px-3 font-semibold text-slate-400 opacity-70"
+                    )}
+                  >
+                    <UserPlus className="mr-1.5 h-3.5 w-3.5" />
+                    Inscriptions suspendues
+                  </span>
+                ) : (
+                  <Link
+                    href={`/activites/${a._id}/participer`}
+                    className={cn(
+                      buttonVariants({ size: "sm" }),
+                      "h-8 justify-center rounded-lg bg-amber-900 px-3 font-semibold text-white hover:bg-amber-800"
+                    )}
+                  >
+                    <UserPlus className="mr-1.5 h-3.5 w-3.5" />
+                    Participer
+                  </Link>
+                )
               ) : null}
 
               {isManager ? (

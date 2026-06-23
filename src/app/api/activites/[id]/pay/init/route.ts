@@ -65,6 +65,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (activite.terminee) {
       return NextResponse.json({ error: "Cette activité est terminée" }, { status: 400 });
     }
+    if (activite.suspendue) {
+      return NextResponse.json({ error: "Les inscriptions sont suspendues pour cette activité" }, { status: 403 });
+    }
 
     const existingLecteurIds = new Set(await service.listParticipationLecteurIds(activiteId));
     const alreadyRegistered = selectedLecteurIds.filter((id) => existingLecteurIds.has(id));

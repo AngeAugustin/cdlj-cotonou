@@ -19,6 +19,8 @@ import {
   AlertTriangle,
   BarChart3,
   CreditCard,
+  PauseCircle,
+  PlayCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -48,6 +50,7 @@ type Activite = {
   }[];
   image?: string;
   terminee: boolean;
+  suspendue?: boolean;
 };
 
 type ParticipantRow = {
@@ -211,6 +214,8 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
 
   const [confirmTermineeOpen, setConfirmTermineeOpen] = useState(false);
   const [terminating, setTerminating] = useState(false);
+  const [confirmSuspensionOpen, setConfirmSuspensionOpen] = useState<"suspendre" | "annuler" | null>(null);
+  const [suspending, setSuspending] = useState(false);
 
   const [tab, setTab] = useState<"infos" | "statistiques" | "participation" | "cartes" | "presence" | "paiements" | "anomalies">("infos");
   const [paiements, setPaiements] = useState<PaiementRow[]>([]);
@@ -516,13 +521,51 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error ?? "Erreur");
       }
-      setActivite((prev) => (prev ? { ...prev, terminee: true } : prev));
+      setActivite((prev) => (prev ? { ...prev, terminee: true, suspendue: false } : prev));
       setConfirmTermineeOpen(false);
       showToast("Activité marquée comme terminée");
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Erreur", "error");
     } finally {
       setTerminating(false);
+    }
+  };
+
+  const suspendreInscriptions = async () => {
+    if (!activite) return;
+    setSuspending(true);
+    try {
+      const res = await fetch(`/api/activites/${encodeURIComponent(activite._id)}/suspendre`, { method: "PATCH" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Erreur");
+      }
+      setActivite((prev) => (prev ? { ...prev, suspendue: true } : prev));
+      setConfirmSuspensionOpen(null);
+      showToast("Inscriptions suspendues");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Erreur", "error");
+    } finally {
+      setSuspending(false);
+    }
+  };
+
+  const annulerSuspensionInscriptions = async () => {
+    if (!activite) return;
+    setSuspending(true);
+    try {
+      const res = await fetch(`/api/activites/${encodeURIComponent(activite._id)}/annuler-suspension`, { method: "PATCH" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Erreur");
+      }
+      setActivite((prev) => (prev ? { ...prev, suspendue: false } : prev));
+      setConfirmSuspensionOpen(null);
+      showToast("Suspension levée — inscriptions réouvertes");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Erreur", "error");
+    } finally {
+      setSuspending(false);
     }
   };
 
@@ -633,16 +676,42 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
             </Button>
 
             {isManager && !activite.terminee ? (
-              <Button
-                type="button"
-                title="Marquer comme terminée"
-                aria-label="Marquer comme terminée"
-                className="h-9 rounded-full bg-emerald-700 px-3.5 text-xs font-semibold text-white hover:bg-emerald-800"
-                onClick={() => setConfirmTermineeOpen(true)}
-              >
-                <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                Terminer
-              </Button>
+              <div className="flex items-center gap-2">
+                {activite.suspendue ? (
+                  <Button
+                    type="button"
+                    title="Annuler la suspension des inscriptions"
+                    aria-label="Annuler la suspension des inscriptions"
+                    className="h-9 rounded-full border border-amber-200 bg-amber-50 px-3.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                    onClick={() => setConfirmSuspensionOpen("annuler")}
+                  >
+                    <PlayCircle className="mr-1.5 h-3.5 w-3.5" />
+                    Annuler suspension
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    title="Suspendre les inscriptions"
+                    aria-label="Suspendre les inscriptions"
+                    variant="outline"
+                    className="h-9 rounded-full border-slate-200 px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    onClick={() => setConfirmSuspensionOpen("suspendre")}
+                  >
+                    <PauseCircle className="mr-1.5 h-3.5 w-3.5" />
+                    Suspendre
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  title="Marquer comme terminée"
+                  aria-label="Marquer comme terminée"
+                  className="h-9 rounded-full bg-emerald-700 px-3.5 text-xs font-semibold text-white hover:bg-emerald-800"
+                  onClick={() => setConfirmTermineeOpen(true)}
+                >
+                  <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                  Terminer
+                </Button>
+              </div>
             ) : null}
           </div>
 
@@ -659,11 +728,17 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 via-transparent to-transparent sm:bg-gradient-to-r sm:from-transparent sm:to-white/20" />
               <span
                 className={`absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm ${
-                  activite.terminee ? "bg-white/90 text-slate-600" : "bg-white/95 text-amber-900 shadow-sm"
+                  activite.terminee
+                    ? "bg-white/90 text-slate-600"
+                    : activite.suspendue
+                      ? "bg-white/95 text-orange-900 shadow-sm"
+                      : "bg-white/95 text-amber-900 shadow-sm"
                 }`}
               >
-                {!activite.terminee ? <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> : null}
-                {activite.terminee ? "Terminée" : "En cours"}
+                {!activite.terminee && !activite.suspendue ? (
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                ) : null}
+                {activite.terminee ? "Terminée" : activite.suspendue ? "Inscription suspendue" : "En cours"}
               </span>
             </div>
 
@@ -1521,6 +1596,56 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
             </Button>
             <Button type="button" className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white" disabled={terminating} onClick={() => void terminerActivite()}>
               {terminating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmSuspensionOpen !== null} onOpenChange={(o) => !o && !suspending && setConfirmSuspensionOpen(null)}>
+        <DialogContent className="rounded-3xl max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {confirmSuspensionOpen === "suspendre"
+                ? "Suspendre les inscriptions ?"
+                : "Réouvrir les inscriptions ?"}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmSuspensionOpen === "suspendre"
+                ? "Les responsables vicariaux ne pourront plus inscrire de nouveaux lecteurs. Les participations déjà payées restent enregistrées."
+                : "Les responsables vicariaux pourront à nouveau inscrire des lecteurs à cette activité."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl"
+              disabled={suspending}
+              onClick={() => setConfirmSuspensionOpen(null)}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              className={
+                confirmSuspensionOpen === "suspendre"
+                  ? "rounded-xl bg-slate-800 hover:bg-slate-900 text-white"
+                  : "rounded-xl bg-amber-900 hover:bg-amber-800 text-white"
+              }
+              disabled={suspending}
+              onClick={() =>
+                void (confirmSuspensionOpen === "suspendre"
+                  ? suspendreInscriptions()
+                  : annulerSuspensionInscriptions())
+              }
+            >
+              {suspending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : confirmSuspensionOpen === "suspendre" ? (
+                "Suspendre"
+              ) : (
+                "Réouvrir les inscriptions"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

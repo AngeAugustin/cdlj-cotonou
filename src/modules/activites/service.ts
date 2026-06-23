@@ -57,6 +57,24 @@ export class ActiviteService {
     return this.repo.setTerminee(id, true);
   }
 
+  async marquerSuspendue(id: string) {
+    const existing = await this.repo.findById(id);
+    if (!existing) return null;
+    if (existing.terminee) {
+      throw new Error("Impossible de suspendre une activité terminée");
+    }
+    return this.repo.setSuspendue(id, true);
+  }
+
+  async annulerSuspension(id: string) {
+    const existing = await this.repo.findById(id);
+    if (!existing) return null;
+    if (existing.terminee) {
+      throw new Error("Impossible de modifier la suspension d'une activité terminée");
+    }
+    return this.repo.setSuspendue(id, false);
+  }
+
   listParticipationLecteurIds(activiteId: string, paroisseId?: string) {
     return this.repo.listParticipationLecteurIds(activiteId, paroisseId);
   }
