@@ -32,7 +32,9 @@ import {
   formatParticipantGradeFilterLabel,
   formatParticipantSexeFilterLabel,
   participantGradeKey,
+  type ParticipantExportLayout,
 } from "@/lib/activiteParticipantsExport";
+import { cn } from "@/lib/utils";
 import { computeMontantApplicable } from "@/modules/activites/penalites";
 import { GrillePenaliteDisplay } from "@/modules/activites/components/GrillePenaliteDisplay";
 import { ActiviteStatsPanel } from "@/modules/activites/components/ActiviteStatsPanel";
@@ -194,7 +196,8 @@ function buildParticipantExportScopeSuffix(
   selectedVicariat: string,
   selectedParoisse: string,
   selectedSexe: string,
-  selectedGrade: string
+  selectedGrade: string,
+  layout: ParticipantExportLayout
 ) {
   const parts: string[] = [];
   if (selectedVicariat !== PARTICIPANT_FILTER_ALL) parts.push(safeExportFileName(selectedVicariat));
@@ -205,8 +208,11 @@ function buildParticipantExportScopeSuffix(
   if (selectedGrade !== PARTICIPANT_FILTER_ALL) {
     parts.push(safeExportFileName(formatParticipantGradeFilterLabel(selectedGrade)));
   }
+  if (layout === "complete") parts.push("liste-complete");
   return parts.length ? `-${parts.join("-")}` : "";
 }
+
+type ParticipantExportFormat = "excel" | "pdf";
 
 export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = usePromise(params);
@@ -245,6 +251,10 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   const [selectedParoisse, setSelectedParoisse] = useState(PARTICIPANT_FILTER_ALL);
   const [selectedSexe, setSelectedSexe] = useState(PARTICIPANT_FILTER_ALL);
   const [selectedGrade, setSelectedGrade] = useState(PARTICIPANT_FILTER_ALL);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<ParticipantExportFormat>("excel");
+  const [exportLayout, setExportLayout] = useState<ParticipantExportLayout>("by_vicariat");
+  const [exportingParticipants, setExportingParticipants] = useState(false);
   const [presencesLoading, setPresencesLoading] = useState(false);
   const [presences, setPresences] = useState<PresenceRow[]>([]);
   const [selectedPresenceVicariat, setSelectedPresenceVicariat] = useState(PARTICIPANT_FILTER_ALL);
@@ -665,27 +675,37 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  const downloadParticipantsExcel = (rows: ParticipantRow[]) => {
+  const buildParticipantExportScope = (layout: ParticipantExportLayout) => ({
+    filterVicariat: selectedVicariat !== PARTICIPANT_FILTER_ALL ? selectedVicariat : null,
+    filterParoisse: selectedParoisse !== PARTICIPANT_FILTER_ALL ? selectedParoisse : null,
+    filterSexe: isManager && selectedSexe !== PARTICIPANT_FILTER_ALL ? (selectedSexe as "M" | "F") : null,
+    filterGrade: isManager && selectedGrade !== PARTICIPANT_FILTER_ALL ? selectedGrade : null,
+    accountVicariat: meData?.vicariatName ?? null,
+    accountParoisse: meData?.paroisseName ?? null,
+    layout,
+  });
+
+  const openParticipantExportDialog = (format: ParticipantExportFormat) => {
+    setExportFormat(format);
+    setExportLayout("by_vicariat");
+    setExportDialogOpen(true);
+  };
+
+  const downloadParticipantsExcel = (rows: ParticipantRow[], layout: ParticipantExportLayout) => {
     if (!activite || !rows.length) return;
-    const blob = generateActiviteParticipantsExcel(rows, {
-      filterVicariat: selectedVicariat !== PARTICIPANT_FILTER_ALL ? selectedVicariat : null,
-      filterParoisse: selectedParoisse !== PARTICIPANT_FILTER_ALL ? selectedParoisse : null,
-      filterSexe: isManager && selectedSexe !== PARTICIPANT_FILTER_ALL ? (selectedSexe as "M" | "F") : null,
-      filterGrade: isManager && selectedGrade !== PARTICIPANT_FILTER_ALL ? selectedGrade : null,
-      accountVicariat: meData?.vicariatName ?? null,
-      accountParoisse: meData?.paroisseName ?? null,
-    });
+    const blob = generateActiviteParticipantsExcel(rows, buildParticipantExportScope(layout));
     const base = safeExportFileName(activite.nom);
     const scopeSuffix = buildParticipantExportScopeSuffix(
       selectedVicariat,
       selectedParoisse,
       selectedSexe,
-      selectedGrade
+      selectedGrade,
+      layout
     );
     triggerBrowserDownload(blob, `participants-${base}${scopeSuffix}.xlsx`);
   };
 
-  const downloadParticipantsPdf = async (rows: ParticipantRow[]) => {
+  const downloadParticipantsPdf = async (rows: ParticipantRow[], layout: ParticipantExportLayout) => {
     if (!activite || !rows.length) return;
 
     const blob = await generateActiviteParticipantsPdf(
@@ -698,14 +718,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
         montant: activite.montant,
       },
       rows,
-      {
-        filterVicariat: selectedVicariat !== PARTICIPANT_FILTER_ALL ? selectedVicariat : null,
-        filterParoisse: selectedParoisse !== PARTICIPANT_FILTER_ALL ? selectedParoisse : null,
-        filterSexe: isManager && selectedSexe !== PARTICIPANT_FILTER_ALL ? (selectedSexe as "M" | "F") : null,
-        filterGrade: isManager && selectedGrade !== PARTICIPANT_FILTER_ALL ? selectedGrade : null,
-        accountVicariat: meData?.vicariatName ?? null,
-        accountParoisse: meData?.paroisseName ?? null,
-      }
+      buildParticipantExportScope(layout)
     );
 
     const base = safeExportFileName(activite.nom);
@@ -713,9 +726,27 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
       selectedVicariat,
       selectedParoisse,
       selectedSexe,
-      selectedGrade
+      selectedGrade,
+      layout
     );
     triggerBrowserDownload(blob, `participants-${base}${scopeSuffix}.pdf`);
+  };
+
+  const confirmParticipantExport = async () => {
+    if (!filteredParticipants.length) return;
+    setExportDialogOpen(false);
+    setExportingParticipants(true);
+    try {
+      if (exportFormat === "excel") {
+        downloadParticipantsExcel(filteredParticipants, exportLayout);
+      } else {
+        await downloadParticipantsPdf(filteredParticipants, exportLayout);
+      }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "L'export a échoué.", "error");
+    } finally {
+      setExportingParticipants(false);
+    }
   };
 
   const hasParticipantFilters =
@@ -1567,8 +1598,8 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                       size="sm"
                       variant="outline"
                       className="rounded-xl"
-                      onClick={() => downloadParticipantsExcel(filteredParticipants)}
-                      disabled={!filteredParticipants.length || participantsLoading}
+                      onClick={() => openParticipantExportDialog("excel")}
+                      disabled={!filteredParticipants.length || participantsLoading || exportingParticipants}
                     >
                       <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel
                     </Button>
@@ -1577,8 +1608,8 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                       size="sm"
                       variant="outline"
                       className="rounded-xl"
-                      onClick={() => void downloadParticipantsPdf(filteredParticipants)}
-                      disabled={!filteredParticipants.length || participantsLoading}
+                      onClick={() => openParticipantExportDialog("pdf")}
+                      disabled={!filteredParticipants.length || participantsLoading || exportingParticipants}
                     >
                       <FileText className="w-4 h-4 mr-1" /> PDF
                   </Button>
@@ -1593,8 +1624,6 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                         onValueChange={(value) => {
                           setSelectedVicariat(value ?? PARTICIPANT_FILTER_ALL);
                           setSelectedParoisse(PARTICIPANT_FILTER_ALL);
-                          setSelectedSexe(PARTICIPANT_FILTER_ALL);
-                          setSelectedGrade(PARTICIPANT_FILTER_ALL);
                         }}
                       >
                         <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 justify-between">
@@ -1614,11 +1643,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                       <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-400">Paroisse</p>
                       <Select
                         value={selectedParoisse}
-                        onValueChange={(value) => {
-                          setSelectedParoisse(value ?? PARTICIPANT_FILTER_ALL);
-                          setSelectedSexe(PARTICIPANT_FILTER_ALL);
-                          setSelectedGrade(PARTICIPANT_FILTER_ALL);
-                        }}
+                        onValueChange={(value) => setSelectedParoisse(value ?? PARTICIPANT_FILTER_ALL)}
                       >
                         <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 justify-between">
                           <SelectValue>{selectedParoisse === PARTICIPANT_FILTER_ALL ? "Toutes les paroisses" : selectedParoisse}</SelectValue>
@@ -1637,10 +1662,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                       <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-400">Sexe</p>
                       <Select
                         value={selectedSexe}
-                        onValueChange={(value) => {
-                          setSelectedSexe(value ?? PARTICIPANT_FILTER_ALL);
-                          setSelectedGrade(PARTICIPANT_FILTER_ALL);
-                        }}
+                        onValueChange={(value) => setSelectedSexe(value ?? PARTICIPANT_FILTER_ALL)}
                       >
                         <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 justify-between">
                           <SelectValue>
@@ -1735,6 +1757,76 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
           </div>
         ) : null}
       </div>
+
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent className="rounded-3xl max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Exporter les participants</DialogTitle>
+            <DialogDescription>
+              Choisissez le format de la liste avant de télécharger le fichier{" "}
+              {exportFormat === "excel" ? "Excel" : "PDF"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-1">
+            <button
+              type="button"
+              onClick={() => setExportLayout("by_vicariat")}
+              className={cn(
+                "rounded-2xl border p-4 text-left transition-colors",
+                exportLayout === "by_vicariat"
+                  ? "border-amber-300 bg-amber-50/80 ring-1 ring-amber-200"
+                  : "border-slate-200 bg-white hover:border-slate-300"
+              )}
+            >
+              <p className="font-semibold text-slate-900">Liste séparée par vicariat</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Sections par vicariat et par paroisse, avec tableaux distincts (format actuel).
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setExportLayout("complete")}
+              className={cn(
+                "rounded-2xl border p-4 text-left transition-colors",
+                exportLayout === "complete"
+                  ? "border-amber-300 bg-amber-50/80 ring-1 ring-amber-200"
+                  : "border-slate-200 bg-white hover:border-slate-300"
+              )}
+            >
+              <p className="font-semibold text-slate-900">Liste complète</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Un seul tableau avec tous les participants filtrés, colonnes Vicariat et Paroisse incluses.
+              </p>
+            </button>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl"
+              disabled={exportingParticipants}
+              onClick={() => setExportDialogOpen(false)}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              className="rounded-xl"
+              disabled={exportingParticipants}
+              onClick={() => void confirmParticipantExport()}
+            >
+              {exportingParticipants ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Export…
+                </>
+              ) : (
+                `Exporter en ${exportFormat === "excel" ? "Excel" : "PDF"}`
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={confirmTermineeOpen} onOpenChange={setConfirmTermineeOpen}>
         <DialogContent className="rounded-3xl max-w-md">

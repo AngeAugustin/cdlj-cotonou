@@ -29,6 +29,8 @@ export type ActiviteExportMeta = {
   montant: number;
 };
 
+export type ParticipantExportLayout = "by_vicariat" | "complete";
+
 export type ParticipantExportScope = {
   filterVicariat?: string | null;
   filterParoisse?: string | null;
@@ -36,6 +38,7 @@ export type ParticipantExportScope = {
   filterGrade?: string | null;
   accountVicariat?: string | null;
   accountParoisse?: string | null;
+  layout?: ParticipantExportLayout;
 };
 
 type TableSection = {
@@ -67,6 +70,18 @@ export function formatParticipantSexeFilterLabel(sexe: "M" | "F") {
 function formatSexeCell(sexe?: "M" | "F") {
   if (sexe === "M" || sexe === "F") return formatParticipantSexeFilterLabel(sexe);
   return "—";
+}
+
+export function buildFlatExportTableOptions(scope: ParticipantExportScope): BuildTableOptions {
+  return {
+    hideParoisse: Boolean(scope.filterParoisse || scope.accountParoisse),
+    hideVicariat: Boolean(
+      (scope.filterVicariat && !scope.filterParoisse) ||
+        (scope.accountVicariat && !scope.accountParoisse)
+    ),
+    hideGrade: Boolean(scope.filterGrade),
+    hideSexe: Boolean(scope.filterSexe),
+  };
 }
 
 const MARGIN_X = 14;
@@ -346,7 +361,20 @@ export function buildParticipantExcelSheets(
 ): ParticipantExcelSheet[] {
   if (participants.length === 0) return [];
 
+  const layout = scope.layout ?? "by_vicariat";
   const usedNames = new Set<string>();
+
+  if (layout === "complete") {
+    const { header, rows } = buildParticipantExportTable(participants, buildFlatExportTableOptions(scope));
+    return [
+      {
+        sheetName: sanitizeExcelSheetName("Participants", usedNames),
+        header,
+        rows,
+      },
+    ];
+  }
+
   const tableOptions: BuildTableOptions = {
     hideVicariat: true,
     hideParoisse: Boolean(scope.filterParoisse || scope.accountParoisse),
@@ -453,8 +481,11 @@ export async function generateActiviteParticipantsPdf(
   const generatedAt = new Date();
   const documentRef = buildDocumentRef(activite.id, generatedAt);
   const headerScopeLines = buildHeaderScopeLines(scope, participants);
-  const sections = buildParticipantTableSections(participants, scope);
-  const showSectionHeadings = sections.length > 1 || Boolean(sections[0]?.paroisseTitle);
+  const layout = scope.layout ?? "by_vicariat";
+  const isFlatLayout = layout === "complete";
+  const sections = isFlatLayout ? [{ participants }] : buildParticipantTableSections(participants, scope);
+  const showSectionHeadings =
+    !isFlatLayout && (sections.length > 1 || Boolean(sections[0]?.paroisseTitle));
 
   const [logoCDLJ] = await Promise.all([loadImageDataUrl(resolveLogoUrl(CDLJ_LOGO_SRC))]);
 
@@ -632,19 +663,18 @@ export async function generateActiviteParticipantsPdf(
       }
     }
 
-    const hideParoisse = Boolean(section.paroisseTitle) || Boolean(scope.filterParoisse);
-    const hideVicariat =
-      Boolean(section.vicariatTitle && !section.paroisseTitle && sections.length === 1) ||
-      Boolean(scope.filterVicariat && !scope.filterParoisse);
-    const hideGrade = Boolean(scope.filterGrade);
-    const hideSexe = Boolean(scope.filterSexe);
+    const tableOptions = isFlatLayout
+      ? buildFlatExportTableOptions(scope)
+      : {
+          hideParoisse: Boolean(section.paroisseTitle) || Boolean(scope.filterParoisse),
+          hideVicariat:
+            Boolean(section.vicariatTitle && !section.paroisseTitle && sections.length === 1) ||
+            Boolean(scope.filterVicariat && !scope.filterParoisse),
+          hideGrade: Boolean(scope.filterGrade),
+          hideSexe: Boolean(scope.filterSexe),
+        };
 
-    const { header, rows } = buildParticipantExportTable(section.participants, {
-      hideParoisse,
-      hideVicariat,
-      hideGrade,
-      hideSexe,
-    });
+    const { header, rows } = buildParticipantExportTable(section.participants, tableOptions);
     const tableHeader = ["N°", ...header];
     const tableRows = rows.map((row, rowIndex) => [String(rowIndex + 1), ...row]);
     const columnStyles = buildColumnStyles(tableHeader, tableWidth);
