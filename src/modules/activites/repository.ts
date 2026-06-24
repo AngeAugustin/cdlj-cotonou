@@ -721,11 +721,27 @@ export class ActiviteRepository {
 
   async statsByParoisse(activiteId: string, vicariatId?: string | null) {
     await connectToDatabase();
-    const match: Record<string, unknown> = { activiteId: new mongoose.Types.ObjectId(activiteId), status: ACTIVE_PARTICIPATION_MATCH };
+    const match: Record<string, unknown> = {
+      activiteId: new mongoose.Types.ObjectId(activiteId),
+      status: ACTIVE_PARTICIPATION_MATCH,
+      paiementId: { $exists: true, $ne: null },
+    };
     if (vicariatId) match.vicariatId = new mongoose.Types.ObjectId(vicariatId);
+
+    const paiementsColl = ActivitePaiement.collection.name;
 
     return ActiviteParticipation.aggregate([
       { $match: match },
+      {
+        $lookup: {
+          from: paiementsColl,
+          localField: "paiementId",
+          foreignField: "_id",
+          as: "_paiement",
+        },
+      },
+      { $unwind: { path: "$_paiement", preserveNullAndEmptyArrays: false } },
+      { $match: { "_paiement.status": "approved" } },
       { $group: { _id: "$paroisseId", count: { $sum: 1 } } },
       {
         $lookup: {
@@ -748,9 +764,55 @@ export class ActiviteRepository {
       { $sort: { count: -1, "paroisse.name": 1 } },
       {
         $project: {
+          _id: 0,
           paroisseId: "$_id",
           paroisseName: "$paroisse.name",
-          vicariatName: "$vicariat.name",
+          vicariatId: "$vicariat._id",
+          vicariatName: { $ifNull: ["$vicariat.name", "—"] },
+          count: 1,
+        },
+      },
+    ]);
+  }
+
+  async statsByVicariat(activiteId: string) {
+    await connectToDatabase();
+    const paiementsColl = ActivitePaiement.collection.name;
+
+    return ActiviteParticipation.aggregate([
+      {
+        $match: {
+          activiteId: new mongoose.Types.ObjectId(activiteId),
+          status: ACTIVE_PARTICIPATION_MATCH,
+          paiementId: { $exists: true, $ne: null },
+        },
+      },
+      {
+        $lookup: {
+          from: paiementsColl,
+          localField: "paiementId",
+          foreignField: "_id",
+          as: "_paiement",
+        },
+      },
+      { $unwind: { path: "$_paiement", preserveNullAndEmptyArrays: false } },
+      { $match: { "_paiement.status": "approved" } },
+      { $group: { _id: "$vicariatId", count: { $sum: 1 } } },
+      {
+        $lookup: {
+          from: "vicariats",
+          localField: "_id",
+          foreignField: "_id",
+          as: "vicariat",
+        },
+      },
+      { $unwind: { path: "$vicariat", preserveNullAndEmptyArrays: true } },
+      { $sort: { count: -1, "vicariat.name": 1 } },
+      {
+        $project: {
+          _id: 0,
+          vicariatId: "$_id",
+          vicariatName: { $ifNull: ["$vicariat.name", "—"] },
           count: 1,
         },
       },

@@ -148,7 +148,8 @@ export class ActiviteService {
     const paymentsByDay = await this.repo.paymentEvolutionByDay(activiteId, vicariatId);
     const paymentsByTarif = await this.repo.countApprovedPaymentsByMontantUnitaire(activiteId, vicariatId);
     const byParoisse = await this.repo.statsByParoisse(activiteId, vicariatId);
-    return { totalLecteurs, totalParticipants, totalMontant, paymentsByDay, paymentsByTarif, byParoisse };
+    const byVicariat = vicariatId ? [] : await this.repo.statsByVicariat(activiteId);
+    return { totalLecteurs, totalParticipants, totalMontant, paymentsByDay, paymentsByTarif, byParoisse, byVicariat };
   }
 
   countParticipantsForParoisse(activiteId: string, paroisseId: string) {

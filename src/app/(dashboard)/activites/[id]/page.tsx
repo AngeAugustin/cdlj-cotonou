@@ -1575,6 +1575,10 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
         ) : tab === "statistiques" && isDiocesain ? (
           <ActiviteStatsPanel
             activiteId={activiteId}
+            activiteNom={activite.nom}
+            activiteDateDebut={activite.dateDebut}
+            activiteDateFin={activite.dateFin}
+            activiteLieu={activite.lieu}
             montantInitial={activite.montant}
             delaiPaiement={activite.delaiPaiement}
             grillePenalite={activite.grillePenalite}

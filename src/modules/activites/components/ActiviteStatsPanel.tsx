@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format, parseISO, startOfDay, eachDayOfInterval } from "date-fns";
 import { fr } from "date-fns/locale";
-import { BarChart3, Loader2, Users, Banknote, Receipt } from "lucide-react";
+import { BarChart3, Loader2, Users, Banknote, Receipt, MapPin, Landmark, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { generateActiviteStatsPdf } from "@/lib/activiteStatsExport";
 import {
   Area,
   AreaChart,
@@ -14,6 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import { palierDateToInput, sortPaliers, type PalierPenalite } from "../penalites";
+import { cn } from "@/lib/utils";
 
 type PaymentDayRow = {
   date: string;
@@ -27,11 +30,27 @@ type PaymentTarifRow = {
   lecteurs: number;
 };
 
+type ParoisseStatRow = {
+  paroisseId: string;
+  paroisseName: string;
+  vicariatId: string;
+  vicariatName: string;
+  count: number;
+};
+
+type VicariatStatRow = {
+  vicariatId: string;
+  vicariatName: string;
+  count: number;
+};
+
 type ActiviteStats = {
   totalParticipants: number;
   totalMontant: number;
   paymentsByDay: PaymentDayRow[];
   paymentsByTarif: PaymentTarifRow[];
+  byParoisse: ParoisseStatRow[];
+  byVicariat: VicariatStatRow[];
 };
 
 type TarifCountRow = {
@@ -45,6 +64,23 @@ type TarifCountRow = {
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("fr-FR", { style: "decimal", maximumFractionDigits: 0 }).format(n) + " FCFA";
+}
+
+function safeExportFileName(name: string) {
+  return name.replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_").trim().slice(0, 48) || "activite";
+}
+
+function triggerBrowserDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.setTimeout(() => URL.revokeObjectURL(url), 500);
 }
 
 type ChartPoint = PaymentDayRow & {
@@ -164,6 +200,22 @@ function buildTarifBreakdown(
   return rows;
 }
 
+function participationShare(count: number, total: number) {
+  if (total <= 0) return 0;
+  return Math.round((count / total) * 100);
+}
+
+function ParticipationShareBar({ percent }: { percent: number }) {
+  return (
+    <div className="flex items-center gap-2 min-w-[7rem]">
+      <div className="h-1.5 flex-1 rounded-full bg-slate-100 overflow-hidden">
+        <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${percent}%` }} />
+      </div>
+      <span className="text-[11px] font-semibold tabular-nums text-slate-500 w-8 text-right">{percent}%</span>
+    </div>
+  );
+}
+
 function ChartTooltip({
   active,
   payload,
@@ -201,11 +253,19 @@ function ChartTooltip({
 
 export function ActiviteStatsPanel({
   activiteId,
+  activiteNom,
+  activiteDateDebut,
+  activiteDateFin,
+  activiteLieu,
   montantInitial,
   delaiPaiement,
   grillePenalite,
 }: {
   activiteId: string;
+  activiteNom: string;
+  activiteDateDebut: string;
+  activiteDateFin: string;
+  activiteLieu: string;
   montantInitial: number;
   delaiPaiement: string;
   grillePenalite?: PalierPenalite[] | null;
@@ -213,6 +273,8 @@ export function ActiviteStatsPanel({
   const [stats, setStats] = useState<ActiviteStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [selectedVicariatId, setSelectedVicariatId] = useState<string | null>(null);
 
   const loadStats = useCallback(async () => {
     setLoading(true);
@@ -232,6 +294,22 @@ export function ActiviteStatsPanel({
               lecteurs: Number(row.lecteurs ?? 0),
             }))
           : [],
+        byParoisse: Array.isArray(data.byParoisse)
+          ? data.byParoisse.map((row: ParoisseStatRow) => ({
+              paroisseId: String(row.paroisseId ?? ""),
+              paroisseName: String(row.paroisseName ?? "—"),
+              vicariatId: String(row.vicariatId ?? ""),
+              vicariatName: String(row.vicariatName ?? "—"),
+              count: Number(row.count ?? 0),
+            }))
+          : [],
+        byVicariat: Array.isArray(data.byVicariat)
+          ? data.byVicariat.map((row: VicariatStatRow) => ({
+              vicariatId: String(row.vicariatId ?? ""),
+              vicariatName: String(row.vicariatName ?? "—"),
+              count: Number(row.count ?? 0),
+            }))
+          : [],
       });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erreur de chargement");
@@ -244,6 +322,27 @@ export function ActiviteStatsPanel({
   useEffect(() => {
     void loadStats();
   }, [loadStats]);
+
+  useEffect(() => {
+    if (!stats?.byVicariat.length) {
+      setSelectedVicariatId(null);
+      return;
+    }
+    setSelectedVicariatId((current) => {
+      if (current && stats.byVicariat.some((row) => row.vicariatId === current)) return current;
+      return stats.byVicariat[0]?.vicariatId ?? null;
+    });
+  }, [stats?.byVicariat]);
+
+  const selectedVicariat = useMemo(
+    () => stats?.byVicariat.find((row) => row.vicariatId === selectedVicariatId) ?? null,
+    [stats?.byVicariat, selectedVicariatId]
+  );
+
+  const paroissesForSelectedVicariat = useMemo(() => {
+    if (!stats || !selectedVicariat) return [];
+    return stats.byParoisse.filter((row) => row.vicariatId === selectedVicariat.vicariatId);
+  }, [stats, selectedVicariat]);
 
   const chartData = useMemo(() => buildChartSeries(stats?.paymentsByDay ?? []), [stats?.paymentsByDay]);
   const tickInterval = chartData.length > 0 ? chartTickInterval(chartData.length) : 0;
@@ -259,6 +358,37 @@ export function ActiviteStatsPanel({
     () => tarifBreakdown.reduce((sum, row) => sum + row.lecteurs, 0),
     [tarifBreakdown]
   );
+
+  const downloadStatsPdf = async () => {
+    if (!stats) return;
+    setExportingPdf(true);
+    try {
+      const blob = await generateActiviteStatsPdf(
+        {
+          id: activiteId,
+          nom: activiteNom,
+          dateDebut: activiteDateDebut,
+          dateFin: activiteDateFin,
+          lieu: activiteLieu,
+          montant: montantInitial,
+        },
+        {
+          totalParticipants: stats.totalParticipants,
+          totalMontant: stats.totalMontant,
+          byVicariat: stats.byVicariat,
+          byParoisse: stats.byParoisse,
+          paymentsByDay: stats.paymentsByDay,
+        },
+        tarifBreakdown,
+        montantInitial
+      );
+      triggerBrowserDownload(blob, `statistiques-${safeExportFileName(activiteNom)}.pdf`);
+    } catch (err: unknown) {
+      console.error(err);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -279,6 +409,24 @@ export function ActiviteStatsPanel({
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="rounded-xl shrink-0"
+          disabled={exportingPdf}
+          onClick={() => void downloadStatsPdf()}
+        >
+          {exportingPdf ? (
+            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+          ) : (
+            <FileText className="w-4 h-4 mr-1" />
+          )}
+          Export PDF
+        </Button>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="rounded-2xl border border-amber-100 bg-amber-50/70 px-5 py-5">
           <div className="flex items-center gap-2 mb-2">
@@ -422,6 +570,112 @@ export function ActiviteStatsPanel({
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Users className="w-5 h-5 text-amber-900" />
+          <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Participation par vicariat et paroisse</h2>
+        </div>
+        <p className="text-xs text-slate-500 mb-5">
+          Sélectionnez un vicariat pour afficher la répartition par paroisse
+        </p>
+
+        {stats.byVicariat.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 py-12 text-center text-sm text-slate-400">
+            Aucune participation confirmée pour le moment.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+            <div className="overflow-hidden rounded-2xl border border-slate-100">
+              <div className="flex items-center gap-2 bg-slate-50 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                <Landmark className="h-3.5 w-3.5" />
+                Vicariats
+              </div>
+              <ul className="divide-y divide-slate-100">
+                {stats.byVicariat.map((row) => {
+                  const isSelected = row.vicariatId === selectedVicariatId;
+                  const share = participationShare(row.count, stats.totalParticipants);
+                  return (
+                    <li key={row.vicariatId || row.vicariatName}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedVicariatId(row.vicariatId)}
+                        className={cn(
+                          "flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors",
+                          isSelected ? "bg-amber-50 text-amber-950" : "bg-white hover:bg-slate-50"
+                        )}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold">{row.vicariatName}</p>
+                          <p className="mt-1 text-[11px] text-slate-500">{share}% du total</p>
+                        </div>
+                        <span
+                          className={cn(
+                            "inline-flex min-w-[2rem] shrink-0 justify-center rounded-full px-2.5 py-1 text-xs font-extrabold tabular-nums",
+                            isSelected ? "bg-amber-200/70 text-amber-950" : "bg-amber-50 text-amber-900"
+                          )}
+                        >
+                          {row.count}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl border border-slate-100">
+              <div className="flex items-center gap-2 bg-slate-50 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                <MapPin className="h-3.5 w-3.5" />
+                Paroisses
+                {selectedVicariat ? (
+                  <span className="ml-auto truncate font-semibold normal-case tracking-normal text-slate-500">
+                    {selectedVicariat.vicariatName}
+                  </span>
+                ) : null}
+              </div>
+
+              {!selectedVicariat ? (
+                <div className="px-4 py-12 text-center text-sm text-slate-400">
+                  Sélectionnez un vicariat à gauche.
+                </div>
+              ) : paroissesForSelectedVicariat.length === 0 ? (
+                <div className="px-4 py-12 text-center text-sm text-slate-400">
+                  Aucune participation confirmée dans ce vicariat.
+                </div>
+              ) : (
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-white text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    <tr>
+                      <th className="px-4 py-3">Paroisse</th>
+                      <th className="px-4 py-3 text-right">Participations</th>
+                      <th className="px-4 py-3 hidden md:table-cell">Part</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {paroissesForSelectedVicariat.map((row) => {
+                      const share = participationShare(row.count, selectedVicariat.count);
+                      return (
+                        <tr key={row.paroisseId || row.paroisseName} className="bg-white">
+                          <td className="px-4 py-3 font-semibold text-slate-800">{row.paroisseName}</td>
+                          <td className="px-4 py-3 text-right">
+                            <span className="inline-flex min-w-[2rem] justify-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-extrabold tabular-nums text-amber-900">
+                              {row.count}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 hidden md:table-cell">
+                            <ParticipationShareBar percent={share} />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
