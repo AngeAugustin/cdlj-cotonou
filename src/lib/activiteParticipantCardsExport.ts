@@ -61,6 +61,18 @@ export async function preloadParticipantCardAssets(lecteurs: ApiLecteur[]) {
   await Promise.all([...BRAND_LOGO_URLS, ...photoUrls].map(preloadUrl));
 }
 
+function isQrSvgReady(root: HTMLElement) {
+  const svg = root.querySelector("[data-lecteur-qr] svg");
+  if (!svg) return false;
+  return svg.querySelector("path, rect") != null;
+}
+
+function nextFrame() {
+  return new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => resolve());
+  });
+}
+
 export async function waitForImagesInContainer(root: HTMLElement) {
   const imgs = Array.from(root.querySelectorAll("img"));
   await Promise.all(
@@ -76,9 +88,13 @@ export async function waitForImagesInContainer(root: HTMLElement) {
         })
     )
   );
-  await new Promise<void>((resolve) => {
-    window.requestAnimationFrame(() => resolve());
-  });
+
+  for (let attempt = 0; attempt < 24 && !isQrSvgReady(root); attempt += 1) {
+    await nextFrame();
+  }
+
+  await nextFrame();
+  await nextFrame();
 }
 
 export async function captureLecteurCartePng(

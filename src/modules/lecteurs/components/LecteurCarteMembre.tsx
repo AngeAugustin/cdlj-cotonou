@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useRef, useState } from "react";
-import { QRCodeCanvas } from "qrcode.react";
+import { QRCodeSVG } from "qrcode.react";
 import { CreditCard, Download, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -189,9 +189,12 @@ export function LecteurCarteFace({ lecteur, className }: { lecteur: ApiLecteur; 
             className="relative z-20 flex w-[118px] shrink-0 flex-col items-center overflow-hidden pl-1"
           >
 
-            {/* QR code de l'identifiant */}
-            <div className="shrink-0 rounded-md border border-slate-200 bg-white p-1 shadow-sm">
-              <QRCodeCanvas
+            {/* QR code de l'identifiant — SVG (synchrone) pour la capture PDF html-to-image */}
+            <div
+              data-lecteur-qr
+              className="shrink-0 rounded-md border border-slate-200 bg-white p-1 shadow-sm"
+            >
+              <QRCodeSVG
                 value={lecteur.uniqueId}
                 size={110}
                 level="M"
@@ -263,7 +266,7 @@ function useLecteurCartePdf(lecteur: ApiLecteur) {
   }, [lecteur.uniqueId]);
 
   const hiddenCapture = (
-    <div className="pointer-events-none fixed left-[-9999px] top-0 opacity-0" aria-hidden>
+    <div className="pointer-events-none fixed left-[-9999px] top-0" aria-hidden>
       <div ref={captureRef}>
         <LecteurCarteFace lecteur={lecteur} />
       </div>

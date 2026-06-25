@@ -323,7 +323,7 @@ export function ActiviteCartesParticipantsPanel({
 
       <div
         ref={captureContainerRef}
-        className="pointer-events-none fixed left-[-9999px] top-0 opacity-0"
+        className="pointer-events-none fixed left-[-9999px] top-0"
         aria-hidden
       >
         {captureBatch?.map((lecteur) => (
