@@ -54,10 +54,6 @@ type EvaluationNode = {
   activiteId: { _id?: string; nom: string; dateDebut: string | Date; dateFin: string | Date; lieu: string; montant?: number; terminee?: boolean };
 };
 
-function evaluationActiviteId(ev: EvaluationNode): string {
-  return String(ev.activiteId?._id ?? ev.activiteId ?? "");
-}
-
 function evaluationGradeId(ev: EvaluationNode): string {
   return String(ev.gradeId?._id ?? ev.gradeId ?? "");
 }
@@ -191,20 +187,6 @@ export default function EvaluationsPage() {
     setFormOpen(true);
   };
 
-  const selectableActivites = useMemo(() => {
-    const year = typeof fAnnee === "number" ? fAnnee : null;
-    if (year == null) return activites;
-
-    const usedActiviteIds = new Set(
-      evaluations
-        .filter((ev) => ev.annee === year && ev._id !== editId)
-        .map((ev) => evaluationActiviteId(ev))
-        .filter(Boolean)
-    );
-
-    return activites.filter((a) => !usedActiviteIds.has(String(a._id)));
-  }, [activites, evaluations, fAnnee, editId]);
-
   const usedGradeIdsForYear = useMemo(() => {
     const year = typeof fAnnee === "number" ? fAnnee : null;
     if (year == null) return new Set<string>();
@@ -216,12 +198,6 @@ export default function EvaluationsPage() {
         .filter(Boolean)
     );
   }, [evaluations, fAnnee, editId]);
-
-  useEffect(() => {
-    if (!formOpen || !fActiviteId) return;
-    const stillAvailable = selectableActivites.some((a) => String(a._id) === fActiviteId);
-    if (!stillAvailable) setFActiviteId("");
-  }, [formOpen, fActiviteId, selectableActivites]);
 
   useEffect(() => {
     if (!formOpen || !fGradeId || (editId && !editTerminee)) return;
@@ -307,20 +283,6 @@ export default function EvaluationsPage() {
         );
         if (gradeConflict) {
           throw new Error(`Une évaluation existe déjà pour ce grade en ${targetYear}`);
-        }
-      }
-
-      // Règle TDR: une seule évaluation par activité et par année.
-      const targetActiviteId = validated.activiteId;
-      if (targetActiviteId && targetYear !== undefined) {
-        const conflict = evaluations.some(
-          (ev) =>
-            ev.annee === targetYear &&
-            evaluationActiviteId(ev) === targetActiviteId &&
-            ev._id !== editId
-        );
-        if (conflict) {
-          throw new Error(`Une évaluation existe déjà pour cette activité en ${targetYear}`);
         }
       }
 
@@ -637,11 +599,9 @@ export default function EvaluationsPage() {
                   aria-invalid={!!formFieldErrors.activiteId}
                 >
                   <option value="">
-                    {selectableActivites.length === 0
-                      ? "Aucune activité disponible pour cette année"
-                      : "Sélectionner une activité…"}
+                    {activites.length === 0 ? "Aucune activité disponible" : "Sélectionner une activité…"}
                   </option>
-                  {selectableActivites.map((a) => (
+                  {activites.map((a) => (
                     <option key={a._id} value={a._id}>
                       {a.nom}
                     </option>

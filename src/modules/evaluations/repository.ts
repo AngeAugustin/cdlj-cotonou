@@ -138,15 +138,6 @@ export class EvaluationRepository {
       throw new Error(`Une évaluation existe déjà pour ce grade en ${data.annee}`);
     }
 
-    // Règle TDR: une seule évaluation par activité et par année.
-    const existsForActivityYear = await Evaluation.exists({
-      annee: data.annee,
-      activiteId: new mongoose.Types.ObjectId(data.activiteId),
-    });
-    if (existsForActivityYear) {
-      throw new Error(`Une évaluation existe déjà pour cette activité en ${data.annee}`);
-    }
-
     // Règle TDR: il ne peut pas y avoir deux évaluations avec le même nom.
     const normalizedNom = data.nom.trim();
     const existsForName = await Evaluation.exists({ nom: normalizedNom });
@@ -219,16 +210,7 @@ export class EvaluationRepository {
     const prevNombreNotes = ev.nombreNotes;
 
     if (data.activiteId !== undefined) {
-      const nextActiviteId = new mongoose.Types.ObjectId(data.activiteId);
-      const conflict = await Evaluation.findOne({
-        annee: ev.annee,
-        activiteId: nextActiviteId,
-        _id: { $ne: ev._id },
-      }).lean();
-      if (conflict) {
-        throw new Error(`Une évaluation existe déjà pour cette activité en ${ev.annee}`);
-      }
-      ev.activiteId = nextActiviteId;
+      ev.activiteId = new mongoose.Types.ObjectId(data.activiteId);
     }
     if (data.nombreNotes !== undefined) ev.nombreNotes = data.nombreNotes;
 
