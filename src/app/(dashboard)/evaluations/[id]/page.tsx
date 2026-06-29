@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { AlertCircle, ArrowLeft, CheckCircle, FileSpreadsheet, Loader2, Pencil, Upload } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle, FileSpreadsheet, FileText, Loader2, Pencil, Upload } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { downloadEvaluationReadersExcel } from "@/lib/evaluationReadersExport";
+import {
+  downloadEvaluationReadersExcel,
+  downloadEvaluationReadersPdf,
+  type EvaluationExportLayout,
+  type EvaluationExportScope,
+  type EvaluationReaderExportRow,
+} from "@/lib/evaluationReadersExport";
 import { canManageEvaluations, canViewEvaluations, isReadOnlyRole } from "@/lib/rolePermissions";
 
 type Role = string;
@@ -226,7 +232,10 @@ export default function EvaluationDetailsPage() {
   const [publierModalOpen, setPublierModalOpen] = useState(false);
   const [terminating, setTerminating] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [exportingReaders, setExportingReaders] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"excel" | "pdf">("excel");
+  const [exportLayout, setExportLayout] = useState<EvaluationExportLayout>("by_vicariat");
 
   type TerminationMissingByReader = {
     lecteurId: string;
@@ -306,15 +315,39 @@ export default function EvaluationDetailsPage() {
     setTermineeModalOpen(true);
   };
 
-  const handleDownloadExcel = async () => {
+  const buildEvaluationExportScope = (layout: EvaluationExportLayout): EvaluationExportScope => ({
+    filterVicariat: vicariatId ? vicariats.find((v) => v._id === vicariatId)?.name ?? null : null,
+    filterParoisse: paroisseId ? paroisses.find((p) => p._id === paroisseId)?.name ?? null : null,
+    layout,
+  });
+
+  const filterExportMembers = (members: EvaluationReaderExportRow[]) =>
+    members.filter((row) => {
+      if (vicariatId && row.vicariat?._id !== vicariatId) return false;
+      if (paroisseId && row.paroisse?._id !== paroisseId) return false;
+      return true;
+    });
+
+  const openReaderExportDialog = (format: "excel" | "pdf") => {
+    setExportFormat(format);
+    setExportLayout("by_vicariat");
+    setExportDialogOpen(true);
+  };
+
+  const confirmReaderExport = async () => {
     if (!evaluation) return;
-    setExporting(true);
+    setExportDialogOpen(false);
+    setExportingReaders(true);
     try {
       const res = await fetch(`/api/evaluations/${id}/export`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Export impossible");
 
-      const members = Array.isArray(data.members) ? data.members : [];
+      const members = filterExportMembers(
+        Array.isArray(data.members) ? (data.members as EvaluationReaderExportRow[]) : []
+      );
+      if (!members.length) throw new Error("Aucun lecteur à exporter pour cette sélection.");
+
       const exportEvaluation = data.evaluation ?? {
         _id: evaluation._id,
         nom: evaluation.nom,
@@ -322,14 +355,31 @@ export default function EvaluationDetailsPage() {
         nombreNotes: evaluation.nombreNotes,
         terminee: evaluation.terminee,
         publiee: evaluation.publiee,
+        gradeId: evaluation.gradeId
+          ? { name: evaluation.gradeId.name, abbreviation: evaluation.gradeId.abbreviation }
+          : undefined,
+        activiteId: evaluation.activiteId
+          ? {
+              nom: evaluation.activiteId.nom,
+              dateDebut: evaluation.activiteId.dateDebut,
+              dateFin: evaluation.activiteId.dateFin,
+              lieu: evaluation.activiteId.lieu,
+            }
+          : undefined,
       };
 
-      downloadEvaluationReadersExcel(exportEvaluation, members);
-      showToast("Export Excel téléchargé");
+      const scope = buildEvaluationExportScope(exportLayout);
+      if (exportFormat === "excel") {
+        downloadEvaluationReadersExcel(exportEvaluation, members, scope);
+        showToast("Export Excel téléchargé");
+      } else {
+        await downloadEvaluationReadersPdf(exportEvaluation, members, scope);
+        showToast("Export PDF téléchargé");
+      }
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Erreur", "error");
     } finally {
-      setExporting(false);
+      setExportingReaders(false);
     }
   };
 
@@ -527,16 +577,36 @@ export default function EvaluationDetailsPage() {
 
         {canManage ? (
           <div className="flex flex-col gap-2 items-stretch sm:items-end">
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-xl border-slate-200"
-              disabled={exporting}
-              onClick={() => void handleDownloadExcel()}
-            >
-              {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-2" />}
-              Télécharger
-            </Button>
+            <div className="flex flex-wrap items-center gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-xl border-slate-200"
+                disabled={!readers.length || exportingReaders}
+                onClick={() => openReaderExportDialog("excel")}
+              >
+                {exportingReaders && exportFormat === "excel" ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                )}
+                Excel
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-xl border-slate-200"
+                disabled={!readers.length || exportingReaders}
+                onClick={() => openReaderExportDialog("pdf")}
+              >
+                {exportingReaders && exportFormat === "pdf" ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <FileText className="w-4 h-4 mr-2" />
+                )}
+                PDF
+              </Button>
+            </div>
             {!evaluation.terminee ? (
               <Button type="button" className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white" onClick={() => requestTerminer()}>
                 <CheckCircle className="w-4 h-4 mr-2" /> Marquer comme terminée
@@ -600,12 +670,10 @@ export default function EvaluationDetailsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[920px]">
+            <table className="w-full text-left border-collapse min-w-[720px]">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-100 uppercase text-[10px] font-extrabold tracking-widest text-slate-500">
                   <th className="p-5 font-semibold">Lecteur</th>
-                  <th className="p-5 font-semibold hidden md:table-cell">Vicariat</th>
-                  <th className="p-5 font-semibold hidden lg:table-cell">Paroisse</th>
                   <th className="p-5 font-semibold">Notes</th>
                   {!evaluation.terminee ? <th className="p-5 font-semibold text-right">Actions</th> : null}
                   {evaluation.terminee ? <th className="p-5 font-semibold">Moyenne & décision</th> : null}
@@ -619,17 +687,23 @@ export default function EvaluationDetailsPage() {
                         <p className="font-extrabold text-slate-900 truncate">
                           {row.lecteur.nom} {row.lecteur.prenoms}
                         </p>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {row.lecteur.uniqueId} · {row.lecteur.gradeIdAtEvaluation?.abbreviation ?? "—"}
+                        <p className="text-xs font-semibold text-slate-500 mt-1 font-mono">
+                          {row.lecteur.uniqueId}
+                          <span className="px-1.5 text-slate-300">·</span>
+                          <span className="font-semibold text-slate-600">
+                            {row.lecteur.gradeIdAtEvaluation?.abbreviation ?? "—"}
+                          </span>
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+                          <span className="font-semibold text-slate-600">
+                            {row.vicariat
+                              ? `Vicariat ${(row.vicariat.abbreviation || row.vicariat.name).trim()}`
+                              : "—"}
+                          </span>
+                          <span className="text-slate-400"> · </span>
+                          {row.paroisse?.name ?? "—"}
                         </p>
                       </div>
-                    </td>
-                    <td className="p-5 hidden md:table-cell">
-                      <span className="text-sm font-semibold text-slate-800">{row.vicariat?.name ?? "—"}</span>
-                      <div className="text-xs text-slate-500">{row.vicariat?.abbreviation ?? ""}</div>
-                    </td>
-                    <td className="p-5 hidden lg:table-cell">
-                      <span className="text-sm font-semibold text-slate-800">{row.paroisse?.name ?? "—"}</span>
                     </td>
                     <td className="p-5">
                       <div className="flex items-center">
@@ -988,6 +1062,76 @@ export default function EvaluationDetailsPage() {
             >
               {savingAdd ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Valider
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent className="rounded-3xl max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Exporter les lecteurs</DialogTitle>
+            <DialogDescription>
+              Choisissez le format de la liste avant de télécharger le fichier{" "}
+              {exportFormat === "excel" ? "Excel" : "PDF"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-1">
+            <button
+              type="button"
+              onClick={() => setExportLayout("by_vicariat")}
+              className={cn(
+                "rounded-2xl border p-4 text-left transition-colors",
+                exportLayout === "by_vicariat"
+                  ? "border-amber-300 bg-amber-50/80 ring-1 ring-amber-200"
+                  : "border-slate-200 bg-white hover:border-slate-300"
+              )}
+            >
+              <p className="font-semibold text-slate-900">Liste séparée par vicariat</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Sections par vicariat et par paroisse, avec tableaux distincts.
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setExportLayout("complete")}
+              className={cn(
+                "rounded-2xl border p-4 text-left transition-colors",
+                exportLayout === "complete"
+                  ? "border-amber-300 bg-amber-50/80 ring-1 ring-amber-200"
+                  : "border-slate-200 bg-white hover:border-slate-300"
+              )}
+            >
+              <p className="font-semibold text-slate-900">Liste complète</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Un seul tableau avec tous les lecteurs filtrés, colonnes Vicariat et Paroisse incluses.
+              </p>
+            </button>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl"
+              disabled={exportingReaders}
+              onClick={() => setExportDialogOpen(false)}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              className="rounded-xl"
+              disabled={exportingReaders}
+              onClick={() => void confirmReaderExport()}
+            >
+              {exportingReaders ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Export…
+                </>
+              ) : (
+                `Exporter en ${exportFormat === "excel" ? "Excel" : "PDF"}`
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
