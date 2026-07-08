@@ -5,7 +5,7 @@ import { NIVEAU_SCOLAIRE_OPTIONS } from "./schema";
 export const LECTEUR_IMPORT_COLUMNS = [
   { key: "nom", header: "Nom", required: true },
   { key: "prenoms", header: "Prénoms", required: true },
-  { key: "dateNaissance", header: "Date de naissance", required: true },
+  { key: "dateNaissance", header: "Date de naissance", required: false },
   { key: "sexe", header: "Sexe", required: true },
   { key: "grade", header: "Grade", required: true },
   { key: "anneeAdhesion", header: "Année d'adhésion", required: false },
@@ -20,7 +20,7 @@ export const LECTEUR_IMPORT_COLUMNS = [
 export type LecteurImportRow = {
   nom: string;
   prenoms: string;
-  dateNaissance: string;
+  dateNaissance?: string;
   sexe: "M" | "F";
   grade: string;
   anneeAdhesion?: number;
@@ -220,7 +220,7 @@ function excelColumnLetter(colIndex1Based: number): string {
 const TEMPLATE_DATA_ROWS = 500;
 
 function isRowEmpty(values: Record<string, unknown>): boolean {
-  const keys = ["nom", "prenoms", "dateNaissance"] as const;
+  const keys = ["nom", "prenoms"] as const;
   return keys.every((k) => !cellToString(values[k]));
 }
 
@@ -341,7 +341,7 @@ export function convertEditableToImportRow(row: EditableLecteurImportRow): Edita
   if (!nom || !prenoms) {
     return { ok: false, message: "Nom et prénoms sont requis." };
   }
-  if (!dateNaissance) {
+  if (row.dateNaissance.trim() && !dateNaissance) {
     return { ok: false, message: "Date de naissance invalide." };
   }
   if (!sexe) {
@@ -377,7 +377,7 @@ export function convertEditableToImportRow(row: EditableLecteurImportRow): Edita
     data: {
       nom,
       prenoms,
-      dateNaissance,
+      dateNaissance: dateNaissance ?? undefined,
       sexe,
       grade,
       anneeAdhesion: anneeAdhesion ?? undefined,
@@ -478,7 +478,7 @@ export async function buildLecteurImportTemplateWorkbook(
     ["Instructions"],
     ["1. Remplissez une ligne par lecteur dans l'onglet « Lecteurs »."],
     ["2. Le vicariat et la paroisse sont choisis lors de l'import dans l'application."],
-    ["3. Date de naissance : JJ/MM/AAAA ou AAAA-MM-JJ."],
+    ["3. Date de naissance (facultative) : JJ/MM/AAAA ou AAAA-MM-JJ."],
     ["4. Sexe : M (masculin) ou F (féminin)."],
     ["5. Niveau scolaire : utilisez la liste déroulante dans la colonne dédiée."],
     ["6. Grade : nom ou abréviation (voir onglet Référence) — obligatoire."],

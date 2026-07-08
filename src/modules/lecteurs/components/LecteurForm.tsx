@@ -35,7 +35,7 @@ const SELECT_EMPTY = "__cdlj_empty__";
 const lecteurFormInputSchema = z.object({
   nom: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
   prenoms: z.string().min(2, "Les prénoms doivent contenir au moins 2 caractères"),
-  dateNaissance: z.string().min(1, "La date de naissance est requise"),
+  dateNaissance: z.string(),
   sexe: z.enum(["M", "F"]),
   gradeId: z.string().refine((v) => v.length >= 24, { message: "Le grade est requis" }),
   anneeAdhesion: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
@@ -321,7 +321,9 @@ export function LecteurForm({
     const values = form.getValues();
     const apiBody = createLecteurSchema.parse({
       ...values,
-      dateNaissance: toPersistedBirthDateUtcNoon(dateFromDateInputString(values.dateNaissance)),
+      dateNaissance: values.dateNaissance?.trim()
+        ? toPersistedBirthDateUtcNoon(dateFromDateInputString(values.dateNaissance))
+        : undefined,
       photo: undefined,
       photoIdentite: values.photoIdentite?.trim() || undefined,
       gradeId: values.gradeId,
@@ -574,7 +576,7 @@ export function LecteurForm({
                   name="dateNaissance"
                   render={({ field }) => (
                     <FormItem className={cn("w-full md:w-auto md:shrink-0 md:max-w-[14rem]", isPage && "md:max-w-none lg:max-w-none")}>
-                      <FormLabel className={cn(isPage && "font-semibold text-slate-700")}>Date de naissance</FormLabel>
+                      <FormLabel className={cn(isPage && "font-semibold text-slate-700")}>Date de naissance <span className="text-slate-400 font-normal">(facultatif)</span></FormLabel>
                       <FormControl>
                         <Input type="date" className={cn("rounded-xl w-full md:w-[min(100%,14rem)]", isPage && "h-11 bg-slate-50/80 focus:bg-white lg:w-full")} {...field} />
                       </FormControl>

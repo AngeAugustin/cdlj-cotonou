@@ -3,7 +3,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface ILecteur extends Document {
   nom: string;
   prenoms: string;
-  dateNaissance: Date;
+  dateNaissance?: Date;
   sexe: "M" | "F";
   gradeId: mongoose.Types.ObjectId;
   anneeAdhesion?: number;
@@ -28,7 +28,7 @@ const lecteurSchema = new Schema<ILecteur>(
   {
     nom: { type: String, required: true },
     prenoms: { type: String, required: true },
-    dateNaissance: { type: Date, required: true },
+    dateNaissance: { type: Date, required: false },
     sexe: { type: String, enum: ["M", "F"], required: true },
     gradeId: { type: Schema.Types.ObjectId, ref: "Grade", required: true },
     anneeAdhesion: { type: Number },

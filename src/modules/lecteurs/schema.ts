@@ -88,7 +88,7 @@ export const optionalAdresseField = z.preprocess(
 export const createLecteurSchema = z.object({
   nom: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
   prenoms: z.string().min(2, "Les prénoms doivent contenir au moins 2 caractères"),
-  dateNaissance: z.coerce.date(),
+  dateNaissance: z.preprocess(emptyToUndefined, z.coerce.date().optional()),
   sexe: z.enum(["M", "F"]),
   gradeId: z.string().min(24, "Le grade est requis"),
   anneeAdhesion: optionalAnneeAdhesionField,
@@ -110,7 +110,7 @@ export const updateLecteurSchema = createLecteurSchema.partial();
 export const lecteurImportRowSchema = z.object({
   nom: z.string().min(1),
   prenoms: z.string().min(1),
-  dateNaissance: z.string().min(1),
+  dateNaissance: z.string().optional(),
   sexe: z.enum(["M", "F"]),
   grade: z.string().min(1, "Le grade est requis"),
   anneeAdhesion: optionalAnneeAdhesionField,

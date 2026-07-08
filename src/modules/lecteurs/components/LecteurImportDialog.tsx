@@ -353,8 +353,8 @@ export function LecteurImportDialog({
                 </>
               ) : (
                 <>
-                  Sélectionnez le vicariat et la paroisse, puis chargez le fichier Excel. Le grade est
-                  obligatoire, ainsi que le nom, les prénoms, la date de naissance et le sexe.
+                  Sélectionnez le vicariat et la paroisse, puis chargez le fichier Excel. Le nom, les
+                  prénoms, le sexe et le grade sont obligatoires ; la date de naissance est facultative.
                 </>
               )}
             </DialogDescription>
