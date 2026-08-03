@@ -4,6 +4,7 @@ import connectToDatabase from "@/lib/mongoose";
 import { CreateLecteurInput, UpdateLecteurInput } from "./schema";
 import { ActiviteParticipation } from "@/modules/activites/model";
 import { Activite } from "@/modules/activites/model";
+import { EvaluationLecteur, EvaluationNote } from "@/modules/evaluations/model";
 import "@/modules/vicariats/model";
 import "@/modules/paroisses/model";
 import "@/modules/grades/model";
@@ -167,6 +168,8 @@ export class LecteurRepository {
     await connectToDatabase();
     if (!mongoose.Types.ObjectId.isValid(id)) return false;
     await ActiviteParticipation.deleteMany({ lecteurId: id });
+    await EvaluationNote.deleteMany({ lecteurId: id });
+    await EvaluationLecteur.deleteMany({ lecteurId: id });
     const result = await Lecteur.findByIdAndDelete(id);
     return !!result;
   }

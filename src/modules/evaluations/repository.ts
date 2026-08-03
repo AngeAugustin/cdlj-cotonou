@@ -299,7 +299,23 @@ export class EvaluationRepository {
     if (opts.vicariatId) q.vicariatId = new mongoose.Types.ObjectId(opts.vicariatId);
     if (opts.paroisseId) q.paroisseId = new mongoose.Types.ObjectId(opts.paroisseId);
 
-    const members = (await EvaluationLecteur.find(q)
+    type MemberLean = {
+      _id: mongoose.Types.ObjectId;
+      lecteurId: {
+        _id: mongoose.Types.ObjectId;
+        nom: string;
+        prenoms: string;
+        uniqueId: string;
+        sexe: "M" | "F";
+      } | null;
+      vicariatId?: { _id: mongoose.Types.ObjectId; name: string; abbreviation: string } | mongoose.Types.ObjectId;
+      paroisseId?: { _id: mongoose.Types.ObjectId; name: string } | mongoose.Types.ObjectId;
+      gradeIdAtEvaluation?: { _id: mongoose.Types.ObjectId; name: string; abbreviation: string; level: number } | mongoose.Types.ObjectId;
+      moyenne?: number;
+      decision?: "PROMU" | "MAINTENU";
+    };
+
+    const membersRaw = (await EvaluationLecteur.find(q)
       // Réduction du payload: on ne garde que les champs réellement utilisés.
       .select("lecteurId vicariatId paroisseId gradeIdAtEvaluation moyenne decision")
       // Réduction du payload: la page détails n'utilise que nom/prénoms/uniqueId/sexe (et le grade "au moment de l'évaluation"
@@ -309,21 +325,12 @@ export class EvaluationRepository {
       .populate("paroisseId", "name")
       .populate("gradeIdAtEvaluation", "name abbreviation level")
       .sort({ "lecteurId.nom": 1, "lecteurId.prenoms": 1 })
-      .lean()) as unknown as Array<{
-      _id: mongoose.Types.ObjectId;
-      lecteurId: {
-        _id: mongoose.Types.ObjectId;
-        nom: string;
-        prenoms: string;
-        uniqueId: string;
-        sexe: "M" | "F";
-      };
-      vicariatId?: { _id: mongoose.Types.ObjectId; name: string; abbreviation: string } | mongoose.Types.ObjectId;
-      paroisseId?: { _id: mongoose.Types.ObjectId; name: string } | mongoose.Types.ObjectId;
-      gradeIdAtEvaluation?: { _id: mongoose.Types.ObjectId; name: string; abbreviation: string; level: number } | mongoose.Types.ObjectId;
-      moyenne?: number;
-      decision?: "PROMU" | "MAINTENU";
-    }>;
+      .lean()) as unknown as MemberLean[];
+
+    // Lecteurs supprimés → populate renvoie null ; on ignore ces liens orphelins.
+    const members = membersRaw.filter(
+      (m): m is MemberLean & { lecteurId: NonNullable<MemberLean["lecteurId"]> } => m.lecteurId != null
+    );
 
     const lecteurIds = members.map((m) => m.lecteurId._id.toString());
     const notes = (await EvaluationNote.find({
@@ -418,17 +425,7 @@ export class EvaluationRepository {
       | null;
     if (!evaluation) throw new Error("Evaluation introuvable");
 
-    const members = (await EvaluationLecteur.find({ evaluationId: new mongoose.Types.ObjectId(evaluationId) })
-      .select("lecteurId vicariatId paroisseId gradeIdAtEvaluation moyenne decision")
-      .populate(
-        "lecteurId",
-        "nom prenoms uniqueId sexe dateNaissance anneeAdhesion niveau details contact contactUrgence adresse maux"
-      )
-      .populate("vicariatId", "name abbreviation")
-      .populate("paroisseId", "name")
-      .populate("gradeIdAtEvaluation", "name abbreviation level")
-      .sort({ "lecteurId.nom": 1, "lecteurId.prenoms": 1 })
-      .lean()) as unknown as Array<{
+    type ExportMemberLean = {
       _id: mongoose.Types.ObjectId;
       lecteurId: {
         _id: mongoose.Types.ObjectId;
@@ -444,13 +441,31 @@ export class EvaluationRepository {
         contactUrgence?: string;
         adresse?: string;
         maux?: string;
-      };
+      } | null;
       vicariatId?: { _id: mongoose.Types.ObjectId; name: string; abbreviation: string } | mongoose.Types.ObjectId;
       paroisseId?: { _id: mongoose.Types.ObjectId; name: string } | mongoose.Types.ObjectId;
       gradeIdAtEvaluation?: { _id: mongoose.Types.ObjectId; name: string; abbreviation: string; level: number } | mongoose.Types.ObjectId;
       moyenne?: number;
       decision?: "PROMU" | "MAINTENU";
-    }>;
+    };
+
+    const membersRaw = (await EvaluationLecteur.find({ evaluationId: new mongoose.Types.ObjectId(evaluationId) })
+      .select("lecteurId vicariatId paroisseId gradeIdAtEvaluation moyenne decision")
+      .populate(
+        "lecteurId",
+        "nom prenoms uniqueId sexe dateNaissance anneeAdhesion niveau details contact contactUrgence adresse maux"
+      )
+      .populate("vicariatId", "name abbreviation")
+      .populate("paroisseId", "name")
+      .populate("gradeIdAtEvaluation", "name abbreviation level")
+      .sort({ "lecteurId.nom": 1, "lecteurId.prenoms": 1 })
+      .lean()) as unknown as ExportMemberLean[];
+
+    // Lecteurs supprimés → populate renvoie null ; on ignore ces liens orphelins.
+    const members = membersRaw.filter(
+      (m): m is ExportMemberLean & { lecteurId: NonNullable<ExportMemberLean["lecteurId"]> } =>
+        m.lecteurId != null
+    );
 
     const lecteurIds = members.map((m) => m.lecteurId._id.toString());
     const notes = (await EvaluationNote.find({
