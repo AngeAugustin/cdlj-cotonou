@@ -3,8 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { ActiviteService } from "@/modules/activites/service";
 
-function isActiviteManager(roles: string[]) {
-  return roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
+function isSuperAdmin(roles: string[]) {
+  return roles.includes("SUPERADMIN");
 }
 
 export async function PATCH(
@@ -14,7 +14,7 @@ export async function PATCH(
   try {
     const session: any = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (!isActiviteManager(session.user.roles ?? [])) {
+    if (!isSuperAdmin(session.user.roles ?? [])) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const { id } = await params;

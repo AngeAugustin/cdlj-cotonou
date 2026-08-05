@@ -345,7 +345,7 @@ export default function ActivitesPage() {
                       <span className="ml-1.5 lg:hidden xl:inline">Modifier</span>
                     </Link>
                   ) : null}
-                  {!a.terminee ? (
+                  {!a.terminee && isSuperAdmin ? (
                     <Button
                       type="button"
                       size="sm"

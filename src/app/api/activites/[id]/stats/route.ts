@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { ActiviteService } from "@/modules/activites/service";
-import { isDioceseScopeReader } from "@/lib/rolePermissions";
 
 export async function GET(
   request: Request,
@@ -13,6 +12,10 @@ export async function GET(
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const roles: string[] = session.user.roles ?? [];
+    if (!roles.includes("SUPERADMIN")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const vicariatFilter = searchParams.get("vicariatId") || undefined;
@@ -21,19 +24,8 @@ export async function GET(
     const a = await service.getActivite(id);
     if (!a) return NextResponse.json({ error: "Activité introuvable" }, { status: 404 });
 
-    if (roles.includes("VICARIAL")) {
-      const vid = session.user.vicariatId;
-      if (!vid) return NextResponse.json({ error: "Vicariat non défini pour ce compte" }, { status: 400 });
-      const stats = await service.getStats(id, vid);
-      return NextResponse.json(stats);
-    }
-
-    if (isDioceseScopeReader(roles)) {
-      const stats = await service.getStats(id, vicariatFilter ?? null);
-      return NextResponse.json(stats);
-    }
-
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const stats = await service.getStats(id, vicariatFilter ?? null);
+    return NextResponse.json(stats);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

@@ -578,10 +578,10 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
   }, [canSeePresence, tab]);
 
   useEffect(() => {
-    if (!isDiocesain && tab === "statistiques") {
+    if (!isSuperAdmin && tab === "statistiques") {
       setTab("infos");
     }
-  }, [isDiocesain, tab]);
+  }, [isSuperAdmin, tab]);
 
   useEffect(() => {
     if (!canSeeCartesParticipants && tab === "cartes") {
@@ -831,16 +831,18 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
                     Suspendre
                   </Button>
                 )}
-                <Button
-                  type="button"
-                  title="Marquer comme terminée"
-                  aria-label="Marquer comme terminée"
-                  className="h-9 rounded-full bg-emerald-700 px-3.5 text-xs font-semibold text-white hover:bg-emerald-800"
-                  onClick={() => setConfirmTermineeOpen(true)}
-                >
-                  <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                  Terminer
-                </Button>
+                {isSuperAdmin ? (
+                  <Button
+                    type="button"
+                    title="Marquer comme terminée"
+                    aria-label="Marquer comme terminée"
+                    className="h-9 rounded-full bg-emerald-700 px-3.5 text-xs font-semibold text-white hover:bg-emerald-800"
+                    onClick={() => setConfirmTermineeOpen(true)}
+                  >
+                    <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                    Terminer
+                  </Button>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -949,7 +951,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
             <Calendar className="w-4 h-4" />
             Informations
           </button>
-          {isDiocesain ? (
+          {isSuperAdmin ? (
             <button
               type="button"
               onClick={() => setTab("statistiques")}
@@ -1572,7 +1574,7 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
               />
             </div>
           </div>
-        ) : tab === "statistiques" && isDiocesain ? (
+        ) : tab === "statistiques" && isSuperAdmin ? (
           <ActiviteStatsPanel
             activiteId={activiteId}
             activiteNom={activite.nom}
