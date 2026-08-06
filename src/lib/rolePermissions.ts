@@ -98,6 +98,15 @@ export function canManageEvaluations(roles: string[] | undefined): boolean {
   return isDioceseManager(roles);
 }
 
+export function isSuperAdmin(roles: string[] | undefined): boolean {
+  return normalizeRoles(roles).includes("SUPERADMIN");
+}
+
+/** Seul le SUPERADMIN peut marquer une évaluation comme terminée. */
+export function canTerminateEvaluations(roles: string[] | undefined): boolean {
+  return isSuperAdmin(roles);
+}
+
 export function canManageActualites(roles: string[] | undefined): boolean {
   return isDioceseManager(roles);
 }

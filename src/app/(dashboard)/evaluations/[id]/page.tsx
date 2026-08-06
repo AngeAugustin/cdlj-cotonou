@@ -26,7 +26,12 @@ import {
   type EvaluationExportScope,
   type EvaluationReaderExportRow,
 } from "@/lib/evaluationReadersExport";
-import { canManageEvaluations, canViewEvaluations, isReadOnlyRole } from "@/lib/rolePermissions";
+import {
+  canManageEvaluations,
+  canTerminateEvaluations,
+  canViewEvaluations,
+  isReadOnlyRole,
+} from "@/lib/rolePermissions";
 
 type Role = string;
 
@@ -99,6 +104,7 @@ export default function EvaluationDetailsPage() {
   const user = session?.user as { roles?: Role[] } | undefined;
   const roles = user?.roles ?? [];
   const canManage = canManageEvaluations(roles);
+  const canTerminate = canTerminateEvaluations(roles);
   const canViewReaders = canViewEvaluations(roles);
   const isReadOnly = isReadOnlyRole(roles);
 
@@ -608,9 +614,11 @@ export default function EvaluationDetailsPage() {
               </Button>
             </div>
             {!evaluation.terminee ? (
-              <Button type="button" className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white" onClick={() => requestTerminer()}>
-                <CheckCircle className="w-4 h-4 mr-2" /> Marquer comme terminée
-              </Button>
+              canTerminate ? (
+                <Button type="button" className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white" onClick={() => requestTerminer()}>
+                  <CheckCircle className="w-4 h-4 mr-2" /> Marquer comme terminée
+                </Button>
+              ) : null
             ) : !evaluation.publiee ? (
               <Button type="button" className="rounded-xl bg-amber-900 hover:bg-amber-800 text-white" onClick={() => setPublierModalOpen(true)}>
                 Publier
