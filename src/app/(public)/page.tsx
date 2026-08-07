@@ -24,7 +24,7 @@ export const metadata = createPageMetadata({
 
 export default function LandingPage() {
   return (
-    <div className="flex flex-col w-full bg-gradient-to-b from-slate-50 via-white to-slate-50 relative overflow-hidden">
+    <div className="flex flex-col w-full bg-[#f7f5f1] relative overflow-hidden">
       <JsonLd
         data={[
           webPageSchema({

@@ -50,13 +50,13 @@ export function MediathequePublicGrid({
   return (
     <div ref={ref} className={className}>
       {showFilters && items.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-6 sm:mb-8 justify-center lg:justify-start">
+        <div className="flex flex-wrap gap-2 mb-6 sm:mb-8 justify-center">
           <button
             onClick={() => setFilter("all")}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               filter === "all"
-                ? "bg-amber-900 text-white shadow-md shadow-amber-900/20"
-                : "bg-white text-slate-600 border border-slate-200/80 hover:border-amber-200"
+                ? "bg-amber-950 text-white shadow-md shadow-amber-950/15"
+                : "bg-[#faf9f7] text-slate-600 border border-slate-200/80 hover:border-amber-200 hover:bg-white"
             }`}
           >
             <ImageIcon className="w-3.5 h-3.5" />
@@ -66,10 +66,10 @@ export function MediathequePublicGrid({
             <button
               key={cat}
               onClick={() => setFilter(cat)}
-              className={`px-3.5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+              className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                 filter === cat
-                  ? "bg-amber-900 text-white shadow-md shadow-amber-900/20"
-                  : "bg-white text-slate-600 border border-slate-200/80 hover:border-amber-200"
+                  ? "bg-amber-950 text-white shadow-md shadow-amber-950/15"
+                  : "bg-[#faf9f7] text-slate-600 border border-slate-200/80 hover:border-amber-200 hover:bg-white"
               }`}
             >
               {cat}
@@ -81,7 +81,7 @@ export function MediathequePublicGrid({
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
           <ImageIcon className="w-10 h-10 mx-auto mb-3 opacity-40" />
-          <p className="text-sm">Aucune médiathèque disponible pour le moment.</p>
+          <p className="text-sm font-medium text-slate-500">Aucune médiathèque disponible pour le moment.</p>
         </div>
       ) : (
         <motion.div layout className={compact ? MEDIATHEQUE_COMPACT_GRID : MEDIATHEQUE_DEFAULT_GRID}>
