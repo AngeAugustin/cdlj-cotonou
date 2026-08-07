@@ -9,6 +9,7 @@ import { MEDIATHEQUE_CATEGORIES, MOIS_LABELS } from "@/modules/mediatheque/const
 export type MediathequeItem = {
   _id: string;
   nom: string;
+  slug?: string;
   categorie: string;
   mois: number;
   annee: number;

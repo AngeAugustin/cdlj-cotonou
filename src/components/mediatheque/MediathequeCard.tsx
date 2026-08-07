@@ -3,8 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
+  ArrowRight,
   Edit2,
-  ExternalLink,
   Eye,
   EyeOff,
   ImageIcon,
@@ -16,6 +16,7 @@ import { formatMediathequeDate } from "@/modules/mediatheque/constants";
 export type MediathequeCardData = {
   _id?: string;
   nom: string;
+  slug?: string;
   categorie: string;
   mois: number;
   annee: number;
@@ -83,7 +84,7 @@ function CardCover({
             compact ? "h-8 w-8" : "h-12 w-12"
           }`}
         >
-          <ExternalLink className={compact ? "h-3.5 w-3.5 text-amber-900" : "h-5 w-5 text-amber-900"} />
+          <ArrowRight className={compact ? "h-3.5 w-3.5 text-amber-900" : "h-5 w-5 text-amber-900"} />
         </div>
       </div>
       <span
@@ -114,24 +115,46 @@ export function MediathequeCard({
   }`;
 
   if (mode === "public") {
+    const publicPath = item.slug
+      ? `/mediatheque/${item.slug}`
+      : item._id
+        ? `/mediatheque/${item._id}`
+        : null;
+
+    if (!publicPath) {
+      return (
+        <a
+          href={item.hostingLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={shellClass}
+        >
+          <CardCover item={item} compact={compact} />
+          <div className={compact ? "p-2.5" : "p-4"}>
+            <h3 className={titleClass}>{item.nom}</h3>
+          </div>
+        </a>
+      );
+    }
+
     return (
-      <a
-        href={item.hostingLink}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={shellClass}
-      >
+      <Link href={publicPath} className={shellClass}>
         <CardCover item={item} compact={compact} />
         <div className={compact ? "p-2.5" : "p-4"}>
           <h3 className={titleClass}>{item.nom}</h3>
         </div>
-      </a>
+      </Link>
     );
   }
 
+  const previewHref =
+    item.published && item.slug
+      ? `/mediatheque/${item.slug}`
+      : item.hostingLink;
+
   return (
     <article className={shellClass}>
-      <a href={item.hostingLink} target="_blank" rel="noopener noreferrer" className="block">
+      <a href={previewHref} target="_blank" rel="noopener noreferrer" className="block">
         <CardCover item={item} compact={compact} showStatus />
       </a>
       <div className={compact ? "p-2.5" : "p-4"}>
@@ -157,11 +180,11 @@ export function MediathequeCard({
             </button>
           )}
           <a
-            href={item.hostingLink}
+            href={previewHref}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-lg p-1.5 text-slate-400 transition-all hover:bg-amber-50 hover:text-amber-700"
-            title="Ouvrir le lien"
+            title={item.published && item.slug ? "Voir la page publique" : "Ouvrir le lien"}
           >
             <Eye className="h-3.5 w-3.5" />
           </a>

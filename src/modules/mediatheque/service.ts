@@ -12,6 +12,10 @@ export class MediathequeService {
     return this.repo.findById(id);
   }
 
+  async getMediathequeBySlug(slug: string) {
+    return this.repo.findBySlug(slug);
+  }
+
   async createMediatheque(data: CreateMediathequeInput) {
     return this.repo.create(data);
   }

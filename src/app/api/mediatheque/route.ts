@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
     const validated = createMediathequeSchema.parse(body);
     const service = new MediathequeService();
     const result = await service.createMediatheque(validated);
+    revalidateTag("mediatheque", "max");
     return NextResponse.json(result, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Erreur serveur";

@@ -205,14 +205,21 @@ export function webPageSchema(options: {
   name: string;
   description: string;
   path: string;
+  image?: string | null;
 }) {
   const url = absoluteUrl(options.path);
+  const image = options.image
+    ? options.image.startsWith("http")
+      ? options.image
+      : absoluteUrl(options.image)
+    : undefined;
   return {
     "@context": "https://schema.org",
     "@type": "WebPage",
     name: options.name,
     description: options.description,
     url,
+    ...(image && { image, primaryImageOfPage: { "@type": "ImageObject", url: image } }),
     isPartOf: { "@id": WEBSITE_ID },
     publisher: { "@id": ORG_ID },
     inLanguage: "fr-BJ",

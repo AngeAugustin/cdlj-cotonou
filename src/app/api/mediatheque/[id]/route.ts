@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -49,6 +50,7 @@ export async function PUT(
     const service = new MediathequeService();
     const result = await service.updateMediatheque(id, validated);
     if (!result) return NextResponse.json({ error: "Médiathèque introuvable" }, { status: 404 });
+    revalidateTag("mediatheque", "max");
     return NextResponse.json(result);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Erreur serveur";
@@ -72,6 +74,7 @@ export async function DELETE(
     const service = new MediathequeService();
     const deleted = await service.deleteMediatheque(id);
     if (!deleted) return NextResponse.json({ error: "Médiathèque introuvable" }, { status: 404 });
+    revalidateTag("mediatheque", "max");
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Erreur serveur";

@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IMediatheque extends Document {
   nom: string;
+  slug: string;
   categorie: string;
   mois: number;
   annee: number;
@@ -15,6 +16,7 @@ export interface IMediatheque extends Document {
 const MediathequeSchema = new Schema<IMediatheque>(
   {
     nom: { type: String, required: true },
+    slug: { type: String, unique: true, sparse: true },
     categorie: { type: String, required: true },
     mois: { type: Number, required: true, min: 1, max: 12 },
     annee: { type: Number, required: true, min: 2000, max: 2100 },
