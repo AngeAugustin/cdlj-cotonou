@@ -3,6 +3,7 @@ import connectToDatabase from "@/lib/mongoose";
 import { signPasswordResetToken, verifyPasswordResetToken } from "@/lib/passwordResetJwt";
 import { sendPasswordResetCodeEmail } from "@/lib/resendMail";
 import { User } from "@/modules/users/model";
+import { AuthSessionService } from "@/modules/auth-sessions/service";
 import { PasswordReset } from "./model";
 
 const CODE_TTL_MS = 15 * 60 * 1000;
@@ -101,4 +102,6 @@ export async function resetPasswordWithToken(
   if (!updated) {
     throw new Error("Utilisateur introuvable");
   }
+  const sessions = new AuthSessionService();
+  await sessions.revokeAll(userId);
 }

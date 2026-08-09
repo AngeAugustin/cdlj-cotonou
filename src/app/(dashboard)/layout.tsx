@@ -10,16 +10,13 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const session = await getServerSession(authOptions);
+  const sessionUser = session?.user as { id?: string; name?: string | null; roles?: string[]; paroisseName?: string | null } | undefined;
 
-  if (!session) {
+  if (!sessionUser?.id) {
     redirect("/auth/login");
   }
 
-  const user = session.user as {
-    name?: string | null;
-    roles?: string[];
-    paroisseName?: string | null;
-  };
+  const user = sessionUser;
   const roles = normalizeRoles(
     Array.isArray(user.roles) && user.roles.length > 0 ? user.roles : ["PAROISSIAL"]
   );

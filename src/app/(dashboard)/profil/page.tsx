@@ -14,12 +14,16 @@ import {
   User,
   KeyRound,
   Sparkles,
+  MonitorSmartphone,
+  LogOut,
+  ShieldOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DashboardPageShell } from "@/components/dashboard/page-shell";
+import type { AuthSessionView } from "@/modules/auth-sessions/service";
 
 type ApiProfile = {
   _id: string;
@@ -196,6 +200,17 @@ function PasswordField({
   );
 }
 
+function formatSessionDate(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("fr-FR", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
 export default function ProfilPage() {
   const [profile, setProfile] = useState<ApiProfile | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -208,6 +223,32 @@ export default function ProfilPage() {
   const [showNew, setShowNew] = useState(false);
   const [pwdSaving, setPwdSaving] = useState(false);
   const [pwdMessage, setPwdMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  const [sessions, setSessions] = useState<AuthSessionView[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const [sessionActionId, setSessionActionId] = useState<string | null>(null);
+  const [revokingOthers, setRevokingOthers] = useState(false);
+
+  const loadSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    setSessionsError(null);
+    try {
+      const res = await fetch("/api/me/sessions");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSessionsError(data.error ?? "Impossible de charger les sessions");
+        setSessions([]);
+        return;
+      }
+      setSessions(Array.isArray(data.sessions) ? data.sessions : []);
+    } catch {
+      setSessionsError("Erreur réseau");
+      setSessions([]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -231,7 +272,46 @@ export default function ProfilPage() {
 
   useEffect(() => {
     loadProfile();
-  }, [loadProfile]);
+    loadSessions();
+  }, [loadProfile, loadSessions]);
+
+  const revokeSession = async (sessionId: string) => {
+    setSessionActionId(sessionId);
+    setSessionsError(null);
+    try {
+      const res = await fetch(`/api/me/sessions/${encodeURIComponent(sessionId)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSessionsError(data.error ?? "Impossible de déconnecter cette session");
+        return;
+      }
+      await loadSessions();
+    } catch {
+      setSessionsError("Erreur réseau");
+    } finally {
+      setSessionActionId(null);
+    }
+  };
+
+  const revokeOtherSessions = async () => {
+    setRevokingOthers(true);
+    setSessionsError(null);
+    try {
+      const res = await fetch("/api/me/sessions?others=1", { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSessionsError(data.error ?? "Impossible de déconnecter les autres sessions");
+        return;
+      }
+      await loadSessions();
+    } catch {
+      setSessionsError("Erreur réseau");
+    } finally {
+      setRevokingOthers(false);
+    }
+  };
 
   const submitPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,10 +332,18 @@ export default function ProfilPage() {
         setPwdMessage({ type: "err", text: data.error ?? "Échec du changement" });
         return;
       }
-      setPwdMessage({ type: "ok", text: "Mot de passe mis à jour avec succès." });
+      const revoked = typeof data.revokedOthers === "number" ? data.revokedOthers : 0;
+      setPwdMessage({
+        type: "ok",
+        text:
+          revoked > 0
+            ? `Mot de passe mis à jour. ${revoked} autre${revoked > 1 ? "s" : ""} session${revoked > 1 ? "s" : ""} déconnectée${revoked > 1 ? "s" : ""}.`
+            : "Mot de passe mis à jour avec succès.",
+      });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      void loadSessions();
     } catch {
       setPwdMessage({ type: "err", text: "Erreur réseau" });
     } finally {
@@ -467,6 +555,105 @@ export default function ProfilPage() {
               </form>
             </div>
           </div>
+        </div>
+
+        {/* Sessions actives */}
+        <div className="rounded-3xl border border-slate-100 bg-white p-6 sm:p-8 shadow-xl shadow-slate-200/20">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+            <SectionHeader
+              icon={MonitorSmartphone}
+              title="Sessions actives"
+              description="Appareils connectés à votre compte. Vous pouvez en déconnecter à distance."
+            />
+            {sessions.some((s) => !s.current) ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={revokingOthers || sessionsLoading}
+                onClick={() => void revokeOtherSessions()}
+                className="rounded-xl border-slate-200 shrink-0"
+              >
+                {revokingOthers ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Déconnexion…
+                  </>
+                ) : (
+                  <>
+                    <ShieldOff className="w-4 h-4 mr-2" />
+                    Déconnecter les autres
+                  </>
+                )}
+              </Button>
+            ) : null}
+          </div>
+
+          {sessionsError ? (
+            <div className="mb-4 rounded-xl px-4 py-3 text-sm font-medium border bg-red-50 text-red-800 border-red-100">
+              {sessionsError}
+            </div>
+          ) : null}
+
+          {sessionsLoading ? (
+            <div className="flex items-center gap-3 text-sm text-slate-500 py-6">
+              <Loader2 className="w-4 h-4 animate-spin text-amber-900" />
+              Chargement des sessions…
+            </div>
+          ) : sessions.length === 0 ? (
+            <p className="text-sm text-slate-500 py-2">
+              Aucune session active pour le moment.
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden">
+              {sessions.map((s) => (
+                <li
+                  key={s.sessionId}
+                  className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 bg-white"
+                >
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 border border-slate-100 text-slate-600">
+                      <MonitorSmartphone className="w-4 h-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-bold text-slate-900">{s.deviceLabel}</p>
+                        {s.current ? (
+                          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+                            Cette session
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Connexion : {formatSessionDate(s.createdAt)}
+                        {" · "}
+                        Dernière activité : {formatSessionDate(s.lastSeenAt)}
+                        {s.ip ? ` · ${s.ip}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  {!s.current ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={sessionActionId === s.sessionId}
+                      onClick={() => void revokeSession(s.sessionId)}
+                      className="rounded-xl border-red-100 text-red-700 hover:bg-red-50 hover:text-red-800 shrink-0"
+                    >
+                      {sessionActionId === s.sessionId ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <LogOut className="w-3.5 h-3.5 mr-1.5" />
+                          Déconnecter
+                        </>
+                      )}
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </DashboardPageShell>

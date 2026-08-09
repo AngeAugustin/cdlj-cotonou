@@ -33,6 +33,10 @@ export default withAuth(
     pages: {
       signIn: "/auth/login",
     },
+    callbacks: {
+      // JWT sans sessionId = session révoquée / ancienne (avant registre sessions)
+      authorized: ({ token }) => Boolean(token?.id && token?.sessionId),
+    },
   }
 );
 
