@@ -39,11 +39,15 @@ export const authOptions: NextAuthOptions = {
           paroisseName = parish?.name ?? null;
         }
 
-        const { userAgent, ip } = extractClientMeta(req?.headers);
+        const clientMeta = extractClientMeta(req?.headers);
         const { sessionId } = await authSessionService.create({
           userId: user._id.toString(),
-          userAgent,
-          ip,
+          userAgent: clientMeta.userAgent,
+          ip: clientMeta.ip,
+          country: clientMeta.country,
+          region: clientMeta.region,
+          city: clientMeta.city,
+          locationLabel: clientMeta.locationLabel,
         });
 
         return {

@@ -17,6 +17,7 @@ import {
   MonitorSmartphone,
   LogOut,
   ShieldOff,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -627,7 +628,13 @@ export default function ProfilPage() {
                         Connexion : {formatSessionDate(s.createdAt)}
                         {" · "}
                         Dernière activité : {formatSessionDate(s.lastSeenAt)}
-                        {s.ip ? ` · ${s.ip}` : ""}
+                      </p>
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+                        <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
+                        <span className="truncate">
+                          {s.locationLabel || "Localisation indisponible"}
+                          {s.ip ? ` · ${s.ip}` : ""}
+                        </span>
                       </p>
                     </div>
                   </div>

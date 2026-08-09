@@ -8,11 +8,22 @@ export const SESSION_IDLE_MS = 30 * 24 * 60 * 60 * 1000;
 /** Évite d’écrire lastSeenAt à chaque requête. */
 const LAST_SEEN_THROTTLE_MS = 5 * 60 * 1000;
 
+export type SessionGeo = {
+  country?: string;
+  region?: string;
+  city?: string;
+  locationLabel?: string;
+};
+
 export type AuthSessionView = {
   id: string;
   sessionId: string;
   deviceLabel: string;
   ip?: string;
+  locationLabel?: string;
+  country?: string;
+  region?: string;
+  city?: string;
   createdAt: string;
   lastSeenAt: string;
   current: boolean;
@@ -31,15 +42,59 @@ function headerValue(
   return typeof raw === "string" ? raw : undefined;
 }
 
+function decodeHeaderValue(value?: string): string | undefined {
+  if (!value?.trim()) return undefined;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function countryDisplayName(code?: string): string | undefined {
+  if (!code?.trim()) return undefined;
+  try {
+    return new Intl.DisplayNames(["fr"], { type: "region" }).of(code.toUpperCase()) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+export function formatLocationLabel(geo: {
+  city?: string;
+  region?: string;
+  country?: string;
+}): string | undefined {
+  const city = geo.city?.trim() || undefined;
+  const region = geo.region?.trim() || undefined;
+  const countryName = countryDisplayName(geo.country);
+  const parts: string[] = [];
+  if (city) parts.push(city);
+  if (region && region.toLowerCase() !== city?.toLowerCase()) parts.push(region);
+  if (countryName) parts.push(countryName);
+  return parts.length ? parts.join(", ") : undefined;
+}
+
 export function extractClientMeta(headers: Record<string, unknown> | Headers | undefined): {
   userAgent?: string;
   ip?: string;
-} {
+} & SessionGeo {
   const userAgent = headerValue(headers, "user-agent");
   const forwarded = headerValue(headers, "x-forwarded-for");
   const realIp = headerValue(headers, "x-real-ip");
   const ip = forwarded?.split(",")[0]?.trim() || realIp || undefined;
-  return { userAgent, ip };
+
+  const country =
+    headerValue(headers, "x-vercel-ip-country") ?? headerValue(headers, "cf-ipcountry") ?? undefined;
+  const city = decodeHeaderValue(headerValue(headers, "x-vercel-ip-city"));
+  const region =
+    decodeHeaderValue(headerValue(headers, "x-vercel-ip-country-region")) ??
+    headerValue(headers, "x-vercel-ip-region") ??
+    undefined;
+
+  const locationLabel = formatLocationLabel({ city, region, country });
+
+  return { userAgent, ip, country, region, city, locationLabel };
 }
 
 export function parseDeviceLabel(userAgent?: string): string {
@@ -71,15 +126,30 @@ export class AuthSessionService {
     userId: string;
     userAgent?: string;
     ip?: string;
+    country?: string;
+    region?: string;
+    city?: string;
+    locationLabel?: string;
   }): Promise<{ sessionId: string }> {
     await connectToDatabase();
     const sessionId = randomUUID();
+    const locationLabel =
+      params.locationLabel ||
+      formatLocationLabel({
+        city: params.city,
+        region: params.region,
+        country: params.country,
+      });
     await AuthSession.create({
       sessionId,
       userId: new mongoose.Types.ObjectId(params.userId),
       userAgent: params.userAgent,
       deviceLabel: parseDeviceLabel(params.userAgent),
       ip: params.ip,
+      country: params.country,
+      region: params.region,
+      city: params.city,
+      locationLabel,
       lastSeenAt: new Date(),
       revokedAt: null,
     });
@@ -118,15 +188,28 @@ export class AuthSessionService {
       .sort({ lastSeenAt: -1 })
       .lean();
 
-    return rows.map((row) => ({
-      id: String(row._id),
-      sessionId: row.sessionId,
-      deviceLabel: row.deviceLabel || parseDeviceLabel(row.userAgent),
-      ip: row.ip || undefined,
-      createdAt: new Date(row.createdAt).toISOString(),
-      lastSeenAt: new Date(row.lastSeenAt).toISOString(),
-      current: Boolean(currentSessionId && row.sessionId === currentSessionId),
-    }));
+    return rows.map((row) => {
+      const locationLabel =
+        row.locationLabel ||
+        formatLocationLabel({
+          city: row.city,
+          region: row.region,
+          country: row.country,
+        });
+      return {
+        id: String(row._id),
+        sessionId: row.sessionId,
+        deviceLabel: row.deviceLabel || parseDeviceLabel(row.userAgent),
+        ip: row.ip || undefined,
+        locationLabel,
+        country: row.country || undefined,
+        region: row.region || undefined,
+        city: row.city || undefined,
+        createdAt: new Date(row.createdAt).toISOString(),
+        lastSeenAt: new Date(row.lastSeenAt).toISOString(),
+        current: Boolean(currentSessionId && row.sessionId === currentSessionId),
+      };
+    });
   }
 
   async revokeBySessionId(userId: string, sessionId: string): Promise<boolean> {

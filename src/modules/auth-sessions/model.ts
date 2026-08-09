@@ -6,6 +6,11 @@ export interface IAuthSession extends Document {
   userAgent?: string;
   deviceLabel: string;
   ip?: string;
+  /** Libellé affiché, ex. "Cotonou, Littoral, Bénin" */
+  locationLabel?: string;
+  country?: string;
+  region?: string;
+  city?: string;
   lastSeenAt: Date;
   revokedAt?: Date | null;
   createdAt: Date;
@@ -19,6 +24,10 @@ const authSessionSchema = new Schema<IAuthSession>(
     userAgent: { type: String },
     deviceLabel: { type: String, required: true },
     ip: { type: String },
+    locationLabel: { type: String },
+    country: { type: String },
+    region: { type: String },
+    city: { type: String },
     lastSeenAt: { type: Date, required: true, default: () => new Date() },
     revokedAt: { type: Date, default: null },
   },
