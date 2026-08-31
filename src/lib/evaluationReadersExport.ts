@@ -102,8 +102,8 @@ function formatSexe(sexe: "M" | "F") {
 
 function formatDecision(d?: string) {
   if (!d) return "—";
-  if (d === "PROMU") return "Promu";
-  if (d === "MAINTENU") return "Maintenu";
+  if (d === "PROMU") return "Admissible";
+  if (d === "MAINTENU") return "Refusé";
   return String(d);
 }
 

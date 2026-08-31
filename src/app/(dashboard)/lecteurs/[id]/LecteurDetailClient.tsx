@@ -570,9 +570,9 @@ export function LecteurDetailClient({ lecteurId, lecteur }: LecteurDetailClientP
                         const badge =
                           ev.decision === "PROMU"
                             ? "bg-green-50 text-green-700 border-green-200"
-                            : "bg-amber-50 text-amber-700 border-amber-200";
+                            : "bg-red-50 text-red-700 border-red-200";
 
-                        const label = ev.decision === "PROMU" ? "Promu" : "Maintenu";
+                        const label = ev.decision === "PROMU" ? "Admissible" : "Refusé";
 
                         return (
                           <span

@@ -45,18 +45,22 @@ function ResultField({ label, value, className }: { label: string; value: string
 }
 
 function decisionCardClass(decision: "PROMU" | "MAINTENU") {
-  return decision === "PROMU" ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50";
+  return decision === "PROMU" ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50";
 }
 
 function decisionTextClass(decision: "PROMU" | "MAINTENU") {
-  return decision === "PROMU" ? "text-green-700" : "text-amber-800";
+  return decision === "PROMU" ? "text-green-700" : "text-red-700";
+}
+
+function formatDecisionLabel(decision: "PROMU" | "MAINTENU") {
+  return decision === "PROMU" ? "Admissible" : "Refusé";
 }
 
 function DecisionField({ decision }: { decision: "PROMU" | "MAINTENU" }) {
   return (
     <div className={cn("rounded-2xl border px-4 py-3", decisionCardClass(decision))}>
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Décision</p>
-      <p className={cn("mt-1 text-base font-bold", decisionTextClass(decision))}>{decision}</p>
+      <p className={cn("mt-1 text-base font-bold", decisionTextClass(decision))}>{formatDecisionLabel(decision)}</p>
     </div>
   );
 }

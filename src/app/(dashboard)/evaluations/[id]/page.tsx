@@ -76,8 +76,8 @@ type Toast = { message: string; type: "success" | "error" };
 
 function formatDecision(d?: string) {
   if (!d) return "—";
-  if (d === "PROMU") return "Promu";
-  if (d === "MAINTENU") return "Maintenu";
+  if (d === "PROMU") return "Admissible";
+  if (d === "MAINTENU") return "Refusé";
   return String(d);
 }
 
@@ -281,7 +281,7 @@ export default function EvaluationDetailsPage() {
       const res = await fetch(`/api/evaluations/${id}/terminer`, { method: "PATCH" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Opération impossible");
-      showToast("Évaluation terminée (moyennes calculées)");
+      showToast("Évaluation terminée (moyennes et décisions calculées)");
       await fetchEvaluation();
       await fetchReaders();
       setTerminationPreview(null);
@@ -849,7 +849,7 @@ export default function EvaluationDetailsPage() {
                             decision === "PROMU"
                               ? "bg-green-50 text-green-700 border-green-200"
                               : decision === "MAINTENU"
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                ? "bg-red-50 text-red-700 border-red-200"
                                 : "bg-slate-50 text-slate-700 border-slate-200";
 
                           return (
@@ -890,9 +890,11 @@ export default function EvaluationDetailsPage() {
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-50 mx-auto mb-2">
               <CheckCircle className="w-5 h-5 text-emerald-700" />
             </div>
-            <DialogTitle className="text-center text-base">Calculer les moyennes et promouvoir ?</DialogTitle>
+            <DialogTitle className="text-center text-base">Calculer les moyennes et l&apos;admissibilité ?</DialogTitle>
             <DialogDescription className="text-center">
-              Le système calculera la moyenne des notes pour chaque lecteur, puis promouvra ceux dont la moyenne est strictement supérieure à 12.
+              Le système calculera la moyenne des notes pour chaque lecteur. Ceux dont la moyenne est strictement
+              supérieure à 12 seront déclarés <span className="font-semibold text-green-700">Admissibles</span> ; les
+              autres seront déclarés <span className="font-semibold text-red-700">Refusés</span>.
             </DialogDescription>
           </DialogHeader>
 
