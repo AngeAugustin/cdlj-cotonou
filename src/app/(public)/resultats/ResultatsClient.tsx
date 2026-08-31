@@ -592,7 +592,7 @@ export function ResultatsClient() {
                 <ResultField label="Paroisse" value={state.lecteur.paroisse} />
                 <DecisionField decision={state.result.decision} />
                 <ResultField
-                  label="Nouveau grade"
+                  label={state.result.decision === "PROMU" ? "Nouveau grade" : "Grade maintenu"}
                   value={`${state.result.nouveauGrade.name} (${state.result.nouveauGrade.abbreviation})`}
                   className="sm:col-span-2"
                 />
