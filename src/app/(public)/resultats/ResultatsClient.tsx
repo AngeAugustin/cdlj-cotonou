@@ -230,7 +230,7 @@ export function ResultatsClient() {
     if (typeof window === "undefined" || fedapayReturnHandled.current) return;
     if (searchParams.get("payment") !== "return") return;
 
-    const returnUniqueId = (searchParams.get("uniqueId") ?? uniqueId).trim().toUpperCase();
+    const returnUniqueId = (searchParams.get("uniqueId") ?? "").trim().toUpperCase();
     if (returnUniqueId) setUniqueId(returnUniqueId);
 
     let pid = searchParams.get("pid") ?? searchParams.get("paymentId");
@@ -319,15 +319,28 @@ export function ResultatsClient() {
             return;
           }
 
-          const msg =
-            st === "declined"
-              ? "Paiement refusé."
-              : st === "canceled"
-                ? "Paiement annulé."
-                : st === "failed"
-                  ? "Paiement en échec."
-                  : "Paiement annulé ou non finalisé.";
-          await stopPolling(msg, false);
+          if (
+            st === "declined" ||
+            st === "canceled" ||
+            st === "failed" ||
+            st === "non_finalized" ||
+            st === "approved_pending_registration"
+          ) {
+            const msg =
+              st === "declined"
+                ? "Paiement refusé."
+                : st === "canceled"
+                  ? "Paiement annulé."
+                  : st === "failed"
+                    ? "Paiement en échec."
+                    : st === "approved_pending_registration"
+                      ? "Paiement confirmé, finalisation en cours. Réessayez dans un instant."
+                      : "Paiement annulé ou non finalisé.";
+            await stopPolling(msg, false);
+            return;
+          }
+
+          await stopPolling("Paiement annulé ou non finalisé.", false);
         } catch {
           await stopPolling("Paiement annulé ou non finalisé.", false);
         }
@@ -342,7 +355,10 @@ export function ResultatsClient() {
         const st = typeof data?.status === "string" ? data.status : null;
 
         if (!res.ok) {
-          scheduleNext();
+          await stopPolling(
+            typeof data?.error === "string" ? data.error : "Impossible de vérifier le paiement.",
+            false
+          );
           return;
         }
 
@@ -351,7 +367,13 @@ export function ResultatsClient() {
           return;
         }
 
-        if (st === "declined" || st === "canceled" || st === "failed" || st === "non_finalized") {
+        if (
+          st === "declined" ||
+          st === "canceled" ||
+          st === "failed" ||
+          st === "non_finalized" ||
+          st === "approved_pending_registration"
+        ) {
           const msg =
             st === "declined"
               ? "Paiement refusé."
@@ -359,14 +381,16 @@ export function ResultatsClient() {
                 ? "Paiement annulé."
                 : st === "failed"
                   ? "Paiement en échec."
-                  : "Paiement annulé ou non finalisé.";
+                  : st === "approved_pending_registration"
+                    ? "Paiement confirmé, finalisation en cours. Réessayez dans un instant."
+                    : "Paiement annulé ou non finalisé.";
           await stopPolling(msg, false);
           return;
         }
 
         scheduleNext();
       } catch {
-        scheduleNext();
+        await stopPolling("Erreur réseau lors de la vérification du paiement.", false);
       }
     };
 
@@ -377,7 +401,8 @@ export function ResultatsClient() {
       if (paymentPollTimeoutRef.current != null) window.clearTimeout(paymentPollTimeoutRef.current);
       if (paymentPollDeadlineTimeoutRef.current != null) window.clearTimeout(paymentPollDeadlineTimeoutRef.current);
     };
-  }, [searchParams, router, uniqueId, runCheck, fetchResult]);
+    // uniqueId volontairement exclu : setUniqueId() dans cet effet relançait le cleanup et annulait le polling.
+  }, [searchParams, router, runCheck, fetchResult]);
 
   const isBusy =
     state.status === "loading" ||
