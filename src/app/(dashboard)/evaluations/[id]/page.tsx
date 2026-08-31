@@ -892,7 +892,7 @@ export default function EvaluationDetailsPage() {
             </div>
             <DialogTitle className="text-center text-base">Calculer les moyennes et promouvoir ?</DialogTitle>
             <DialogDescription className="text-center">
-              Le système calculera la moyenne des notes pour chaque lecteur, puis promouvra ceux dont la moyenne est strictement supérieure à 10.
+              Le système calculera la moyenne des notes pour chaque lecteur, puis promouvra ceux dont la moyenne est strictement supérieure à 12.
             </DialogDescription>
           </DialogHeader>
 

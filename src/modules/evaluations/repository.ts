@@ -830,7 +830,7 @@ export class EvaluationRepository {
       const lid = m.lecteurId.toString();
       const sumVal = sumByLecteur.get(lid) ?? 0;
       const moyenne = sumVal / nombreNotes;
-      const decision = moyenne > 10 ? "PROMU" : "MAINTENU";
+      const decision = moyenne > 12 ? "PROMU" : "MAINTENU";
 
       ops.push({
         updateOne: {
