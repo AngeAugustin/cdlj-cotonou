@@ -45,6 +45,8 @@ const ROLE_LABELS: Record<string, string> = {
   DIOCESAIN: "Diocésain",
   VICARIAL: "Vicarial",
   PAROISSIAL: "Paroissial",
+  REDACTEUR: "Rédacteur",
+  DIRECTION_SPIRITUELLE: "Direction spirituelle",
 };
 
 const ROLE_STYLES: Record<string, string> = {
@@ -52,6 +54,8 @@ const ROLE_STYLES: Record<string, string> = {
   DIOCESAIN: "bg-amber-400/20 text-amber-100 border-amber-300/30",
   VICARIAL: "bg-sky-400/20 text-sky-100 border-sky-300/30",
   PAROISSIAL: "bg-emerald-400/20 text-emerald-100 border-emerald-300/30",
+  REDACTEUR: "bg-rose-400/20 text-rose-100 border-rose-300/30",
+  DIRECTION_SPIRITUELLE: "bg-amber-400/20 text-amber-100 border-amber-300/30",
 };
 
 const HERO_AMBER_BG = (

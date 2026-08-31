@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { PAGE_SEO } from "@/config/page-seo";
 import { createPageMetadata } from "@/lib/seo";
@@ -29,7 +30,9 @@ export default function ResultatsPage() {
           }),
         ]}
       />
-      <ResultatsClient />
+      <Suspense fallback={null}>
+        <ResultatsClient />
+      </Suspense>
     </>
   );
 }

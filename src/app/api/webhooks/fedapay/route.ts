@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { fedapayVerifyWebhook } from "@/lib/fedapay";
 import { syncPaymentFromFedapayTransactionId, syncPaymentFromInternalPaymentId } from "@/lib/activitePaymentFinalize";
+import {
+  syncResultatPaymentFromFedapayTransactionId,
+  syncResultatPaymentFromInternalPaymentId,
+} from "@/lib/resultatPaymentFinalize";
 
 /** Webhook FedaPay — production : https://www.cdlj-cotonou.com/api/webhooks/fedapay */
 export const runtime = "nodejs";
@@ -56,14 +60,24 @@ export async function POST(request: Request) {
   const internalPaymentId = extractInternalPaymentId(event);
 
   if (internalPaymentId) {
-    const result = await syncPaymentFromInternalPaymentId(internalPaymentId, name, txId);
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error ?? "Traitement refusé" }, { status: 500 });
+    const activiteResult = await syncPaymentFromInternalPaymentId(internalPaymentId, name, txId);
+    if (!activiteResult.ok) {
+      return NextResponse.json({ error: activiteResult.error ?? "Traitement refusé" }, { status: 500 });
+    }
+
+    const resultatResult = await syncResultatPaymentFromInternalPaymentId(internalPaymentId, name, txId);
+    if (resultatResult.found && !resultatResult.ok) {
+      return NextResponse.json({ error: resultatResult.error ?? "Traitement refusé" }, { status: 500 });
     }
   } else if (txId != null) {
-    const result = await syncPaymentFromFedapayTransactionId(txId, name);
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error ?? "Traitement refusé" }, { status: 500 });
+    const activiteResult = await syncPaymentFromFedapayTransactionId(txId, name);
+    if (!activiteResult.ok) {
+      return NextResponse.json({ error: activiteResult.error ?? "Traitement refusé" }, { status: 500 });
+    }
+
+    const resultatResult = await syncResultatPaymentFromFedapayTransactionId(txId, name);
+    if (resultatResult.found && !resultatResult.ok) {
+      return NextResponse.json({ error: resultatResult.error ?? "Traitement refusé" }, { status: 500 });
     }
   }
 

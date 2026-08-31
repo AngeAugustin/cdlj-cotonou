@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { EvaluationService } from "@/modules/evaluations/service";
-import connectToDatabase from "@/lib/mongoose";
-import { Lecteur } from "@/modules/lecteurs/model";
 
 const bodySchema = z.object({
   uniqueId: z.string().trim().min(1, "Le numéro lecteur est requis."),
@@ -16,54 +14,33 @@ export async function POST(request: Request) {
     }
 
     const service = new EvaluationService();
-    const payload = await service.getPublicLecteurResultForYear(parsed.data.uniqueId);
+    const check = await service.checkPublicResultConsultation(parsed.data.uniqueId);
 
-    if (!payload) {
+    if (!check) {
       return NextResponse.json(
         { found: false, message: "Aucun lecteur trouvé avec ce numéro." },
         { status: 404 }
       );
     }
 
-    if (!payload.result) {
+    if (!check.hasResult) {
       return NextResponse.json({
         found: true,
-        lecteur: payload.lecteur,
-        result: null,
+        lecteur: check.lecteur,
+        hasResult: false,
+        paid: false,
         message: "Aucun résultat publié pour l'année en cours.",
-      });
-    }
-
-    await connectToDatabase();
-    const lecteur = await Lecteur.findOne({ uniqueId: parsed.data.uniqueId.trim().toUpperCase() })
-      .select("_id")
-      .lean();
-    if (!lecteur) {
-      return NextResponse.json(
-        { found: false, message: "Aucun lecteur trouvé avec ce numéro." },
-        { status: 404 }
-      );
-    }
-
-    const paid = await service.hasApprovedResultConsultationPayment(
-      String(lecteur._id),
-      payload.result.annee
-    );
-
-    if (!paid) {
-      return NextResponse.json({
-        found: true,
-        lecteur: payload.lecteur,
-        result: null,
-        paymentRequired: true,
-        message: "Le paiement de consultation est requis pour afficher le résultat.",
       });
     }
 
     return NextResponse.json({
       found: true,
-      lecteur: payload.lecteur,
-      result: payload.result,
+      lecteur: check.lecteur,
+      hasResult: true,
+      paid: check.paid,
+      montant: check.montant,
+      evaluationId: check.evaluationId,
+      annee: check.annee,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Erreur serveur";

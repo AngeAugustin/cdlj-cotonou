@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ActualiteEngagementPanel } from "@/modules/actualites/components/ActualiteEngagementPanel";
 import type { Actualite } from "@/modules/actualites/components/ArticleForm";
+import { canManageActualites } from "@/lib/rolePermissions";
 
 const HERO_AMBER_BG = (
   <>
@@ -28,7 +29,7 @@ export default function ActualiteStatsPage() {
   const id = params.id as string;
   const { data: session, status } = useSession();
   const roles: string[] = (session?.user as { roles?: string[] })?.roles ?? [];
-  const isAdmin = roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
+  const isAdmin = canManageActualites(roles);
 
   const [article, setArticle] = useState<Actualite | null>(null);
   const [loading, setLoading] = useState(true);

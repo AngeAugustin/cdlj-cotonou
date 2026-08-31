@@ -1,10 +1,12 @@
 export const ROLE_DIRECTION_SPIRITUELLE = "DIRECTION_SPIRITUELLE" as const;
+export const ROLE_REDACTEUR = "REDACTEUR" as const;
 
 export type AppRole =
   | "SUPERADMIN"
   | "DIOCESAIN"
   | "VICARIAL"
   | "PAROISSIAL"
+  | typeof ROLE_REDACTEUR
   | typeof ROLE_DIRECTION_SPIRITUELLE;
 
 const OPERATIONAL_ROLES = ["SUPERADMIN", "DIOCESAIN", "VICARIAL", "PAROISSIAL"] as const;
@@ -14,8 +16,13 @@ const KNOWN_ROLES: readonly AppRole[] = [
   "DIOCESAIN",
   "VICARIAL",
   "PAROISSIAL",
+  ROLE_REDACTEUR,
   ROLE_DIRECTION_SPIRITUELLE,
 ];
+
+function stripAccents(value: string): string {
+  return value.normalize("NFD").replace(/\p{M}/gu, "");
+}
 
 /** Ramène une valeur brute (espaces, tirets, variantes) vers un rôle canonique. */
 export function canonicalizeRole(role: string): string {
@@ -23,6 +30,13 @@ export function canonicalizeRole(role: string): string {
   if (KNOWN_ROLES.includes(compact as AppRole)) return compact;
 
   const collapsed = compact.replace(/_/g, "");
+  const compactPlain = stripAccents(compact);
+  const collapsedPlain = stripAccents(collapsed);
+
+  if (compactPlain === ROLE_REDACTEUR || collapsedPlain === ROLE_REDACTEUR) {
+    return ROLE_REDACTEUR;
+  }
+
   if (
     (compact.includes("DIRECTION") || collapsed.includes("DIRECTION")) &&
     (compact.includes("SPIRITUEL") || compact.includes("SPIRITUAL") || collapsed.includes("SPIRITUEL"))
@@ -107,8 +121,18 @@ export function canTerminateEvaluations(roles: string[] | undefined): boolean {
   return isSuperAdmin(roles);
 }
 
+export function isRedacteur(roles: string[] | undefined): boolean {
+  return normalizeRoles(roles).includes(ROLE_REDACTEUR);
+}
+
+/** Compte limité à la rédaction des actualités (sans autre rôle). */
+export function isRedacteurOnly(roles: string[] | undefined): boolean {
+  const r = normalizeRoles(roles);
+  return r.includes(ROLE_REDACTEUR) && r.every((role) => role === ROLE_REDACTEUR);
+}
+
 export function canManageActualites(roles: string[] | undefined): boolean {
-  return isDioceseManager(roles);
+  return isDioceseManager(roles) || isRedacteur(roles);
 }
 
 export function refId(v: unknown): string {
@@ -139,6 +163,7 @@ export function formatRoleLabel(role: string): string {
     DIOCESAIN: "Diocésain",
     VICARIAL: "Vicarial",
     PAROISSIAL: "Paroissial",
+    REDACTEUR: "Rédacteur",
     DIRECTION_SPIRITUELLE: "Direction spirituelle",
   };
   return labels[role.toUpperCase()] ?? role;
@@ -150,6 +175,7 @@ export function primaryRoleLabel(roles: string[] | undefined): string {
     "DIOCESAIN",
     "VICARIAL",
     "PAROISSIAL",
+    ROLE_REDACTEUR,
     ROLE_DIRECTION_SPIRITUELLE,
   ];
   const normalized = normalizeRoles(roles);
@@ -179,4 +205,10 @@ export function isSpiritualDirectionForbiddenPath(pathname: string): boolean {
   if (pathname === "/actualites/new" || /^\/actualites\/[^/]+\/edit/.test(pathname)) return true;
   if (/^\/actualites\/[^/]+\/stats/.test(pathname)) return true;
   return false;
+}
+
+const REDACTEUR_ALLOWED_PREFIXES = ["/dashboard", "/actualites", "/profil"] as const;
+
+export function isRedacteurForbiddenPath(pathname: string): boolean {
+  return !REDACTEUR_ALLOWED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }

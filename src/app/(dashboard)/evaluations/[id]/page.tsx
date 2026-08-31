@@ -2,11 +2,11 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { AlertCircle, ArrowLeft, CheckCircle, FileSpreadsheet, FileText, Loader2, Pencil, Upload } from "lucide-react";
+import { AlertCircle, ArrowLeft, Banknote, CheckCircle, FileSpreadsheet, FileText, Loader2, Pencil, Upload, AlertTriangle } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ import {
   canViewEvaluations,
   isReadOnlyRole,
 } from "@/lib/rolePermissions";
+import { EvaluationPaiementsPanel } from "@/modules/evaluations/components/EvaluationPaiementsPanel";
 
 type Role = string;
 
@@ -98,11 +99,17 @@ function BackToEvaluationsLink() {
 
 export default function EvaluationDetailsPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
 
   const { data: session, status } = useSession();
   const user = session?.user as { roles?: Role[] } | undefined;
   const roles = user?.roles ?? [];
+  const isSuperAdmin = roles.includes("SUPERADMIN");
+  const isManager = roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
+  const isVicarial = roles.includes("VICARIAL");
+  const isParoissial = roles.includes("PAROISSIAL");
+  const canSeePaiements = isManager || isVicarial || isParoissial;
   const canManage = canManageEvaluations(roles);
   const canTerminate = canTerminateEvaluations(roles);
   const canViewReaders = canViewEvaluations(roles);
@@ -242,6 +249,17 @@ export default function EvaluationDetailsPage() {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState<"excel" | "pdf">("excel");
   const [exportLayout, setExportLayout] = useState<EvaluationExportLayout>("by_vicariat");
+  const [tab, setTab] = useState<"lecteurs" | "paiements" | "anomalies">("lecteurs");
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "paiements" && canSeePaiements) setTab("paiements");
+    if (tabParam === "anomalies" && isSuperAdmin) setTab("anomalies");
+  }, [searchParams, canSeePaiements, isSuperAdmin]);
+
+  useEffect(() => {
+    if (tab === "anomalies" && !isSuperAdmin) setTab("paiements");
+  }, [tab, isSuperAdmin]);
 
   type TerminationMissingByReader = {
     lecteurId: string;
@@ -632,6 +650,44 @@ export default function EvaluationDetailsPage() {
         ) : null}
       </div>
 
+      {canSeePaiements ? (
+        <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-2xl bg-slate-100 p-1">
+          <button
+            type="button"
+            onClick={() => setTab("lecteurs")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+              tab === "lecteurs" ? "bg-white text-amber-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            Lecteurs
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("paiements")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+              tab === "paiements" ? "bg-white text-amber-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <Banknote className="w-4 h-4" />
+            Consultations payées
+          </button>
+          {isSuperAdmin ? (
+            <button
+              type="button"
+              onClick={() => setTab("anomalies")}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                tab === "anomalies" ? "bg-white text-red-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <AlertTriangle className="w-4 h-4" />
+              Anomalies
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {tab === "lecteurs" ? (
+        <>
       {canManage ? (
         <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
           <div className="flex items-center gap-3 w-full">
@@ -816,6 +872,16 @@ export default function EvaluationDetailsPage() {
           </div>
         )}
       </div>
+        </>
+      ) : null}
+
+      {tab === "paiements" && canSeePaiements ? (
+        <EvaluationPaiementsPanel evaluationId={id} mode="paiements" isSuperAdmin={isSuperAdmin} />
+      ) : null}
+
+      {tab === "anomalies" && isSuperAdmin ? (
+        <EvaluationPaiementsPanel evaluationId={id} mode="anomalies" isSuperAdmin={isSuperAdmin} />
+      ) : null}
 
       {/* ── Modal terminée ───────────────────────── */}
       <Dialog open={termineeModalOpen} onOpenChange={(o) => !o && setTermineeModalOpen(false)}>

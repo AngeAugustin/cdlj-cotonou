@@ -1,8 +1,10 @@
 import { EvaluationRepository } from "./repository";
+import { ResultatPaiementsRepository } from "./resultatPaiementsRepository";
 import { CreateEvaluationInput, UpdateEvaluationInput, UpsertEvaluationNoteInput } from "./schema";
 
 export class EvaluationService {
   private repo = new EvaluationRepository();
+  private paiementsRepo = new ResultatPaiementsRepository();
 
   getEvaluations() {
     return this.repo.getEvaluations();
@@ -70,6 +72,37 @@ export class EvaluationService {
 
   getPublicLecteurResultForYear(uniqueId: string, year?: number) {
     return this.repo.getPublicLecteurResultForYear(uniqueId, year);
+  }
+
+  checkPublicResultConsultation(uniqueId: string, year?: number) {
+    return this.repo.checkPublicResultConsultation(uniqueId, year);
+  }
+
+  hasApprovedResultConsultationPayment(lecteurId: string, annee: number) {
+    return this.paiementsRepo.hasApprovedPayment(lecteurId, annee);
+  }
+
+  createResultatPaiementDoc(data: Parameters<ResultatPaiementsRepository["createPaiementDoc"]>[0]) {
+    return this.paiementsRepo.createPaiementDoc(data);
+  }
+
+  updateResultatPaiementById(id: string, patch: Parameters<ResultatPaiementsRepository["updatePaiementById"]>[1]) {
+    return this.paiementsRepo.updatePaiementById(id, patch);
+  }
+
+  findResultatPaiementById(id: string) {
+    return this.paiementsRepo.findPaiementById(id);
+  }
+
+  findReusableOpenResultatPaiement(opts: Parameters<ResultatPaiementsRepository["findReusableOpenPaiement"]>[0]) {
+    return this.paiementsRepo.findReusableOpenPaiement(opts);
+  }
+
+  listResultatPaiementsForEvaluation(
+    evaluationId: string,
+    opts?: Parameters<ResultatPaiementsRepository["listPaiementsForEvaluation"]>[1]
+  ) {
+    return this.paiementsRepo.listPaiementsForEvaluation(evaluationId, opts);
   }
 
   hasAnyEvaluationForLecteur(lecteurId: string) {

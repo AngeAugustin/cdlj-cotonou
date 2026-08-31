@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import connectToDatabase from "@/lib/mongoose";
-import { Evaluation, EvaluationLecteur, EvaluationNote, type IEvaluation } from "./model";
+import { Evaluation, EvaluationLecteur, EvaluationNote, ResultatConsultationPaiement, RESULTAT_CONSULTATION_MONTANT, type IEvaluation } from "./model";
 import { CreateEvaluationInput, UpdateEvaluationInput, UpsertEvaluationNoteInput } from "./schema";
 import { Lecteur } from "@/modules/lecteurs/model";
 import { Grade } from "@/modules/grades/model";
@@ -751,6 +751,37 @@ export class EvaluationRepository {
             },
           }
         : null,
+    };
+  }
+
+  async checkPublicResultConsultation(uniqueId: string, year = new Date().getFullYear()) {
+    const payload = await this.getPublicLecteurResultForYear(uniqueId, year);
+    if (!payload) return null;
+
+    const lecteur = await Lecteur.findOne({ uniqueId: uniqueId.trim() }).select("_id").lean();
+    const lecteurId = lecteur ? String(lecteur._id) : null;
+
+    let paid = false;
+    if (lecteurId && payload.result) {
+      await connectToDatabase();
+      const approved = await ResultatConsultationPaiement.exists({
+        lecteurId: new mongoose.Types.ObjectId(lecteurId),
+        annee: year,
+        status: "approved",
+      });
+      paid = !!approved;
+    }
+
+    const evaluations = lecteurId ? await this.getLecteurPublishedEvaluations(lecteurId) : [];
+    const yearEval = evaluations.find((e) => Number(e.annee) === year);
+
+    return {
+      lecteur: payload.lecteur,
+      hasResult: !!payload.result,
+      paid,
+      montant: RESULTAT_CONSULTATION_MONTANT,
+      evaluationId: yearEval?.evaluationId ?? null,
+      annee: year,
     };
   }
 

@@ -1,7 +1,10 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import {
+  canManageActualites,
   isDirectionSpirituelle,
+  isRedacteurForbiddenPath,
+  isRedacteurOnly,
   isSpiritualDirectionForbiddenPath,
 } from "@/lib/rolePermissions";
 
@@ -17,8 +20,17 @@ export default withAuth(
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
 
-    if (isDirectionSpirituelle(roles) && isSpiritualDirectionForbiddenPath(req.nextUrl.pathname)) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+    const pathname = req.nextUrl.pathname;
+    if (isDirectionSpirituelle(roles) && isSpiritualDirectionForbiddenPath(pathname)) {
+      const allowActualitesWrite =
+        canManageActualites(roles) && pathname.startsWith("/actualites");
+      if (!allowActualitesWrite) {
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+      }
+    }
+
+    if (isRedacteurOnly(roles) && isRedacteurForbiddenPath(req.nextUrl.pathname)) {
+      return NextResponse.redirect(new URL("/actualites", req.url));
     }
 
     const response = NextResponse.next();

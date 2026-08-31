@@ -4,10 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { ActualiteService } from "@/modules/actualites/service";
 import { createActualiteSchema } from "@/modules/actualites/schema";
-
-function isAdmin(roles: string[]) {
-  return roles.includes("DIOCESAIN") || roles.includes("SUPERADMIN");
-}
+import { canManageActualites } from "@/lib/rolePermissions";
 
 export async function GET(request: Request) {
   try {
@@ -17,7 +14,7 @@ export async function GET(request: Request) {
 
     if (all) {
       const session: any = await getServerSession(authOptions);
-      if (!session || !isAdmin(session.user.roles ?? [])) {
+      if (!session || !canManageActualites(session.user.roles ?? [])) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
       return NextResponse.json(await service.getActualites(false));
@@ -34,7 +31,7 @@ export async function POST(request: Request) {
   try {
     const session: any = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (!isAdmin(session.user.roles ?? [])) {
+    if (!canManageActualites(session.user.roles ?? [])) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

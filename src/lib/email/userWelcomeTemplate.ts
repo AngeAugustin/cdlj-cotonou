@@ -13,6 +13,7 @@ const ROLE_LABELS: Record<string, string> = {
   DIOCESAIN: "Diocésain",
   VICARIAL: "Vicarial",
   PAROISSIAL: "Paroissial",
+  REDACTEUR: "Rédacteur",
   DIRECTION_SPIRITUELLE: "Direction spirituelle",
 };
 

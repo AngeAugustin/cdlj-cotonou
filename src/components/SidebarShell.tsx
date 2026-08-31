@@ -34,7 +34,7 @@ function initialsFromDisplayName(name: string | null | undefined): string {
 }
 
 const ALL_NAV = [
-  { name: "Tableau de Bord", href: "/dashboard",   icon: BarChart3,      roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN", "DIRECTION_SPIRITUELLE"] },
+  { name: "Tableau de Bord", href: "/dashboard",   icon: BarChart3,      roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN", "REDACTEUR", "DIRECTION_SPIRITUELLE"] },
   { name: "Lecteurs",        href: "/lecteurs",     icon: Users,          roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN", "DIRECTION_SPIRITUELLE"] },
   { name: "Calendrier",      href: "/calendrier",   icon: CalendarDays,   roles: ["PAROISSIAL", "VICARIAL", "DIOCESAIN", "SUPERADMIN", "DIRECTION_SPIRITUELLE"] },
   { name: "Paroisses",       href: "/paroisses",    icon: Building2,      roles: ["VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
@@ -44,7 +44,7 @@ const ALL_NAV = [
  // { name: "Cotisations",     href: "/cotisations",  icon: Wallet,         roles: ["VICARIAL", "DIOCESAIN", "SUPERADMIN"] },
   { name: "Grades",          href: "/grades",       icon: Award,          roles: ["DIOCESAIN", "SUPERADMIN"] },
   { name: "Évaluations",     href: "/evaluations",  icon: GraduationCap,  roles: ["DIOCESAIN", "SUPERADMIN", "DIRECTION_SPIRITUELLE"] },
-  { name: "Actualités",      href: "/actualites",   icon: Newspaper,      roles: ["DIOCESAIN", "SUPERADMIN", "DIRECTION_SPIRITUELLE"] },
+  { name: "Actualités",      href: "/actualites",   icon: Newspaper,      roles: ["DIOCESAIN", "SUPERADMIN", "REDACTEUR", "DIRECTION_SPIRITUELLE"] },
   { name: "Médiathèque",     href: "/gestion-mediatheque", icon: ImageIcon, roles: ["DIOCESAIN", "SUPERADMIN"] },
   { name: "Utilisateurs",    href: "/utilisateurs", icon: Shield,         roles: ["DIOCESAIN", "SUPERADMIN"] },
 ];
