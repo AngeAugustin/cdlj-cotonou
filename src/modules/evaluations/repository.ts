@@ -855,6 +855,35 @@ export class EvaluationRepository {
     return { promotedCount, maintainedCount };
   }
 
+  async reopenEvaluation(evaluationId: string): Promise<unknown> {
+    await connectToDatabase();
+
+    const evaluation = await Evaluation.findById(evaluationId).lean();
+    if (!evaluation) throw new Error("Evaluation introuvable");
+    if (!evaluation.terminee) throw new Error("Cette évaluation n'est pas terminée");
+    if (evaluation.publiee) {
+      throw new Error("Impossible de rouvrir une évaluation déjà publiée");
+    }
+
+    const evaluationObjectId = new mongoose.Types.ObjectId(evaluationId);
+
+    await EvaluationLecteur.updateMany(
+      { evaluationId: evaluationObjectId },
+      { $unset: { moyenne: "", decision: "", computedAt: "" } }
+    );
+
+    const updated = await Evaluation.findByIdAndUpdate(
+      evaluationId,
+      { terminee: false },
+      { new: true }
+    )
+      .populate("gradeId", "name abbreviation level")
+      .populate("activiteId", "nom dateDebut dateFin lieu montant terminee image")
+      .lean();
+
+    return updated;
+  }
+
   async publishEvaluation(evaluationId: string): Promise<unknown> {
     await connectToDatabase();
     const evaluation = await Evaluation.findById(evaluationId)

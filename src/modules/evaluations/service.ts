@@ -62,6 +62,10 @@ export class EvaluationService {
     return this.repo.markTerminee(evaluationId);
   }
 
+  reopenEvaluation(evaluationId: string) {
+    return this.repo.reopenEvaluation(evaluationId);
+  }
+
   publishEvaluation(evaluationId: string) {
     return this.repo.publishEvaluation(evaluationId);
   }

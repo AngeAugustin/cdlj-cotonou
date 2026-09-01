@@ -6,7 +6,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { AlertCircle, ArrowLeft, Banknote, CheckCircle, FileSpreadsheet, FileText, Loader2, Pencil, Upload, AlertTriangle } from "lucide-react";
+import { AlertCircle, ArrowLeft, Banknote, CheckCircle, FileSpreadsheet, FileText, Loader2, Pencil, RotateCcw, Upload, AlertTriangle } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -242,8 +242,10 @@ export default function EvaluationDetailsPage() {
   // Termination / Publication
   // ─────────────────────────────────────────────
   const [termineeModalOpen, setTermineeModalOpen] = useState(false);
+  const [reopenModalOpen, setReopenModalOpen] = useState(false);
   const [publierModalOpen, setPublierModalOpen] = useState(false);
   const [terminating, setTerminating] = useState(false);
+  const [reopening, setReopening] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [exportingReaders, setExportingReaders] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -292,6 +294,23 @@ export default function EvaluationDetailsPage() {
       showToast(e instanceof Error ? e.message : "Erreur", "error");
     } finally {
       setTerminating(false);
+    }
+  };
+
+  const confirmReopen = async () => {
+    setReopening(true);
+    try {
+      const res = await fetch(`/api/evaluations/${id}/reouvrir`, { method: "PATCH" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Opération impossible");
+      showToast("Évaluation rouverte — vous pouvez modifier les notes");
+      await fetchEvaluation();
+      await fetchReaders();
+      setReopenModalOpen(false);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Erreur", "error");
+    } finally {
+      setReopening(false);
     }
   };
 
@@ -638,9 +657,22 @@ export default function EvaluationDetailsPage() {
                 </Button>
               ) : null
             ) : !evaluation.publiee ? (
-              <Button type="button" className="rounded-xl bg-amber-900 hover:bg-amber-800 text-white" onClick={() => setPublierModalOpen(true)}>
-                Publier
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                {canTerminate ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
+                    onClick={() => setReopenModalOpen(true)}
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Rouvrir pour modifier les notes
+                  </Button>
+                ) : null}
+                <Button type="button" className="rounded-xl bg-amber-900 hover:bg-amber-800 text-white" onClick={() => setPublierModalOpen(true)}>
+                  Publier
+                </Button>
+              </div>
             ) : (
               <span className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-100 font-bold text-sm">
                 Publiée
@@ -934,6 +966,34 @@ export default function EvaluationDetailsPage() {
               ) : (
                 "Confirmer"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal rouvrir ────────────────────────── */}
+      <Dialog open={reopenModalOpen} onOpenChange={(o) => !o && setReopenModalOpen(false)}>
+        <DialogContent showCloseButton={false} className="rounded-3xl">
+          <DialogHeader>
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-amber-50 mx-auto mb-2">
+              <RotateCcw className="w-5 h-5 text-amber-800" />
+            </div>
+            <DialogTitle className="text-center text-base">Rouvrir l&apos;évaluation ?</DialogTitle>
+            <DialogDescription className="text-center">
+              L&apos;évaluation repassera en cours. Les moyennes et décisions calculées seront effacées ; vous pourrez
+              modifier les notes puis marquer l&apos;évaluation comme terminée à nouveau.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReopenModalOpen(false)} className="rounded-xl">
+              Annuler
+            </Button>
+            <Button
+              className="bg-amber-900 hover:bg-amber-800 text-white rounded-xl"
+              disabled={reopening}
+              onClick={() => void confirmReopen()}
+            >
+              {reopening ? <Loader2 className="w-4 h-4 animate-spin" /> : "Rouvrir"}
             </Button>
           </DialogFooter>
         </DialogContent>
