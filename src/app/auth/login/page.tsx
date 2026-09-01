@@ -1,8 +1,7 @@
 "use client";
 
-import { signIn, signOut } from "next-auth/react";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,6 @@ import {
 type RecoveryStep = "login" | "email" | "code" | "newPassword";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -43,28 +41,29 @@ export default function LoginPage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Force la déconnexion dès qu'on atterrit sur la page de login par mégarde
-  useEffect(() => {
-    // Supprime silencieusement la session existante pour forcer l'utilisateur à se reconnecter
-    signOut({ redirect: false });
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const res = await signIn("credentials", {
+        email: email.trim(),
+        password,
+        redirect: false,
+      });
 
-    if (res?.error) {
-      setError("Identifiants incorrects. Veuillez réessayer.");
+      if (!res?.ok || res.error) {
+        setError("Identifiants incorrects. Veuillez réessayer.");
+        setLoading(false);
+        return;
+      }
+
+      // Navigation complète pour que le cookie de session soit bien pris en compte côté serveur.
+      window.location.assign("/dashboard");
+    } catch {
+      setError("Connexion impossible pour le moment. Réessayez.");
       setLoading(false);
-    } else {
-      router.replace("/dashboard");
     }
   };
 
