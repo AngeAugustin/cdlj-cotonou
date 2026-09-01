@@ -4,6 +4,7 @@ import { Evaluation, EvaluationLecteur, EvaluationNote, ResultatConsultationPaie
 import { CreateEvaluationInput, UpdateEvaluationInput, UpsertEvaluationNoteInput } from "./schema";
 import { Lecteur } from "@/modules/lecteurs/model";
 import { Grade } from "@/modules/grades/model";
+import { decisionFromMoyenne } from "@/lib/evaluationDecisions";
 import "@/modules/activites/model";
 import "@/modules/vicariats/model";
 import "@/modules/paroisses/model";
@@ -803,18 +804,26 @@ export class EvaluationRepository {
     if (!evaluation) throw new Error("Evaluation introuvable");
     if (evaluation.terminee) return { promotedCount: 0, maintainedCount: 0 };
 
-    const nombreNotes: number = evaluation.nombreNotes;
-    // Note: la mise à jour du grade des lecteurs est faite uniquement lors du "publish".
-    // Ici on calcule uniquement moyenne et décision pour chaque lecteur.
-    const baseGradeLevel: number = (evaluation.gradeId as unknown as { level?: number }).level ?? 0;
-    void baseGradeLevel;
+    const counts = await this.computeAndPersistDecisions(evaluationId, evaluation.nombreNotes);
 
+    await Evaluation.findByIdAndUpdate(evaluationId, { terminee: true }, { new: true }).lean();
+
+    return { promotedCount: counts.promotedCount, maintainedCount: counts.maintainedCount };
+  }
+
+  async computeAndPersistDecisions(
+    evaluationId: string,
+    nombreNotes: number
+  ): Promise<{ promotedCount: number; maintainedCount: number }> {
+    await connectToDatabase();
+
+    const evaluationObjectId = new mongoose.Types.ObjectId(evaluationId);
     const members = (await EvaluationLecteur.find({
-      evaluationId: new mongoose.Types.ObjectId(evaluationId),
+      evaluationId: evaluationObjectId,
     }).lean()) as unknown as Array<{ _id: mongoose.Types.ObjectId; lecteurId: mongoose.Types.ObjectId }>;
 
     const notesAgg = await EvaluationNote.aggregate([
-      { $match: { evaluationId: new mongoose.Types.ObjectId(evaluationId) } },
+      { $match: { evaluationId: evaluationObjectId } },
       { $group: { _id: "$lecteurId", sumVal: { $sum: "$valeur" } } },
     ]);
 
@@ -830,7 +839,7 @@ export class EvaluationRepository {
       const lid = m.lecteurId.toString();
       const sumVal = sumByLecteur.get(lid) ?? 0;
       const moyenne = sumVal / nombreNotes;
-      const decision = moyenne > 12 ? "PROMU" : "MAINTENU";
+      const decision = decisionFromMoyenne(moyenne);
 
       ops.push({
         updateOne: {
@@ -850,9 +859,91 @@ export class EvaluationRepository {
       await EvaluationLecteur.bulkWrite(ops);
     }
 
-    await Evaluation.findByIdAndUpdate(evaluationId, { terminee: true }, { new: true }).lean();
-
     return { promotedCount, maintainedCount };
+  }
+
+  async applyGradePromotionsForEvaluation(evaluationId: string, baseGradeLevel: number): Promise<number> {
+    await connectToDatabase();
+
+    const nextGrade = await Grade.findOne({ level: baseGradeLevel + 1 }).lean();
+    if (!nextGrade?._id) return 0;
+
+    const memberships = (await EvaluationLecteur.find({
+      evaluationId: new mongoose.Types.ObjectId(evaluationId),
+    }).lean()) as unknown as Array<{
+      lecteurId: mongoose.Types.ObjectId;
+      decision?: "PROMU" | "MAINTENU" | string;
+    }>;
+
+    const toPromote = memberships.filter((m) => m.decision === "PROMU").map((m) => m.lecteurId);
+    if (!toPromote.length) return 0;
+
+    await Lecteur.updateMany({ _id: { $in: toPromote } }, { $set: { gradeId: nextGrade._id } });
+    return toPromote.length;
+  }
+
+  async recalculateDecisions(evaluationId: string): Promise<{
+    promotedCount: number;
+    maintainedCount: number;
+    gradesUpdated: number;
+  }> {
+    await connectToDatabase();
+
+    const evaluation = await Evaluation.findById(evaluationId).populate("gradeId", "level").lean();
+    if (!evaluation) throw new Error("Evaluation introuvable");
+    if (!evaluation.terminee) {
+      throw new Error("Seules les évaluations terminées peuvent être recalculées");
+    }
+
+    const counts = await this.computeAndPersistDecisions(evaluationId, evaluation.nombreNotes);
+
+    let gradesUpdated = 0;
+    if (evaluation.publiee) {
+      const baseGradeLevel = (evaluation.gradeId as unknown as { level?: number }).level ?? 0;
+      gradesUpdated = await this.applyGradePromotionsForEvaluation(evaluationId, baseGradeLevel);
+    }
+
+    return { ...counts, gradesUpdated };
+  }
+
+  async recalculateAllTerminatedDecisions(): Promise<{
+    processed: number;
+    results: Array<{
+      evaluationId: string;
+      ok: boolean;
+      promotedCount?: number;
+      maintainedCount?: number;
+      gradesUpdated?: number;
+      error?: string;
+    }>;
+  }> {
+    await connectToDatabase();
+
+    const evaluations = await Evaluation.find({ terminee: true }).select("_id").lean();
+    const results: Array<{
+      evaluationId: string;
+      ok: boolean;
+      promotedCount?: number;
+      maintainedCount?: number;
+      gradesUpdated?: number;
+      error?: string;
+    }> = [];
+
+    for (const evaluation of evaluations) {
+      const evaluationId = String(evaluation._id);
+      try {
+        const r = await this.recalculateDecisions(evaluationId);
+        results.push({ evaluationId, ok: true, ...r });
+      } catch (error: unknown) {
+        results.push({
+          evaluationId,
+          ok: false,
+          error: error instanceof Error ? error.message : "Erreur",
+        });
+      }
+    }
+
+    return { processed: results.filter((r) => r.ok).length, results };
   }
 
   async reopenEvaluation(evaluationId: string): Promise<unknown> {
@@ -893,25 +984,9 @@ export class EvaluationRepository {
     if (!evaluation.terminee) throw new Error("L'évaluation doit être terminée avant d'être publiée");
 
     const baseGradeLevel: number = (evaluation.gradeId as unknown as { level?: number }).level ?? 0;
-    const nextGrade = await Grade.findOne({ level: baseGradeLevel + 1 }).lean();
 
     // Promouvoir uniquement au moment du publish.
-    if (nextGrade?._id) {
-      const memberships = (await EvaluationLecteur.find({
-        evaluationId: new mongoose.Types.ObjectId(evaluationId),
-      }).lean()) as unknown as Array<{ _id: mongoose.Types.ObjectId; lecteurId: mongoose.Types.ObjectId; decision?: "PROMU" | "MAINTENU" | string }>;
-
-      const toPromote = memberships
-        .filter((m) => m.decision === "PROMU")
-        .map((m) => m.lecteurId);
-
-      if (toPromote.length) {
-        await Lecteur.updateMany(
-          { _id: { $in: toPromote } },
-          { $set: { gradeId: nextGrade._id } }
-        );
-      }
-    }
+    await this.applyGradePromotionsForEvaluation(evaluationId, baseGradeLevel);
 
     const updated = await Evaluation.findByIdAndUpdate(
       evaluationId,

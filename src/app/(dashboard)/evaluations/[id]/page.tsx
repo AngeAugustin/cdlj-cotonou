@@ -246,6 +246,7 @@ export default function EvaluationDetailsPage() {
   const [publierModalOpen, setPublierModalOpen] = useState(false);
   const [terminating, setTerminating] = useState(false);
   const [reopening, setReopening] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [exportingReaders, setExportingReaders] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -311,6 +312,29 @@ export default function EvaluationDetailsPage() {
       showToast(e instanceof Error ? e.message : "Erreur", "error");
     } finally {
       setReopening(false);
+    }
+  };
+
+  const confirmRecalculate = async () => {
+    setRecalculating(true);
+    try {
+      const res = await fetch(`/api/evaluations/${id}/recalculer-decisions`, { method: "PATCH" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Opération impossible");
+      const promoted = typeof data.promotedCount === "number" ? data.promotedCount : 0;
+      const maintained = typeof data.maintainedCount === "number" ? data.maintainedCount : 0;
+      const gradesUpdated = typeof data.gradesUpdated === "number" ? data.gradesUpdated : 0;
+      const gradesMsg =
+        gradesUpdated > 0 ? ` · ${gradesUpdated} grade(s) lecteur mis à jour` : "";
+      showToast(
+        `Décisions recalculées : ${promoted} admissible(s), ${maintained} refusé(s)${gradesMsg}`
+      );
+      await fetchEvaluation();
+      await fetchReaders();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Erreur", "error");
+    } finally {
+      setRecalculating(false);
     }
   };
 
@@ -678,6 +702,22 @@ export default function EvaluationDetailsPage() {
                 Publiée
               </span>
             )}
+            {evaluation.terminee && canTerminate ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
+                disabled={recalculating}
+                onClick={() => void confirmRecalculate()}
+              >
+                {recalculating ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                )}
+                Recalculer les décisions
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -924,9 +964,9 @@ export default function EvaluationDetailsPage() {
             </div>
             <DialogTitle className="text-center text-base">Calculer les moyennes et l&apos;admissibilité ?</DialogTitle>
             <DialogDescription className="text-center">
-              Le système calculera la moyenne des notes pour chaque lecteur. Ceux dont la moyenne est strictement
-              supérieure à 12 seront déclarés <span className="font-semibold text-green-700">Admissibles</span> ; les
-              autres seront déclarés <span className="font-semibold text-red-700">Refusés</span>.
+              Le système calculera la moyenne des notes pour chaque lecteur. Ceux dont la moyenne est supérieure ou
+              égale à 12 seront déclarés <span className="font-semibold text-green-700">Admissibles</span> ; les autres
+              seront déclarés <span className="font-semibold text-red-700">Refusés</span>.
             </DialogDescription>
           </DialogHeader>
 

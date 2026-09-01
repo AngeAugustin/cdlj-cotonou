@@ -66,6 +66,14 @@ export class EvaluationService {
     return this.repo.reopenEvaluation(evaluationId);
   }
 
+  recalculateDecisions(evaluationId: string) {
+    return this.repo.recalculateDecisions(evaluationId);
+  }
+
+  recalculateAllTerminatedDecisions() {
+    return this.repo.recalculateAllTerminatedDecisions();
+  }
+
   publishEvaluation(evaluationId: string) {
     return this.repo.publishEvaluation(evaluationId);
   }

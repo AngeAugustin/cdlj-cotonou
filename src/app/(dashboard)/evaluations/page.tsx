@@ -12,6 +12,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  RotateCcw,
   Trash2,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -30,7 +31,7 @@ import {
 import { createEvaluationSchema, updateEvaluationSchema } from "@/modules/evaluations/schema";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { canManageEvaluations, isReadOnlyRole } from "@/lib/rolePermissions";
+import { canManageEvaluations, canTerminateEvaluations, isReadOnlyRole } from "@/lib/rolePermissions";
 
 const SELECT_EMPTY = "__cdlj_empty__";
 
@@ -64,6 +65,7 @@ export default function EvaluationsPage() {
   const roles: string[] = user?.roles ?? [];
 
   const isManager = canManageEvaluations(roles);
+  const canTerminate = canTerminateEvaluations(roles);
   const isReadOnly = isReadOnlyRole(roles);
 
   const getEvaluationStatus = (ev: EvaluationNode) => {
@@ -224,6 +226,8 @@ export default function EvaluationsPage() {
   };
 
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [recalcAllModalOpen, setRecalcAllModalOpen] = useState(false);
+  const [recalculatingAll, setRecalculatingAll] = useState(false);
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ type, message });
     window.setTimeout(() => setToast(null), 3500);
@@ -317,6 +321,23 @@ export default function EvaluationsPage() {
     }
   };
 
+  const confirmRecalculateAll = async () => {
+    setRecalculatingAll(true);
+    try {
+      const res = await fetch("/api/evaluations/recalculer-decisions", { method: "PATCH" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Opération impossible");
+      const processed = typeof data.processed === "number" ? data.processed : 0;
+      showToast(`${processed} évaluation(s) terminée(s) recalculée(s) (règle ≥ 12)`);
+      setRecalcAllModalOpen(false);
+      await loadAll();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Erreur", "error");
+    } finally {
+      setRecalculatingAll(false);
+    }
+  };
+
   if (status === "loading" || loading) {
     return (
       <div className="flex justify-center py-24">
@@ -343,6 +364,17 @@ export default function EvaluationsPage() {
             {isReadOnly ? "Consultez les évaluations annuelles publiées." : "Créez et gérez les évaluations."}
           </p>
         </div>
+        {canTerminate ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="hidden lg:inline-flex h-12 px-6 rounded-2xl border-slate-300 text-slate-700 font-semibold"
+            onClick={() => setRecalcAllModalOpen(true)}
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Recalculer toutes les décisions
+          </Button>
+        ) : null}
         {isManager ? (
           <>
             <Button
@@ -658,6 +690,32 @@ export default function EvaluationsPage() {
             </Button>
             <Button type="button" className="rounded-xl bg-red-600 hover:bg-red-700 text-white" disabled={deleting} onClick={() => void confirmDelete()}>
               {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Supprimer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={recalcAllModalOpen} onOpenChange={(o) => !o && setRecalcAllModalOpen(false)}>
+        <DialogContent className="rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Recalculer toutes les décisions ?</DialogTitle>
+            <DialogDescription>
+              Toutes les évaluations <strong>terminées</strong> seront recalculées avec la règle actuelle : moyenne
+              supérieure ou égale à 12 = Admissible. Pour les évaluations déjà publiées, les grades des lecteurs
+              admissibles seront mis à jour.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" className="rounded-xl" onClick={() => setRecalcAllModalOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              className="rounded-xl bg-amber-900 hover:bg-amber-800 text-white"
+              disabled={recalculatingAll}
+              onClick={() => void confirmRecalculateAll()}
+            >
+              {recalculatingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : "Recalculer"}
             </Button>
           </DialogFooter>
         </DialogContent>
