@@ -10,6 +10,8 @@ import {
   Search,
   Edit2,
   Trash2,
+  UserX,
+  UserCheck,
   Mail,
   Phone,
   Hash,
@@ -47,6 +49,7 @@ type ApiUser = {
   phone?: string;
   numero?: string;
   roles: string[];
+  actif?: boolean;
   parishId?:
     | { _id: string; name: string; vicariatId?: { _id: string; name: string; abbreviation?: string } | string }
     | string
@@ -98,10 +101,15 @@ function vicariatLabel(u: ApiUser, vicariats: VicariatOpt[]): string {
   return "—";
 }
 
+function isUserActive(user: ApiUser): boolean {
+  return user.actif !== false;
+}
+
 export default function UtilisateursPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const roles = (session?.user as { roles?: string[] } | undefined)?.roles ?? [];
+  const roles = (session?.user as { roles?: string[]; id?: string } | undefined)?.roles ?? [];
+  const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? "";
   const canManage = canManageUsers(roles);
 
   const [usersList, setUsersList] = useState<ApiUser[]>([]);
@@ -126,6 +134,8 @@ export default function UtilisateursPage() {
 
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [toggleTarget, setToggleTarget] = useState<{ user: ApiUser; action: "activer" | "desactiver" } | null>(null);
+  const [toggling, setToggling] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
@@ -177,7 +187,7 @@ export default function UtilisateursPage() {
   }, [sortedParoisses, vicariatId]);
 
   const buildUserFromForm = useCallback(
-    (data: { _id: string; firstName?: string; lastName?: string; email?: string; phone?: string; numero?: string; roles?: string[] }): ApiUser => {
+    (data: { _id: string; firstName?: string; lastName?: string; email?: string; phone?: string; numero?: string; roles?: string[]; actif?: boolean }): ApiUser => {
       const parish = sortedParoisses.find((p) => p._id === paroisseId);
       const vicariat = sortedVicariats.find((v) => v._id === vicariatId);
       return {
@@ -188,6 +198,7 @@ export default function UtilisateursPage() {
         phone: data.phone ?? (phone.trim() || undefined),
         numero: data.numero,
         roles: data.roles ?? selectedRoles,
+        actif: data.actif ?? true,
         parishId: parish
           ? {
               _id: parish._id,
@@ -348,6 +359,67 @@ export default function UtilisateursPage() {
     }
   };
 
+  const confirmToggleActif = async () => {
+    if (!toggleTarget) return;
+    setToggling(true);
+    const { user, action } = toggleTarget;
+    try {
+      const res = await fetch(`/api/users/${user._id}/${action}`, { method: "PATCH" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast((data as { error?: string }).error ?? "Erreur", "error");
+        return;
+      }
+      const actif = action === "activer";
+      setUsersList((prev) =>
+        prev.map((u) => (u._id === user._id ? { ...u, actif } : u))
+      );
+      showToast(actif ? "Compte réactivé" : "Compte désactivé");
+      setToggleTarget(null);
+    } catch {
+      showToast("Erreur inattendue", "error");
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const renderToggleButton = (user: ApiUser) => {
+    const active = isUserActive(user);
+    const isSelf = user._id === currentUserId;
+    if (active) {
+      return (
+        <button
+          type="button"
+          onClick={() => !isSelf && setToggleTarget({ user, action: "desactiver" })}
+          disabled={isSelf}
+          className="p-2 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-slate-500"
+          title={isSelf ? "Vous ne pouvez pas désactiver votre propre compte" : "Désactiver le compte"}
+        >
+          <UserX className="w-4 h-4 md:w-5 md:h-5" />
+        </button>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => setToggleTarget({ user, action: "activer" })}
+        className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+        title="Réactiver le compte"
+      >
+        <UserCheck className="w-4 h-4 md:w-5 md:h-5" />
+      </button>
+    );
+  };
+
+  const renderStatusBadge = (user: ApiUser) => {
+    if (isUserActive(user)) return null;
+    return (
+      <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border bg-slate-100 text-slate-600 border-slate-200 uppercase tracking-wide">
+        Inactif
+      </span>
+    );
+  };
+
   const filteredUsers = useMemo(() => usersList.filter((u) => {
     const q = searchTerm.toLowerCase();
     return (
@@ -443,16 +515,24 @@ export default function UtilisateursPage() {
           <>
           <div className="divide-y divide-slate-100 md:hidden">
             {paginatedUsers.map((user) => (
-              <div key={`card-${user._id}`} className="p-4 space-y-3">
+              <div
+                key={`card-${user._id}`}
+                className={`p-4 space-y-3 ${!isUserActive(user) ? "bg-slate-50/80 opacity-90" : ""}`}
+              >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-amber-900 bg-amber-100 shrink-0">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
+                    isUserActive(user) ? "text-amber-900 bg-amber-100" : "text-slate-500 bg-slate-200"
+                  }`}>
                     {user.firstName.charAt(0)}
                     {user.lastName.charAt(0)}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-extrabold text-slate-900 text-sm truncate">
-                      {user.lastName} {user.firstName}
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-extrabold text-slate-900 text-sm truncate">
+                        {user.lastName} {user.firstName}
+                      </p>
+                      {renderStatusBadge(user)}
+                    </div>
                     <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider font-mono">
                       {user.numero ?? "—"}
                     </p>
@@ -487,6 +567,7 @@ export default function UtilisateursPage() {
                   ))}
                 </div>
                 <div className="flex items-center justify-end gap-2">
+                  {renderToggleButton(user)}
                   <button
                     type="button"
                     onClick={() => openModalForEdit(user)}
@@ -520,17 +601,27 @@ export default function UtilisateursPage() {
               </thead>
               <tbody className="divide-y divide-slate-100/80">
                 {paginatedUsers.map((user) => (
-                  <tr key={user._id} className="hover:bg-amber-50/30 transition-colors group">
+                  <tr
+                    key={user._id}
+                    className={`transition-colors group ${
+                      isUserActive(user) ? "hover:bg-amber-50/30" : "bg-slate-50/60 opacity-90 hover:bg-slate-100/80"
+                    }`}
+                  >
                     <td className="p-5">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-amber-900 bg-amber-100 shrink-0">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold shrink-0 ${
+                          isUserActive(user) ? "text-amber-900 bg-amber-100" : "text-slate-500 bg-slate-200"
+                        }`}>
                           {user.firstName.charAt(0)}
                           {user.lastName.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-extrabold text-slate-900 text-base">
-                            {user.lastName} {user.firstName}
-                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-extrabold text-slate-900 text-base">
+                              {user.lastName} {user.firstName}
+                            </p>
+                            {renderStatusBadge(user)}
+                          </div>
                           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider font-mono">
                             {user.numero ?? "—"}
                           </p>
@@ -585,6 +676,7 @@ export default function UtilisateursPage() {
                     </td>
                     <td className="p-5 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {renderToggleButton(user)}
                         <button
                           type="button"
                           onClick={() => openModalForEdit(user)}
@@ -867,6 +959,59 @@ export default function UtilisateursPage() {
             </Button>
             <Button className="bg-red-600 hover:bg-red-700 text-white rounded-xl" disabled={deleting} onClick={confirmDelete}>
               {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Supprimer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={toggleTarget !== null} onOpenChange={(open) => !open && !toggling && setToggleTarget(null)}>
+        <DialogContent className="rounded-3xl" showCloseButton={false}>
+          <DialogHeader>
+            <div
+              className={`flex items-center justify-center w-12 h-12 rounded-full mx-auto mb-2 ${
+                toggleTarget?.action === "desactiver" ? "bg-orange-50" : "bg-emerald-50"
+              }`}
+            >
+              {toggleTarget?.action === "desactiver" ? (
+                <UserX className="w-5 h-5 text-orange-600" />
+              ) : (
+                <UserCheck className="w-5 h-5 text-emerald-600" />
+              )}
+            </div>
+            <DialogTitle className="text-center text-base">
+              {toggleTarget?.action === "desactiver" ? "Désactiver ce compte ?" : "Réactiver ce compte ?"}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {toggleTarget?.action === "desactiver" ? (
+                <>
+                  L&apos;utilisateur ne pourra plus se connecter et ses sessions actives seront fermées.
+                  Le compte reste en base et pourra être réactivé ultérieurement.
+                </>
+              ) : (
+                <>L&apos;utilisateur pourra à nouveau se connecter avec ses identifiants.</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" className="rounded-xl" onClick={() => setToggleTarget(null)} disabled={toggling}>
+              Annuler
+            </Button>
+            <Button
+              className={
+                toggleTarget?.action === "desactiver"
+                  ? "bg-orange-600 hover:bg-orange-700 text-white rounded-xl"
+                  : "bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+              }
+              disabled={toggling}
+              onClick={confirmToggleActif}
+            >
+              {toggling ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : toggleTarget?.action === "desactiver" ? (
+                "Désactiver"
+              ) : (
+                "Réactiver"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

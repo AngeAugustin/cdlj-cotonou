@@ -9,6 +9,8 @@ export interface IUser extends Document {
   phone?: string;
   password?: string;
   roles: string[];
+  /** Compte actif (false = connexion bloquée, sessions révoquées). */
+  actif: boolean;
   parishId?: mongoose.Types.ObjectId;
   vicariatId?: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -28,6 +30,7 @@ const userSchema = new Schema<IUser>(
       enum: ["SUPERADMIN", "DIOCESAIN", "VICARIAL", "PAROISSIAL", "REDACTEUR", "DIRECTION_SPIRITUELLE"],
       default: ["PAROISSIAL"],
     },
+    actif: { type: Boolean, default: true },
     parishId: { type: Schema.Types.ObjectId, ref: "Paroisse" },
     vicariatId: { type: Schema.Types.ObjectId, ref: "Vicariat" },
   },

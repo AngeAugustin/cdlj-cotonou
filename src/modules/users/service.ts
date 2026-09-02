@@ -9,6 +9,7 @@ import { getAppBaseUrl } from "@/lib/appBaseUrl";
 import { sendUserWelcomeEmail } from "@/lib/resendMail";
 import { User } from "./model";
 import { UserRepository } from "./repository";
+import { AuthSessionService } from "@/modules/auth-sessions/service";
 
 const ROLE_ENUM = z.enum(["SUPERADMIN", "DIOCESAIN", "VICARIAL", "PAROISSIAL", "REDACTEUR", "DIRECTION_SPIRITUELLE"]);
 
@@ -85,6 +86,7 @@ async function generateUniqueNumero(): Promise<string> {
 
 export class UserService {
   private repo = new UserRepository();
+  private authSessions = new AuthSessionService();
 
   getUsers() {
     return this.repo.findAllWithRefs();
@@ -186,6 +188,34 @@ export class UserService {
 
   async deleteUser(id: string) {
     return this.repo.delete(id);
+  }
+
+  async desactiverUser(id: string, actorUserId: string) {
+    if (actorUserId === id) {
+      throw new Error("Vous ne pouvez pas désactiver votre propre compte");
+    }
+    const current = await this.repo.findByIdWithPassword(id);
+    if (!current) throw new Error("Utilisateur introuvable");
+    if (current.actif === false) {
+      throw new Error("Ce compte est déjà désactivé");
+    }
+    if ((current.roles as string[])?.includes("SUPERADMIN")) {
+      const n = await this.repo.countActiveByRole("SUPERADMIN");
+      if (n <= 1) {
+        throw new Error("Impossible de désactiver le dernier SuperAdmin actif");
+      }
+    }
+    await this.authSessions.revokeAll(id);
+    return this.repo.setActif(id, false);
+  }
+
+  async activerUser(id: string) {
+    const current = await this.repo.findByIdWithPassword(id);
+    if (!current) throw new Error("Utilisateur introuvable");
+    if (current.actif !== false) {
+      throw new Error("Ce compte est déjà actif");
+    }
+    return this.repo.setActif(id, true);
   }
 
   async countSuperAdmins() {

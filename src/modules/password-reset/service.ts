@@ -20,6 +20,7 @@ function escapeRegex(s: string): string {
 async function findUserIdByEmail(emailNormalized: string) {
   const doc = await User.findOne({
     email: { $regex: new RegExp(`^${escapeRegex(emailNormalized)}$`, "i") },
+    actif: { $ne: false },
   })
     .select("_id")
     .lean();
@@ -101,6 +102,9 @@ export async function resetPasswordWithToken(
   const updated = await User.findByIdAndUpdate(userId, { password: passwordHash });
   if (!updated) {
     throw new Error("Utilisateur introuvable");
+  }
+  if (updated.actif === false) {
+    throw new Error("Ce compte est désactivé");
   }
   const sessions = new AuthSessionService();
   await sessions.revokeAll(userId);

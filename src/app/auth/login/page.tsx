@@ -1,7 +1,8 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -19,14 +20,30 @@ import {
   Eye,
   EyeOff,
   KeyRound,
+  ShieldAlert,
 } from "lucide-react";
 
 type RecoveryStep = "login" | "email" | "code" | "newPassword";
+type LoginErrorKind = "generic" | "blocked" | null;
 
-export default function LoginPage() {
+const BLOCKED_ACCOUNT_MESSAGE =
+  "Votre compte a été bloqué. Contactez un administrateur (SuperAdmin ou Diocésain) pour le réactiver.";
+const INVALID_CREDENTIALS_MESSAGE = "Identifiants incorrects. Veuillez réessayer.";
+
+function LoginPageFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-amber-950">
+      <Loader2 className="h-10 w-10 animate-spin text-amber-200" />
+    </div>
+  );
+}
+
+function LoginPageContent() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [errorKind, setErrorKind] = useState<LoginErrorKind>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -41,12 +58,44 @@ export default function LoginPage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  useEffect(() => {
+    const authError = searchParams.get("error");
+    if (authError === "AccountDisabled") {
+      setError(BLOCKED_ACCOUNT_MESSAGE);
+      setErrorKind("blocked");
+    }
+  }, [searchParams]);
+
+  const setLoginError = (message: string, kind: LoginErrorKind = "generic") => {
+    setError(message);
+    setErrorKind(kind);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setErrorKind(null);
 
     try {
+      const verifyRes = await fetch("/api/auth/verify-credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const verifyData = (await verifyRes.json().catch(() => ({}))) as { status?: string };
+
+      if (verifyData.status === "disabled") {
+        setLoginError(BLOCKED_ACCOUNT_MESSAGE, "blocked");
+        setLoading(false);
+        return;
+      }
+      if (verifyData.status !== "ok") {
+        setLoginError(INVALID_CREDENTIALS_MESSAGE, "generic");
+        setLoading(false);
+        return;
+      }
+
       const res = await signIn("credentials", {
         email: email.trim(),
         password,
@@ -54,7 +103,11 @@ export default function LoginPage() {
       });
 
       if (!res?.ok || res.error) {
-        setError("Identifiants incorrects. Veuillez réessayer.");
+        if (res?.error === "AccountDisabled") {
+          setLoginError(BLOCKED_ACCOUNT_MESSAGE, "blocked");
+        } else {
+          setLoginError(INVALID_CREDENTIALS_MESSAGE, "generic");
+        }
         setLoading(false);
         return;
       }
@@ -62,7 +115,7 @@ export default function LoginPage() {
       // Navigation complète pour que le cookie de session soit bien pris en compte côté serveur.
       window.location.assign("/dashboard");
     } catch {
-      setError("Connexion impossible pour le moment. Réessayez.");
+      setLoginError("Connexion impossible pour le moment. Réessayez.", "generic");
       setLoading(false);
     }
   };
@@ -299,9 +352,28 @@ export default function LoginPage() {
           {recoveryStep === "login" && (
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl text-sm font-medium flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300 backdrop-blur-sm">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                  {error}
+                <div
+                  className={`p-4 rounded-xl text-sm font-medium flex items-start gap-3 animate-in fade-in slide-in-from-top-4 duration-300 backdrop-blur-sm ${
+                    errorKind === "blocked"
+                      ? "bg-amber-500/15 border border-amber-400/30 text-amber-50"
+                      : "bg-red-500/10 border border-red-500/20 text-red-200"
+                  }`}
+                >
+                  {errorKind === "blocked" ? (
+                    <ShieldAlert className="h-5 w-5 shrink-0 text-amber-300 mt-0.5" />
+                  ) : (
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0 mt-2" />
+                  )}
+                  <div>
+                    {errorKind === "blocked" ? (
+                      <>
+                        <p className="font-bold text-amber-50">Compte bloqué</p>
+                        <p className="mt-1 text-amber-100/90 leading-relaxed">{error}</p>
+                      </>
+                    ) : (
+                      error
+                    )}
+                  </div>
                 </div>
               )}
               {recoveryInfo && (
@@ -588,5 +660,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginPageFallback />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

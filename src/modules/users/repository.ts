@@ -128,6 +128,7 @@ function userEnrichmentStages(): mongoose.PipelineStage[] {
         phone: 1,
         numero: 1,
         roles: 1,
+        actif: 1,
         createdAt: 1,
         updatedAt: 1,
         parishId: {
@@ -236,6 +237,19 @@ export class UserRepository {
   async countByRole(role: string) {
     await connectToDatabase();
     return User.countDocuments({ roles: role });
+  }
+
+  /** Comptes actifs portant un rôle (actif absent ou true). */
+  async countActiveByRole(role: string) {
+    await connectToDatabase();
+    return User.countDocuments({ roles: role, actif: { $ne: false } });
+  }
+
+  async setActif(id: string, actif: boolean) {
+    await connectToDatabase();
+    const updated = await User.findByIdAndUpdate(id, { $set: { actif } }, { new: true });
+    if (!updated) return null;
+    return findByIdLeanNoPassword(updated._id as mongoose.Types.ObjectId);
   }
 
   async create(data: {

@@ -5,6 +5,7 @@ import { User } from "@/modules/users/model";
 import { Paroisse } from "@/modules/paroisses/model";
 import bcryptjs from "bcryptjs";
 import { normalizeRoles } from "@/lib/rolePermissions";
+import { findUserByEmailForLogin } from "@/lib/userLoginVerification";
 import {
   AuthSessionService,
   SESSION_IDLE_MS,
@@ -26,12 +27,16 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         await connectToDatabase();
-        const user = await User.findOne({ email: credentials.email }).lean();
+        const user = await findUserByEmailForLogin(credentials.email);
 
         if (!user || !user.password) return null;
 
         const isPasswordValid = await bcryptjs.compare(credentials.password, user.password);
         if (!isPasswordValid) return null;
+
+        if (user.actif === false) {
+          throw new Error("AccountDisabled");
+        }
 
         let paroisseName: string | null = null;
         if (user.parishId) {
@@ -88,6 +93,12 @@ export const authOptions: NextAuthOptions = {
         String(token.id)
       );
       if (!active) {
+        return {};
+      }
+
+      await connectToDatabase();
+      const userDoc = await User.findById(String(token.id)).select("actif").lean<{ actif?: boolean } | null>();
+      if (userDoc?.actif === false) {
         return {};
       }
 
