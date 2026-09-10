@@ -6,7 +6,9 @@ import { RESULTAT_CONSULTATION_MONTANT } from "@/modules/evaluations/model";
 import { getAppBaseUrl } from "@/lib/appBaseUrl";
 import {
   buildResultatConsultationFingerprint,
-  syntheticResultatCustomerEmail,
+  RESULTAT_SHARED_CUSTOMER,
+  resultatSharedCustomerEmail,
+  resultatSharedCustomerId,
 } from "@/lib/resultatConsultationPayments";
 import { fedapayFindOrCreateCustomer, fedapayCreateTransactionAndPaymentUrl } from "@/lib/fedapay";
 import { syncResultatPaymentFromFedapayTransactionId } from "@/lib/resultatPaymentFinalize";
@@ -117,17 +119,18 @@ export async function POST(request: Request) {
     await service.updateResultatPaiementById(paymentId, { callbackUrl });
 
     const phone = process.env.FEDAPAY_CUSTOMER_PHONE_PLACEHOLDER?.trim() || "+22997000000";
-    const customerEmail = syntheticResultatCustomerEmail(uniqueId);
-
-    const customer = await fedapayFindOrCreateCustomer({
-      email: customerEmail,
-      firstname: lecteur.prenoms?.split(/\s+/)[0] || lecteur.nom || "Lecteur",
-      lastname: lecteur.nom || "CDLJ",
-      phone,
-    });
-
-    const customerId = Number((customer as { id?: number }).id);
-    if (!Number.isFinite(customerId)) {
+    // Un seul client FedaPay pour toutes les consultations (évite conflit e-mail par lecteur).
+    let customerId = resultatSharedCustomerId();
+    if (customerId == null) {
+      const customer = await fedapayFindOrCreateCustomer({
+        email: resultatSharedCustomerEmail(),
+        firstname: RESULTAT_SHARED_CUSTOMER.firstname,
+        lastname: RESULTAT_SHARED_CUSTOMER.lastname,
+        phone,
+      });
+      customerId = Number((customer as { id?: number }).id);
+    }
+    if (!Number.isFinite(customerId) || customerId == null) {
       await service.updateResultatPaiementById(paymentId, {
         status: "failed",
         lastWebhookEvent: "customer_create_invalid",
