@@ -15,6 +15,7 @@ import { syncResultatPaymentFromFedapayTransactionId } from "@/lib/resultatPayme
 import connectToDatabase from "@/lib/mongoose";
 import { Lecteur } from "@/modules/lecteurs/model";
 import { getErrorMessage } from "@/lib/errorMessage";
+import { clientIpFromRequest, rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 const bodySchema = z.object({
   uniqueId: z.string().trim().min(1, "Le numéro lecteur est requis."),
@@ -23,6 +24,10 @@ const bodySchema = z.object({
 export async function POST(request: Request) {
   let createdPaymentId: string | null = null;
   try {
+    const ip = clientIpFromRequest(request);
+    const limited = rateLimit(`resultats:pay-init:${ip}`, { limit: 15, windowMs: 15 * 60_000 });
+    if (!limited.ok) return rateLimitResponse(limited.retryAfterSec);
+
     const parsed = bodySchema.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Données invalides." }, { status: 400 });

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EvaluationService } from "@/modules/evaluations/service";
 import connectToDatabase from "@/lib/mongoose";
 import { Lecteur } from "@/modules/lecteurs/model";
+import { clientIpFromRequest, rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 const bodySchema = z.object({
   uniqueId: z.string().trim().min(1, "Le numéro lecteur est requis."),
@@ -10,6 +11,10 @@ const bodySchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const ip = clientIpFromRequest(request);
+    const limited = rateLimit(`resultats:get:${ip}`, { limit: 30, windowMs: 60_000 });
+    if (!limited.ok) return rateLimitResponse(limited.retryAfterSec);
+
     const parsed = bodySchema.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Données invalides." }, { status: 400 });
@@ -28,7 +33,7 @@ export async function POST(request: Request) {
     if (!payload.result) {
       return NextResponse.json({
         found: true,
-        lecteur: payload.lecteur,
+        lecteur: { uniqueId: payload.lecteur.uniqueId },
         result: null,
         message: "Aucun résultat publié pour l'année en cours.",
       });
@@ -53,7 +58,7 @@ export async function POST(request: Request) {
     if (!paid) {
       return NextResponse.json({
         found: true,
-        lecteur: payload.lecteur,
+        lecteur: { uniqueId: payload.lecteur.uniqueId },
         result: null,
         paymentRequired: true,
         message: "Le paiement de consultation est requis pour afficher le résultat.",

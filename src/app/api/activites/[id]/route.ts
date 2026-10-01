@@ -27,6 +27,19 @@ export async function GET(
     const service = new ActiviteService();
     const a = await service.getActivite(id);
     if (!a) return NextResponse.json({ error: "Activité introuvable" }, { status: 404 });
+
+    const roles: string[] = session.user.roles ?? [];
+    if (isActiviteManager(roles) || roles.includes("VICARIAL") || roles.includes("PAROISSIAL")) {
+      const token = await service.ensurePresenceToken(id);
+      if (token) {
+        return NextResponse.json({
+          ...a,
+          presenceToken: token,
+          presenceScanPath: `/verifier?a=${encodeURIComponent(id)}&t=${encodeURIComponent(token)}`,
+        });
+      }
+    }
+
     return NextResponse.json(a);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

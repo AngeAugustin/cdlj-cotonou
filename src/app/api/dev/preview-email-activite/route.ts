@@ -1,26 +1,14 @@
 import { NextResponse } from "next/server";
 import { buildActivitePaymentEmailHtml } from "@/lib/email/activitePaymentTemplate";
+import { assertDevRouteAccess } from "@/lib/devRouteAccess";
 
 /**
- * Prévisualisation du mail « confirmation paiement activité » dans le navigateur.
- * Utile pour vérifier le design sans envoyer un vrai paiement.
- *
- * - En production : désactivé (404), sauf si `EMAIL_PREVIEW_SECRET` est défini et
- *   la requête contient `?secret=<valeur>`.
- *
- * Usage dev : GET http://localhost:3000/api/dev/preview-email-activite
+ * Prévisualisation du mail « confirmation paiement activité ».
+ * Dev local : ouvert. Ailleurs : header `x-dev-secret` = EMAIL_PREVIEW_SECRET.
  */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const secret = searchParams.get("secret");
-  const secretOk =
-    process.env.NODE_ENV === "development" ||
-    (process.env.EMAIL_PREVIEW_SECRET?.trim() &&
-      secret === process.env.EMAIL_PREVIEW_SECRET.trim());
-
-  if (!secretOk) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
+  const denied = assertDevRouteAccess(request);
+  if (denied) return denied;
 
   const html = buildActivitePaymentEmailHtml({
     activiteNom: "Journée diocésaine des lecteurs (exemple)",

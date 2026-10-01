@@ -11,6 +11,12 @@ import {
   SESSION_IDLE_MS,
   extractClientMeta,
 } from "@/modules/auth-sessions/service";
+import { rateLimit } from "@/lib/rateLimit";
+import {
+  invalidateSessionValidation,
+  seedSessionValidation,
+  validateAuthSessionCached,
+} from "@/lib/sessionValidationCache";
 
 const authSessionService = new AuthSessionService();
 
@@ -25,6 +31,16 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        const clientMetaEarly = extractClientMeta(req?.headers);
+        // Même bucket que /api/auth/verify-credentials — évite 2 compteurs divergents
+        const loginLimit = rateLimit(`auth:credentials:${clientMetaEarly.ip ?? "unknown"}`, {
+          limit: 20,
+          windowMs: 15 * 60_000,
+        });
+        if (!loginLimit.ok) {
+          throw new Error("TooManyRequests");
+        }
 
         await connectToDatabase();
         const user = await findUserByEmailForLogin(credentials.email);
@@ -55,6 +71,8 @@ export const authOptions: NextAuthOptions = {
           locationLabel: clientMeta.locationLabel,
         });
 
+        seedSessionValidation(user._id.toString(), sessionId);
+
         return {
           id: user._id.toString(),
           email: user.email,
@@ -81,6 +99,9 @@ export const authOptions: NextAuthOptions = {
         token.vicariatId = user.vicariatId;
         token.paroisseName = user.paroisseName ?? null;
         token.sessionId = user.sessionId;
+        if (user.id && user.sessionId) {
+          seedSessionValidation(user.id, user.sessionId);
+        }
         return token;
       }
 
@@ -88,17 +109,20 @@ export const authOptions: NextAuthOptions = {
         return {};
       }
 
-      const active = await authSessionService.assertActive(
-        String(token.sessionId),
-        String(token.id)
-      );
-      if (!active) {
-        return {};
-      }
+      const userId = String(token.id);
+      const sessionId = String(token.sessionId);
 
-      await connectToDatabase();
-      const userDoc = await User.findById(String(token.id)).select("actif").lean<{ actif?: boolean } | null>();
-      if (userDoc?.actif === false) {
+      const stillValid = await validateAuthSessionCached(userId, sessionId, async () => {
+        const active = await authSessionService.assertActive(sessionId, userId);
+        if (!active) return false;
+
+        await connectToDatabase();
+        const userDoc = await User.findById(userId).select("actif").lean<{ actif?: boolean } | null>();
+        if (userDoc?.actif === false) return false;
+        return true;
+      });
+
+      if (!stillValid) {
         return {};
       }
 
@@ -136,6 +160,7 @@ export const authOptions: NextAuthOptions = {
       const userId = token && typeof token === "object" ? (token as { id?: string }).id : undefined;
       if (sessionId && userId) {
         try {
+          invalidateSessionValidation(String(sessionId));
           await authSessionService.revokeBySessionId(String(userId), String(sessionId));
         } catch {
           // Ne bloque pas la déconnexion cookie

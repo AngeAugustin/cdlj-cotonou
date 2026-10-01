@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyUserLoginCredentials } from "@/lib/userLoginVerification";
+import { clientIpFromRequest, rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 const bodySchema = z.object({
   email: z.string().min(1),
@@ -9,6 +10,11 @@ const bodySchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const ip = clientIpFromRequest(request);
+    // Même bucket que NextAuth authorize()
+    const limited = rateLimit(`auth:credentials:${ip}`, { limit: 20, windowMs: 15 * 60_000 });
+    if (!limited.ok) return rateLimitResponse(limited.retryAfterSec);
+
     const parsed = bodySchema.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json({ status: "invalid" as const });

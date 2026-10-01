@@ -10,11 +10,11 @@ import { cn } from "@/lib/utils";
 import { PAYMENT_PENDING_TIMEOUT_MS } from "@/lib/resultatConsultationPayments";
 
 type LecteurInfo = {
-  nom: string;
-  prenoms: string;
   uniqueId: string;
-  vicariat: string;
-  paroisse: string;
+  nom?: string;
+  prenoms?: string;
+  vicariat?: string;
+  paroisse?: string;
 };
 
 type ResultInfo = {
@@ -508,7 +508,10 @@ export function ResultatsClient() {
                   <p className="font-bold text-slate-900">Résultat non disponible</p>
                   <p className="mt-1 text-sm text-slate-700">{state.message}</p>
                   <p className="mt-3 text-sm text-slate-600">
-                    {state.lecteur.nom} {state.lecteur.prenoms} · {state.lecteur.uniqueId}
+                    Numéro lecteur : <span className="font-mono font-semibold">{state.lecteur.uniqueId}</span>
+                    {state.lecteur.nom
+                      ? ` · ${state.lecteur.nom} ${state.lecteur.prenoms ?? ""}`.trimEnd()
+                      : null}
                   </p>
                 </div>
               </div>
@@ -523,21 +526,21 @@ export function ResultatsClient() {
                   <div>
                     <p className="font-bold text-slate-900">Résultat disponible — paiement requis</p>
                     <p className="mt-1 text-sm text-slate-700">
-                      Un résultat publié est disponible pour{" "}
-                      <span className="font-semibold">
-                        {paymentContext.lecteur.nom} {paymentContext.lecteur.prenoms}
-                      </span>{" "}
-                      ({paymentContext.annee}). Payez {formatMoney(paymentContext.montant)} pour y accéder. Une fois payé, vous pourrez
-                      consulter ce résultat indéfiniment.
+                      Un résultat publié est disponible pour le numéro{" "}
+                      <span className="font-semibold font-mono">{paymentContext.lecteur.uniqueId}</span> (
+                      {paymentContext.annee}). Payez {formatMoney(paymentContext.montant)} pour y accéder. Une fois payé,
+                      vous pourrez consulter ce résultat indéfiniment.
                     </p>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <ResultField label="Nom" value={paymentContext.lecteur.nom} />
-                <ResultField label="Prénom(s)" value={paymentContext.lecteur.prenoms} />
-                <ResultField label="Numéro lecteur" value={paymentContext.lecteur.uniqueId} className="font-mono sm:col-span-2" />
+                <ResultField
+                  label="Numéro lecteur"
+                  value={paymentContext.lecteur.uniqueId}
+                  className="font-mono sm:col-span-2"
+                />
               </div>
 
               <Button
@@ -585,11 +588,11 @@ export function ResultatsClient() {
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <ResultField label="Nom" value={state.lecteur.nom} />
-                <ResultField label="Prénom(s)" value={state.lecteur.prenoms} />
+                <ResultField label="Nom" value={state.lecteur.nom ?? "—"} />
+                <ResultField label="Prénom(s)" value={state.lecteur.prenoms ?? "—"} />
                 <ResultField label="Numéro lecteur" value={state.lecteur.uniqueId} className="font-mono" />
-                <ResultField label="Vicariat" value={state.lecteur.vicariat} />
-                <ResultField label="Paroisse" value={state.lecteur.paroisse} />
+                <ResultField label="Vicariat" value={state.lecteur.vicariat ?? "—"} />
+                <ResultField label="Paroisse" value={state.lecteur.paroisse ?? "—"} />
                 <DecisionField decision={state.result.decision} />
                 <ResultField
                   label={state.result.decision === "PROMU" ? "Nouveau grade" : "Grade maintenu"}

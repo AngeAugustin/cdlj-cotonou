@@ -1,5 +1,5 @@
-import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+import { NextRequest, NextResponse } from "next/server";
 import {
   canManageActualites,
   isDirectionSpirituelle,
@@ -8,54 +8,112 @@ import {
   isSpiritualDirectionForbiddenPath,
 } from "@/lib/rolePermissions";
 
-export default withAuth(
-  function middleware(req) {
-    const roles = Array.isArray(req.nextauth?.token?.roles)
-      ? (req.nextauth.token.roles as string[])
-      : [];
-    const isVicariatPage = req.nextUrl.pathname.startsWith("/vicariats");
-    const isVicarial = roles.includes("VICARIAL");
+/** Préfixes API accessibles sans session (auth propre à la route). */
+const PUBLIC_API_PREFIXES = [
+  "/api/auth",
+  "/api/public",
+  "/api/webhooks",
+  "/api/jobs",
+  "/api/dev",
+] as const;
 
-    if (isVicariatPage && isVicarial) {
+/** GET publics (contenu publié) — pas les sous-routes `[id]`. */
+const PUBLIC_GET_EXACT = new Set(["/api/actualites", "/api/mediatheque"]);
+
+const DASHBOARD_PREFIXES = [
+  "/dashboard",
+  "/lecteurs",
+  "/calendrier",
+  "/paroisses",
+  "/vicariats",
+  "/activites",
+  "/assemblees",
+  "/cotisations",
+  "/grades",
+  "/evaluations",
+  "/actualites",
+  "/gestion-mediatheque",
+  "/utilisateurs",
+  "/profil",
+] as const;
+
+function isPublicApi(req: NextRequest): boolean {
+  const pathname = req.nextUrl.pathname;
+  if (PUBLIC_API_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return true;
+  }
+  const method = req.method.toUpperCase();
+  if ((method === "GET" || method === "HEAD" || method === "OPTIONS") && PUBLIC_GET_EXACT.has(pathname)) {
+    return true;
+  }
+  return false;
+}
+
+function isDashboardPath(pathname: string): boolean {
+  return DASHBOARD_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+function noStoreHeaders(res: NextResponse) {
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.headers.set("Pragma", "no-cache");
+  res.headers.set("Expires", "0");
+  return res;
+}
+
+export async function middleware(req: NextRequest) {
+  const pathname = req.nextUrl.pathname;
+
+  // ── API ────────────────────────────────────────────────────────────
+  if (pathname.startsWith("/api/")) {
+    if (isPublicApi(req)) {
+      return NextResponse.next();
+    }
+
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    if (!token?.id || !token?.sessionId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return NextResponse.next();
+  }
+
+  // ── Pages dashboard ────────────────────────────────────────────────
+  if (!isDashboardPath(pathname)) {
+    return NextResponse.next();
+  }
+
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  if (!token?.id || !token?.sessionId) {
+    const login = new URL("/auth/login", req.url);
+    login.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(login);
+  }
+
+  const roles = Array.isArray(token.roles) ? (token.roles as string[]) : [];
+  const isVicariatPage = pathname.startsWith("/vicariats");
+  const isVicarial = roles.includes("VICARIAL");
+
+  if (isVicariatPage && isVicarial) {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
+
+  if (isDirectionSpirituelle(roles) && isSpiritualDirectionForbiddenPath(pathname)) {
+    const allowActualitesWrite =
+      canManageActualites(roles) && pathname.startsWith("/actualites");
+    if (!allowActualitesWrite) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
-
-    const pathname = req.nextUrl.pathname;
-    if (isDirectionSpirituelle(roles) && isSpiritualDirectionForbiddenPath(pathname)) {
-      const allowActualitesWrite =
-        canManageActualites(roles) && pathname.startsWith("/actualites");
-      if (!allowActualitesWrite) {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
-      }
-    }
-
-    if (isRedacteurOnly(roles) && isRedacteurForbiddenPath(req.nextUrl.pathname)) {
-      return NextResponse.redirect(new URL("/actualites", req.url));
-    }
-
-    const response = NextResponse.next();
-    // Empêche le navigateur de mettre en cache les pages protégées
-    // Cela bloque le retour arrière vers une page connectée après déconnexion
-    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-    response.headers.set("Pragma", "no-cache");
-    response.headers.set("Expires", "0");
-    return response;
-  },
-  {
-    pages: {
-      signIn: "/auth/login",
-    },
-    callbacks: {
-      // JWT sans sessionId = session révoquée / ancienne (avant registre sessions)
-      authorized: ({ token }) => Boolean(token?.id && token?.sessionId),
-    },
   }
-);
+
+  if (isRedacteurOnly(roles) && isRedacteurForbiddenPath(pathname)) {
+    return NextResponse.redirect(new URL("/actualites", req.url));
+  }
+
+  return noStoreHeaders(NextResponse.next());
+}
 
 export const config = {
-  // Protège uniquement les routes privées (dashboard et ses sous-routes)
-  // Les routes publiques (/, /about, /news, /forums, /auth, /api) sont libres d'accès
   matcher: [
+    "/api/:path*",
     "/dashboard/:path*",
     "/lecteurs/:path*",
     "/calendrier/:path*",

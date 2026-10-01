@@ -3,6 +3,7 @@ import connectToDatabase from "@/lib/mongoose";
 import { Activite, ActiviteParticipation, ActivitePaiement, ActivitePresence } from "./model";
 import { Lecteur } from "@/modules/lecteurs/model";
 import { CreateActiviteInput, UpdateActiviteInput } from "./schema";
+import { generatePresenceToken } from "@/lib/presenceAccess";
 import "@/modules/vicariats/model";
 import "@/modules/paroisses/model";
 import "@/modules/grades/model";
@@ -48,6 +49,29 @@ export class ActiviteRepository {
     return Activite.findById(id).lean();
   }
 
+  async findByIdWithPresenceToken(id: string) {
+    await connectToDatabase();
+    if (!mongoose.Types.ObjectId.isValid(id)) return null;
+    return Activite.findById(id).select("+presenceToken").lean();
+  }
+
+  /** Garantit un token de scan (backfill pour activités existantes). */
+  async ensurePresenceToken(id: string): Promise<string | null> {
+    await connectToDatabase();
+    if (!mongoose.Types.ObjectId.isValid(id)) return null;
+    const existing = await Activite.findById(id).select("+presenceToken").lean<{
+      _id: Types.ObjectId;
+      presenceToken?: string;
+    } | null>();
+    if (!existing) return null;
+    if (existing.presenceToken) return existing.presenceToken;
+
+    const token = generatePresenceToken();
+    await Activite.updateOne({ _id: existing._id, presenceToken: { $in: [null, ""] } }, { $set: { presenceToken: token } });
+    const refreshed = await Activite.findById(id).select("+presenceToken").lean<{ presenceToken?: string } | null>();
+    return refreshed?.presenceToken ?? token;
+  }
+
   async create(data: CreateActiviteInput) {
     await connectToDatabase();
     const doc = await Activite.create({
@@ -65,6 +89,7 @@ export class ActiviteRepository {
       image: data.image,
       terminee: false,
       suspendue: false,
+      presenceToken: generatePresenceToken(),
     });
     return Activite.findById(doc._id).lean();
   }

@@ -29,6 +29,7 @@ type LoginErrorKind = "generic" | "blocked" | null;
 const BLOCKED_ACCOUNT_MESSAGE =
   "Votre compte a été bloqué. Contactez un administrateur (SuperAdmin ou Diocésain) pour le réactiver.";
 const INVALID_CREDENTIALS_MESSAGE = "Identifiants incorrects. Veuillez réessayer.";
+const RATE_LIMIT_MESSAGE = "Trop de tentatives. Réessayez dans quelques minutes.";
 
 function LoginPageFallback() {
   return (
@@ -63,8 +64,32 @@ function LoginPageContent() {
     if (authError === "AccountDisabled") {
       setError(BLOCKED_ACCOUNT_MESSAGE);
       setErrorKind("blocked");
+    } else if (authError === "TooManyRequests") {
+      setError(RATE_LIMIT_MESSAGE);
+      setErrorKind("generic");
     }
   }, [searchParams]);
+
+  function resolveSignInError(res: { error?: string | null; url?: string | null }) {
+    const err = res.error ?? "";
+    const url = res.url ?? "";
+    const fromUrl = (() => {
+      try {
+        if (!url) return "";
+        return new URL(url, window.location.origin).searchParams.get("error") ?? "";
+      } catch {
+        return "";
+      }
+    })();
+    const code = err || fromUrl;
+    if (code === "AccountDisabled" || url.includes("AccountDisabled")) {
+      return { message: BLOCKED_ACCOUNT_MESSAGE, kind: "blocked" as const };
+    }
+    if (code === "TooManyRequests" || url.includes("TooManyRequests")) {
+      return { message: RATE_LIMIT_MESSAGE, kind: "generic" as const };
+    }
+    return { message: INVALID_CREDENTIALS_MESSAGE, kind: "generic" as const };
+  }
 
   const setLoginError = (message: string, kind: LoginErrorKind = "generic") => {
     setError(message);
@@ -83,6 +108,11 @@ function LoginPageContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password }),
       });
+      if (verifyRes.status === 429) {
+        setLoginError(RATE_LIMIT_MESSAGE, "generic");
+        setLoading(false);
+        return;
+      }
       const verifyData = (await verifyRes.json().catch(() => ({}))) as { status?: string };
 
       if (verifyData.status === "disabled") {
@@ -103,11 +133,8 @@ function LoginPageContent() {
       });
 
       if (!res?.ok || res.error) {
-        if (res?.error === "AccountDisabled") {
-          setLoginError(BLOCKED_ACCOUNT_MESSAGE, "blocked");
-        } else {
-          setLoginError(INVALID_CREDENTIALS_MESSAGE, "generic");
-        }
+        const resolved = resolveSignInError(res ?? {});
+        setLoginError(resolved.message, resolved.kind);
         setLoading(false);
         return;
       }
@@ -153,6 +180,10 @@ function LoginPageContent() {
         body: JSON.stringify({ email: recoveryEmail }),
       });
       const data = (await res.json()) as { error?: string; message?: string };
+      if (res.status === 429) {
+        setError(RATE_LIMIT_MESSAGE);
+        return;
+      }
       if (!res.ok) {
         setError(data.error ?? "Erreur lors de l’envoi");
         return;
@@ -177,6 +208,10 @@ function LoginPageContent() {
         body: JSON.stringify({ email: recoveryEmail, code: recoveryCode }),
       });
       const data = (await res.json()) as { error?: string; resetToken?: string };
+      if (res.status === 429) {
+        setError(RATE_LIMIT_MESSAGE);
+        return;
+      }
       if (!res.ok) {
         setError(data.error ?? "Code invalide");
         return;
@@ -205,6 +240,10 @@ function LoginPageContent() {
         }),
       });
       const data = (await res.json()) as { error?: string };
+      if (res.status === 429) {
+        setError(RATE_LIMIT_MESSAGE);
+        return;
+      }
       if (!res.ok) {
         setError(data.error ?? "Échec de la réinitialisation");
         return;

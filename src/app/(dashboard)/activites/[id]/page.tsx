@@ -21,6 +21,7 @@ import {
   CreditCard,
   PauseCircle,
   PlayCircle,
+  QrCode,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -57,6 +58,8 @@ type Activite = {
   image?: string;
   terminee: boolean;
   suspendue?: boolean;
+  presenceToken?: string;
+  presenceScanPath?: string;
 };
 
 type ParticipantRow = {
@@ -1433,7 +1436,45 @@ export default function ActiviteDetailsPage({ params }: { params: Promise<{ id: 
         ) : tab === "presence" ? (
           <div className="space-y-6">
             {canSeePresence ? (
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-6">
+                {activite.presenceScanPath && !activite.terminee ? (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-emerald-950 flex items-center gap-2">
+                          <QrCode className="w-4 h-4" /> Lien de scan sur site
+                        </h3>
+                        <p className="mt-1 text-sm text-emerald-900/80">
+                          Partagez uniquement ce lien (ou un QR) avec les contrôleurs. Sans ce jeton, la page
+                          publique /verifier ne peut plus valider les présences.
+                        </p>
+                        <p className="mt-2 break-all font-mono text-xs text-emerald-950/90">
+                          {typeof window !== "undefined"
+                            ? `${window.location.origin}${activite.presenceScanPath}`
+                            : activite.presenceScanPath}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="shrink-0 rounded-xl border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-100"
+                        onClick={() => {
+                          const url =
+                            typeof window !== "undefined"
+                              ? `${window.location.origin}${activite.presenceScanPath}`
+                              : activite.presenceScanPath!;
+                          void navigator.clipboard.writeText(url).then(
+                            () => showToast("Lien de présence copié"),
+                            () => showToast("Impossible de copier le lien", "error")
+                          );
+                        }}
+                      >
+                        Copier le lien
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
                   <div>
                     <h2 className="font-bold text-slate-900 flex items-center gap-2">

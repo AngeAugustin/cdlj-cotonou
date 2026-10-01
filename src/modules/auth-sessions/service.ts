@@ -2,6 +2,10 @@ import { randomUUID } from "crypto";
 import mongoose from "mongoose";
 import connectToDatabase from "@/lib/mongoose";
 import { AuthSession } from "./model";
+import {
+  invalidateSessionValidation,
+  invalidateUserSessionValidations,
+} from "@/lib/sessionValidationCache";
 
 /** Inactivité max avant expiration (alignée sur maxAge JWT). */
 export const SESSION_IDLE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -222,11 +226,22 @@ export class AuthSessionService {
       },
       { $set: { revokedAt: new Date() } }
     );
+    if (res.modifiedCount > 0) {
+      invalidateSessionValidation(sessionId);
+    }
     return res.modifiedCount > 0;
   }
 
   async revokeOthers(userId: string, keepSessionId: string): Promise<number> {
     await connectToDatabase();
+    const toRevoke = await AuthSession.find({
+      userId: new mongoose.Types.ObjectId(userId),
+      sessionId: { $ne: keepSessionId },
+      revokedAt: null,
+    })
+      .select("sessionId")
+      .lean<{ sessionId: string }[]>();
+
     const res = await AuthSession.updateMany(
       {
         userId: new mongoose.Types.ObjectId(userId),
@@ -235,6 +250,9 @@ export class AuthSessionService {
       },
       { $set: { revokedAt: new Date() } }
     );
+    for (const row of toRevoke) {
+      invalidateSessionValidation(row.sessionId);
+    }
     return res.modifiedCount;
   }
 
@@ -247,6 +265,9 @@ export class AuthSessionService {
       },
       { $set: { revokedAt: new Date() } }
     );
+    if (res.modifiedCount > 0) {
+      invalidateUserSessionValidations(userId);
+    }
     return res.modifiedCount;
   }
 }

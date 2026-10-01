@@ -1,3 +1,4 @@
+import { randomInt } from "crypto";
 import bcryptjs from "bcryptjs";
 import connectToDatabase from "@/lib/mongoose";
 import { signPasswordResetToken, verifyPasswordResetToken } from "@/lib/passwordResetJwt";
@@ -28,7 +29,7 @@ async function findUserIdByEmail(emailNormalized: string) {
 }
 
 function randomSixDigitCode(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
 export async function requestPasswordResetCode(rawEmail: string): Promise<void> {

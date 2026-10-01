@@ -20,6 +20,8 @@ export interface IActivite extends Document {
   terminee: boolean;
   /** Inscriptions vicariales temporairement bloquées */
   suspendue: boolean;
+  /** Secret pour le scan de présence public (/verifier?a=&t=) */
+  presenceToken?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +48,7 @@ const activiteSchema = new Schema<IActivite>(
     image: { type: String },
     terminee: { type: Boolean, default: false },
     suspendue: { type: Boolean, default: false },
+    presenceToken: { type: String, select: false },
   },
   { timestamps: true }
 );

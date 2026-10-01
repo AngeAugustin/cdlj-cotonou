@@ -1,5 +1,6 @@
 import { ActualiteRepository } from "./repository";
 import { CreateActualiteInput, UpdateActualiteInput } from "./schema";
+import { sanitizeArticleHtml } from "@/lib/sanitizeHtml";
 
 export class ActualiteService {
   private repo = new ActualiteRepository();
@@ -17,11 +18,18 @@ export class ActualiteService {
   }
 
   async createActualite(data: CreateActualiteInput) {
-    return this.repo.create(data);
+    return this.repo.create({
+      ...data,
+      body: sanitizeArticleHtml(data.body ?? ""),
+    });
   }
 
   async updateActualite(id: string, data: UpdateActualiteInput) {
-    return this.repo.update(id, data);
+    const patch = { ...data };
+    if (typeof patch.body === "string") {
+      patch.body = sanitizeArticleHtml(patch.body);
+    }
+    return this.repo.update(id, patch);
   }
 
   async deleteActualite(id: string) {

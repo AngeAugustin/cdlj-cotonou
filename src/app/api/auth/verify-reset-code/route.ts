@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyPasswordResetCode } from "@/modules/password-reset/service";
+import { clientIpFromRequest, rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 const bodySchema = z.object({
   email: z.string().email("Adresse e-mail invalide"),
@@ -8,6 +9,10 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const ip = clientIpFromRequest(request);
+  const limited = rateLimit(`auth:verify-reset:${ip}`, { limit: 20, windowMs: 15 * 60_000 });
+  if (!limited.ok) return rateLimitResponse(limited.retryAfterSec);
+
   let body: unknown;
   try {
     body = await request.json();

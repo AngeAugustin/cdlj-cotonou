@@ -29,6 +29,24 @@ type EvaluationReadersResult = {
   members: EvaluationReaderMemberRow[];
 };
 
+/** Moyenne décroissante ; sans moyenne en bas ; égalité → nom / prénoms. */
+function compareMembersByMoyenneDesc<
+  T extends { moyenne?: number; lecteurId: { nom: string; prenoms: string } },
+>(a: T, b: T): number {
+  const ma = a.moyenne;
+  const mb = b.moyenne;
+  if (ma !== undefined && mb !== undefined && ma !== mb) return mb - ma;
+  if (ma !== undefined && mb === undefined) return -1;
+  if (ma === undefined && mb !== undefined) return 1;
+  const byNom = String(a.lecteurId.nom ?? "").localeCompare(String(b.lecteurId.nom ?? ""), "fr", {
+    sensitivity: "base",
+  });
+  if (byNom !== 0) return byNom;
+  return String(a.lecteurId.prenoms ?? "").localeCompare(String(b.lecteurId.prenoms ?? ""), "fr", {
+    sensitivity: "base",
+  });
+}
+
 type EvaluationReaderMemberRow = {
   _id: string;
   lecteur: {
@@ -325,13 +343,14 @@ export class EvaluationRepository {
       .populate("vicariatId", "name abbreviation")
       .populate("paroisseId", "name")
       .populate("gradeIdAtEvaluation", "name abbreviation level")
-      .sort({ "lecteurId.nom": 1, "lecteurId.prenoms": 1 })
+      .sort({ moyenne: -1 })
       .lean()) as unknown as MemberLean[];
 
     // Lecteurs supprimés → populate renvoie null ; on ignore ces liens orphelins.
     const members = membersRaw.filter(
       (m): m is MemberLean & { lecteurId: NonNullable<MemberLean["lecteurId"]> } => m.lecteurId != null
     );
+    members.sort(compareMembersByMoyenneDesc);
 
     const lecteurIds = members.map((m) => m.lecteurId._id.toString());
     const notes = (await EvaluationNote.find({
@@ -459,7 +478,7 @@ export class EvaluationRepository {
       .populate("vicariatId", "name abbreviation")
       .populate("paroisseId", "name")
       .populate("gradeIdAtEvaluation", "name abbreviation level")
-      .sort({ "lecteurId.nom": 1, "lecteurId.prenoms": 1 })
+      .sort({ moyenne: -1 })
       .lean()) as unknown as ExportMemberLean[];
 
     // Lecteurs supprimés → populate renvoie null ; on ignore ces liens orphelins.
@@ -467,6 +486,7 @@ export class EvaluationRepository {
       (m): m is ExportMemberLean & { lecteurId: NonNullable<ExportMemberLean["lecteurId"]> } =>
         m.lecteurId != null
     );
+    members.sort(compareMembersByMoyenneDesc);
 
     const lecteurIds = members.map((m) => m.lecteurId._id.toString());
     const notes = (await EvaluationNote.find({

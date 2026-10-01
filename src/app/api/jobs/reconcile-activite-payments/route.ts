@@ -11,10 +11,14 @@ function isAuthorized(request: Request) {
   const authHeader = request.headers.get("authorization") ?? "";
   const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
   const altSecret = request.headers.get("x-cron-secret")?.trim() ?? "";
-  const querySecret = new URL(request.url).searchParams.get("secret")?.trim() ?? "";
 
   if (configuredSecret) {
-    return bearer === configuredSecret || altSecret === configuredSecret || querySecret === configuredSecret;
+    return bearer === configuredSecret || altSecret === configuredSecret;
+  }
+
+  // En production, CRON_SECRET est obligatoire.
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL === "1") {
+    return false;
   }
 
   const host = request.headers.get("host") ?? "";

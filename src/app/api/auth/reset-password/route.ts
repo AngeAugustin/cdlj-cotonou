@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { resetPasswordWithToken } from "@/modules/password-reset/service";
+import { clientIpFromRequest, rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 const bodySchema = z
   .object({
@@ -15,6 +16,10 @@ const bodySchema = z
   });
 
 export async function POST(request: Request) {
+  const ip = clientIpFromRequest(request);
+  const limited = rateLimit(`auth:reset:${ip}`, { limit: 10, windowMs: 15 * 60_000 });
+  if (!limited.ok) return rateLimitResponse(limited.retryAfterSec);
+
   let body: unknown;
   try {
     body = await request.json();

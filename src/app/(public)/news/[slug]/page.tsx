@@ -10,6 +10,7 @@ import { getNewsBySlug, getPublishedNews, type PublicNewsDetail } from "@/lib/pu
 import { createPageMetadata, stripHtml, truncateDescription } from "@/lib/seo";
 import { articleSchema, breadcrumbSchema } from "@/lib/seo-schemas";
 import { NewsEngagement } from "@/components/news/NewsEngagement";
+import { sanitizeArticleHtml } from "@/lib/sanitizeHtml";
 
 export const revalidate = 120;
 
@@ -184,7 +185,7 @@ export default async function NewsDetailPage({
       <div className="max-w-7xl mx-auto px-6 md:px-8 py-12">
         <div
           className="article-body"
-          dangerouslySetInnerHTML={{ __html: post.body }}
+          dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(post.body) }}
         />
 
         <NewsEngagement slug={post.slug} />

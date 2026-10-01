@@ -17,7 +17,10 @@ export type VisitorContext = {
 };
 
 function hashIp(ip: string): string {
-  const secret = process.env.NEXTAUTH_SECRET ?? "cdlj-visitor";
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    throw new Error("NEXTAUTH_SECRET is required to hash visitor IPs");
+  }
   return createHash("sha256").update(`${secret}:${ip}`).digest("hex");
 }
 

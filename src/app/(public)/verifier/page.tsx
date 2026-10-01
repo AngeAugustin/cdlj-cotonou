@@ -71,6 +71,8 @@ export default function VerifierPresencePage() {
   const [loadingActivites, setLoadingActivites] = useState(true);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [selectedActiviteId, setSelectedActiviteId] = useState("");
+  const [presenceToken, setPresenceToken] = useState<string | null>(null);
+  const [tokenLocked, setTokenLocked] = useState(false);
   const [scannerPaused, setScannerPaused] = useState(true);
   const [scanError, setScanError] = useState<string | null>(null);
   const [processingScan, setProcessingScan] = useState(false);
@@ -94,16 +96,39 @@ export default function VerifierPresencePage() {
     async function loadActivites() {
       setLoadingActivites(true);
       setLoadingError(null);
+
+      const params = new URLSearchParams(window.location.search);
+      const a = (params.get("a") ?? params.get("activite") ?? "").trim();
+      const t = (params.get("t") ?? params.get("token") ?? "").trim();
+
       try {
-        const response = await fetch("/api/public/activites");
+        const url =
+          a && t
+            ? `/api/public/activites?id=${encodeURIComponent(a)}&token=${encodeURIComponent(t)}`
+            : "/api/public/activites";
+        const response = await fetch(url);
         const data = await response.json().catch(() => []);
 
         if (!response.ok) {
-          throw new Error(typeof data?.error === "string" ? data.error : "Impossible de charger les activités.");
+          throw new Error(
+            typeof data?.error === "string"
+              ? data.error
+              : "Impossible de charger les activités. Ouvrez le lien / QR officiel."
+          );
         }
 
         if (!cancelled) {
-          setActivites(Array.isArray(data) ? (data as ActiviteOption[]) : []);
+          const list = Array.isArray(data) ? (data as ActiviteOption[]) : [];
+          setActivites(list);
+          if (a && t) {
+            setPresenceToken(t);
+            setTokenLocked(true);
+            setSelectedActiviteId(a);
+            setScannerPaused(false);
+          } else if (list.length === 1) {
+            setSelectedActiviteId(list[0]!._id);
+            setScannerPaused(false);
+          }
         }
       } catch (error: unknown) {
         if (!cancelled) {
@@ -215,7 +240,10 @@ export default function VerifierPresencePage() {
       const response = await fetch(`/api/public/activites/${encodeURIComponent(selectedActiviteId)}/presence/check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uniqueId }),
+        body: JSON.stringify({
+          uniqueId,
+          ...(presenceToken ? { token: presenceToken } : {}),
+        }),
       });
 
       const data = await response.json().catch(() => ({}));
@@ -281,7 +309,10 @@ export default function VerifierPresencePage() {
       const response = await fetch(`/api/public/activites/${encodeURIComponent(selectedActiviteId)}/presence/validate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uniqueId: pendingParticipant.lecteur.uniqueId }),
+        body: JSON.stringify({
+          uniqueId: pendingParticipant.lecteur.uniqueId,
+          ...(presenceToken ? { token: presenceToken } : {}),
+        }),
       });
       const data = await response.json().catch(() => ({}));
 
@@ -391,7 +422,11 @@ export default function VerifierPresencePage() {
             <div className="mt-8 space-y-4">
               <div>
                 <p className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Activité</p>
-                <Select value={selectedActiviteId} onValueChange={handleActivityChange} disabled={loadingActivites}>
+                <Select
+                  value={selectedActiviteId}
+                  onValueChange={handleActivityChange}
+                  disabled={loadingActivites || tokenLocked}
+                >
                   <SelectTrigger className="h-12 w-full rounded-2xl border-slate-200 bg-white px-4">
                     <SelectValue>
                       {selectedActivite ? selectedActivite.nom : "Choisir une activité"}

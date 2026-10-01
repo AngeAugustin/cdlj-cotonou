@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { sanitizeArticleHtml } from "@/lib/sanitizeHtml";
 import type { Actualite } from "./ArticleForm";
 
 function formatDate(iso: string) {
@@ -136,7 +137,7 @@ export function ActualiteDetailView({
 
         <div
           className="article-body"
-          dangerouslySetInnerHTML={{ __html: article.body }}
+          dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(article.body) }}
         />
       </div>
     </div>

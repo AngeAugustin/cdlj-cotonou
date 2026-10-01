@@ -25,6 +25,14 @@ export class ActiviteService {
     return this.repo.findById(id);
   }
 
+  getActiviteWithPresenceToken(id: string) {
+    return this.repo.findByIdWithPresenceToken(id);
+  }
+
+  ensurePresenceToken(id: string) {
+    return this.repo.ensurePresenceToken(id);
+  }
+
   createActivite(data: CreateActiviteInput) {
     return this.repo.create(data);
   }

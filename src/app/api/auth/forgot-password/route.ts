@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requestPasswordResetCode } from "@/modules/password-reset/service";
+import { clientIpFromRequest, rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 const bodySchema = z.object({
   email: z.string().email("Adresse e-mail invalide"),
 });
 
 export async function POST(request: Request) {
+  const ip = clientIpFromRequest(request);
+  const limited = rateLimit(`auth:forgot:${ip}`, { limit: 8, windowMs: 15 * 60_000 });
+  if (!limited.ok) return rateLimitResponse(limited.retryAfterSec);
+
   let body: unknown;
   try {
     body = await request.json();
@@ -23,7 +28,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       message:
-        "Un code de réinitialisation vient d'être envoyé sur votre adresse e-mail.",
+        "Si un compte existe pour cette adresse, un code de réinitialisation vient d'être envoyé.",
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Erreur serveur";

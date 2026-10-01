@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import { EvaluationService } from "@/modules/evaluations/service";
 import { syncResultatPaymentFromFedapayTransactionId } from "@/lib/resultatPaymentFinalize";
+import { clientIpFromRequest, rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 async function getPayment(request: Request) {
   const { searchParams } = new URL(request.url);
   const paymentId = searchParams.get("pid") ?? searchParams.get("paymentId");
   if (!paymentId?.trim()) {
     return { error: NextResponse.json({ error: "pid ou paymentId requis" }, { status: 400 }) };
+  }
+
+  // ObjectId-looking only — réduit l'énumération brute
+  if (!/^[a-f\d]{24}$/i.test(paymentId.trim())) {
+    return { error: NextResponse.json({ error: "Paiement introuvable" }, { status: 404 }) };
   }
 
   const service = new EvaluationService();
@@ -20,6 +26,10 @@ async function getPayment(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    const ip = clientIpFromRequest(request);
+    const limited = rateLimit(`resultats:pay-status:${ip}`, { limit: 60, windowMs: 60_000 });
+    if (!limited.ok) return rateLimitResponse(limited.retryAfterSec);
+
     const scoped = await getPayment(request);
     if ("error" in scoped) return scoped.error;
 
@@ -45,7 +55,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       status: fresh.status,
-      fedapayReference: fresh.fedapayReference ?? null,
+      fedapayReference: fresh.status === "approved" ? (fresh.fedapayReference ?? null) : null,
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Erreur";
@@ -55,6 +65,10 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const ip = clientIpFromRequest(request);
+    const limited = rateLimit(`resultats:pay-status-patch:${ip}`, { limit: 20, windowMs: 60_000 });
+    if (!limited.ok) return rateLimitResponse(limited.retryAfterSec);
+
     const scoped = await getPayment(request);
     if ("error" in scoped) return scoped.error;
 
@@ -94,7 +108,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({
       status: fresh.status,
-      fedapayReference: fresh.fedapayReference ?? null,
+      fedapayReference: fresh.status === "approved" ? (fresh.fedapayReference ?? null) : null,
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Erreur";
