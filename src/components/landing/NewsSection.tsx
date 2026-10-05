@@ -3,7 +3,7 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { NewsPublicGrid } from "@/components/news/NewsPublicGrid";
-import type { PublicNewsDetail } from "@/lib/public-cache";
+import type { PublicNewsDetail } from "@/lib/public-news-cache";
 
 export function NewsSection({ posts }: { posts: PublicNewsDetail[] }) {
   const ref = useRef(null);

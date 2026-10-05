@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getPublishedNews } from "@/lib/public-cache";
+import { getPublishedNews } from "@/lib/public-news-cache";
 import { absoluteUrl } from "@/lib/site-url";
 import { VICARIATS } from "@/lib/vicariats-data";
 

@@ -7,7 +7,7 @@ import { motion, useInView, AnimatePresence } from "framer-motion";
 import { ArrowRight, Calendar, ExternalLink, Newspaper } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { fadeUp } from "@/components/landing/motion";
-import type { PublicNewsDetail } from "@/lib/public-cache";
+import type { PublicNewsDetail } from "@/lib/public-news-cache";
 
 export const NEWS_DEFAULT_GRID =
   "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6";

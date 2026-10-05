@@ -1,4 +1,4 @@
-import { getPublishedMediatheques } from "@/lib/public-cache";
+import { getPublishedMediatheques } from "@/lib/public-mediatheque-cache";
 import { MediathequePublicGrid } from "@/components/mediatheque/MediathequePublicGrid";
 import type { PublicMediathequeItem } from "@/components/mediatheque/MediathequePublicGrid";
 

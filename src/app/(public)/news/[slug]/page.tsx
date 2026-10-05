@@ -6,7 +6,7 @@ import { ArrowLeft, Calendar, Clock, ArrowRight, Facebook, Bookmark, Hash } from
 import { Badge } from "@/components/ui/badge";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { FACEBOOK_URL, TIKTOK_URL } from "@/config/social-links";
-import { getNewsBySlug, getPublishedNews, type PublicNewsDetail } from "@/lib/public-cache";
+import { getNewsBySlug, getPublishedNews, type PublicNewsDetail } from "@/lib/public-news-cache";
 import { createPageMetadata, stripHtml, truncateDescription } from "@/lib/seo";
 import { articleSchema, breadcrumbSchema } from "@/lib/seo-schemas";
 import { NewsEngagement } from "@/components/news/NewsEngagement";

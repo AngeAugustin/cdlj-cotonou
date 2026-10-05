@@ -1,4 +1,4 @@
-import { getPublishedNews } from "@/lib/public-cache";
+import { getPublishedNews } from "@/lib/public-news-cache";
 import {
   NewsRetroNewspaper,
   type NewspaperStory,

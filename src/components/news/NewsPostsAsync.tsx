@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Calendar, Clock, Hash, Newspaper, User } from "lucide-react";
-import { getPublishedNews, type PublicNewsDetail } from "@/lib/public-cache";
+import { getPublishedNews, type PublicNewsDetail } from "@/lib/public-news-cache";
 
 export async function NewsPostsAsync() {
   let posts: PublicNewsDetail[] = [];

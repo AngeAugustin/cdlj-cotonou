@@ -1,4 +1,4 @@
-import { getPublishedMediatheques } from "@/lib/public-cache";
+import { getPublishedMediatheques } from "@/lib/public-mediatheque-cache";
 import { formatMediathequeDate } from "@/modules/mediatheque/constants";
 import {
   MediathequeRetroTv,

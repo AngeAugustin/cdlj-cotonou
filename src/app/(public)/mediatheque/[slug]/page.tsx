@@ -12,7 +12,7 @@ import {
   getMediathequeById,
   getMediathequeBySlug,
   getPublishedMediatheques,
-} from "@/lib/public-cache";
+} from "@/lib/public-mediatheque-cache";
 import { createPageMetadata } from "@/lib/seo";
 import { breadcrumbSchema, webPageSchema } from "@/lib/seo-schemas";
 import { formatMediathequeDate } from "@/modules/mediatheque/constants";

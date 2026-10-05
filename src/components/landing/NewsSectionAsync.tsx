@@ -1,6 +1,5 @@
-import { getPublishedNews } from "@/lib/public-cache";
 import { NewsSection } from "@/components/landing/NewsSection";
-import type { PublicNewsDetail } from "@/lib/public-cache";
+import { getPublishedNews, type PublicNewsDetail } from "@/lib/public-news-cache";
 
 export async function NewsSectionAsync() {
   let posts: PublicNewsDetail[] = [];
